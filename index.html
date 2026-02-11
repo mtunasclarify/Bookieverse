@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookieVerse - P2P Sportsbook</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { 
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .logo { font-size: 28px; font-weight: bold; }
+        .balance { text-align: right; }
+        .balance-label { font-size: 12px; opacity: 0.8; }
+        .balance-amount { font-size: 24px; font-weight: bold; color: #4ade80; }
+        .profit { color: #4ade80; font-size: 18px; }
+        .profit.negative { color: #f87171; }
+        button { 
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: scale(1.05); }
+        button:active { transform: scale(0.95); }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        .tab {
+            background: rgba(0,0,0,0.3);
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .login-box {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 400px;
+            margin: 100px auto;
+            text-align: center;
+        }
+        input, select {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            background: rgba(255,255,255,0.9);
+        }
+        h1 { margin-bottom: 10px; }
+        h2 { margin-bottom: 20px; font-size: 24px; }
+        .card {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 10px 0;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .line-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .line-info { flex: 1; min-width: 200px; }
+        .line-game { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .line-details { opacity: 0.8; font-size: 14px; }
+        .line-amount { 
+            font-size: 32px;
+            font-weight: bold;
+            color: #4ade80;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        .badge-spread { background: rgba(147, 51, 234, 0.3); }
+        .badge-moneyline { background: rgba(59, 130, 246, 0.3); }
+        .badge-total { background: rgba(245, 158, 11, 0.3); }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            opacity: 0.6;
+        }
+        .empty-state-icon { font-size: 64px; margin-bottom: 20px; }
+        .form-group { margin: 15px 0; }
+        .form-label { 
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .leaderboard-table th {
+            text-align: left;
+            padding: 15px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .leaderboard-table td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .leaderboard-table tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .rank { font-size: 24px; width: 50px; }
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; }
+            .line-card { flex-direction: column; text-align: center; }
+            .balance { text-align: center; }
+            .tabs { justify-content: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="app"></div>
+    </div>
+    
+    <script>
+        const API = window.location.origin + '/api';
+        let token = localStorage.getItem('token');
+        let user = null;
+        let view = 'marketplace';
+        
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value || 'demo123';
+            
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            try {
+                let res = await fetch(API + '/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password})
+                });
+                
+                if (!res.ok) {
+                    res = await fetch(API + '/auth/register', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({username, password})
+                    });
+                }
+                
+                const data = await res.json();
+                token = data.token;
+                localStorage.setItem('token', token);
+                user = data.user;
+                renderApp();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function loadUser() {
+            const res = await fetch(API + '/user?token=' + token);
+            user = await res.json();
+        }
+        
+        async function loadLines() {
+            const res = await fetch(API + '/lines');
+            const lines = await res.json();
+            
+            if (lines.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🎯</div>
+                        <h2>No Lines Available</h2>
+                        <p>Be the first bookie! Go to "Set Lines" to create one.</p>
+                    </div>
+                `;
+            }
+            
+            let html = '<h2>📊 Available Lines</h2>';
+            lines.forEach(line => {
+                const badgeClass = line.type === 'spread' ? 'badge-spread' : 
+                                  line.type === 'moneyline' ? 'badge-moneyline' : 'badge-total';
+                html += `
+                    <div class="card line-card">
+                        <div class="line-info">
+                            <div>
+                                <span class="badge ${badgeClass}">${line.type.toUpperCase()}</span>
+                                <span style="opacity: 0.6; font-size: 14px;">by ${line.bookie_name}</span>
+                            </div>
+                            <div class="line-game">${line.game}</div>
+                            <div class="line-details">
+                                Taking ${line.side === 'home' ? line.game.split('@')[1].trim() : line.game.split('@')[0].trim()}
+                                ${line.value > 0 ? '+' : ''}${line.value} (${line.odds})
+                            </div>
+                            <div class="line-details">${line.date}</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="line-amount">$${line.amount}</div>
+                            <button onclick="takeLine('${line.id}')">Take It</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        async function takeLine(lineId) {
+            try {
+                const res = await fetch(API + '/lines/take?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({line_id: lineId})
+                });
+                
+                if (res.ok) {
+                    alert('✅ Bet placed!');
+                    await loadUser();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function loadGames() {
+            const res = await fetch(API + '/games');
+            return await res.json();
+        }
+        
+        async function createLine() {
+            const gameId = parseInt(document.getElementById('game').value);
+            const type = document.getElementById('type').value;
+            const side = document.getElementById('side').value;
+            const value = parseFloat(document.getElementById('value').value);
+            const amount = parseFloat(document.getElementById('amount').value);
+            
+            if (!gameId || !value || !amount) {
+                alert('Please fill all fields');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API + '/lines?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({game_id: gameId, type, side, value, amount})
+                });
+                
+                if (res.ok) {
+                    alert('✅ Line created!');
+                    await loadUser();
+                    view = 'marketplace';
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function renderCreateLine() {
+            const games = await loadGames();
+            
+            return `
+                <h2>⚡ Set Your Line</h2>
+                <div class="card" style="max-width: 600px;">
+                    <div class="form-group">
+                        <label class="form-label">Select Game</label>
+                        <select id="game">
+                            <option value="">Choose a game...</option>
+                            ${games.map(g => `<option value="${g.id}">${g.away} @ ${g.home} - ${g.date}</option>`).join('')}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Bet Type</label>
+                        <select id="type">
+                            <option value="spread">Spread</option>
+                            <option value="moneyline">Moneyline</option>
+                            <option value="total">Over/Under</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Your Side</label>
+                        <select id="side">
+                            <option value="home">Home Team</option>
+                            <option value="away">Away Team</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Line Value (e.g., -5.5 or +150)</label>
+                        <input id="value" type="number" step="0.5" placeholder="-5.5">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Amount to Risk</label>
+                        <input id="amount" type="number" placeholder="100">
+                        <div style="margin-top: 5px; font-size: 14px; opacity: 0.7;">
+                            Available: $${user.balance.toLocaleString()}
+                        </div>
+                    </div>
+                    
+                    <button onclick="createLine()" style="width: 100%; margin-top: 10px;">
+                        Post Line to Marketplace
+                    </button>
+                </div>
+            `;
+        }
+        
+        async function loadBets() {
+            const res = await fetch(API + '/bets?token=' + token);
+            const bets = await res.json();
+            
+            if (bets.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <h2>No Bets Yet</h2>
+                        <p>Create a line or take someone else's to get started!</p>
+                    </div>
+                `;
+            }
+            
+            let html = '<h2>📈 My Bets</h2>';
+            bets.forEach(bet => {
+                const isBookieMe = bet.bookie_id === user.id;
+                const statusColor = bet.status === 'pending' ? '#fbbf24' : '#60a5fa';
+                
+                html += `
+                    <div class="card">
+                        <div style="margin-bottom: 15px;">
+                            <span class="badge" style="background: ${statusColor}30;">
+                                ${isBookieMe ? '🏦 You are Bookie' : '🎯 You are Bettor'}
+                            </span>
+                            <span class="badge" style="background: rgba(100,100,100,0.3);">
+                                ${bet.status.toUpperCase()}
+                            </span>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                            <div>
+                                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">
+                                    ${bet.game}
+                                </div>
+                                <div style="opacity: 0.8; font-size: 14px;">
+                                    vs ${isBookieMe ? bet.bettor_name : bet.bookie_name}
+                                </div>
+                                <div style="opacity: 0.7; font-size: 14px; margin-top: 5px;">
+                                    Your side: ${isBookieMe ? bet.bookie_side : bet.bettor_side} 
+                                    ${bet.value > 0 ? '+' : ''}${bet.value}
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: center;">
+                                <div style="font-size: 28px; font-weight: bold; color: #4ade80; margin-bottom: 10px;">
+                                    $${bet.amount}
+                                </div>
+                                ${bet.status === 'pending' ? `
+                                    <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                                        <button onclick="settleBet('${bet.id}', 'bookie')" 
+                                            style="background: #22c55e; padding: 8px 16px; font-size: 14px;">
+                                            Bookie Wins
+                                        </button>
+                                        <button onclick="settleBet('${bet.id}', 'bettor')" 
+                                            style="background: #ef4444; padding: 8px 16px; font-size: 14px;">
+                                            Bettor Wins
+                                        </button>
+                                    </div>
+                                ` : `
+                                    <div style="font-size: 18px; font-weight: bold; color: ${
+                                        (bet.winner === 'bookie' && isBookieMe) || (bet.winner === 'bettor' && !isBookieMe)
+                                            ? '#4ade80' : '#f87171'
+                                    };">
+                                        ${(bet.winner === 'bookie' && isBookieMe) || (bet.winner === 'bettor' && !isBookieMe)
+                                            ? '✓ WON' : '✗ LOST'}
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        async function settleBet(betId, winner) {
+            try {
+                const res = await fetch(API + `/bets/${betId}/settle?token=${token}&winner=${winner}`, {
+                    method: 'POST'
+                });
+                
+                if (res.ok) {
+                    alert('✅ Bet settled!');
+                    await loadUser();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function loadLeaderboard() {
+            const res = await fetch(API + '/leaderboard');
+            const leaders = await res.json();
+            
+            let html = '<h2>🏆 Top Bookies</h2>';
+            html += `
+                <div class="card">
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th class="rank">Rank</th>
+                                <th>Username</th>
+                                <th>Profit/Loss</th>
+                                <th>Record</th>
+                                <th>Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            leaders.forEach((u, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+                const isMe = u.username === user.username;
+                html += `
+                    <tr style="${isMe ? 'background: rgba(102, 126, 234, 0.3);' : ''}">
+                        <td class="rank">${medal}</td>
+                        <td>
+                            <strong>${u.username}</strong>
+                            ${isMe ? '<span style="opacity: 0.6; margin-left: 8px;">(You)</span>' : ''}
+                        </td>
+                        <td style="color: ${u.profit >= 0 ? '#4ade80' : '#f87171'}; font-weight: bold;">
+                            ${u.profit >= 0 ? '+' : ''}$${u.profit.toLocaleString()}
+                        </td>
+                        <td style="opacity: 0.8;">
+                            ${u.wins}W - ${u.losses}L
+                        </td>
+                        <td style="color: #4ade80;">
+                            $${u.balance.toLocaleString()}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table></div>';
+            return html;
+        }
+        
+        async function renderApp() {
+            if (!user) await loadUser();
+            
+            let content = '';
+            if (view === 'marketplace') content = await loadLines();
+            else if (view === 'create') content = await renderCreateLine();
+            else if (view === 'bets') content = await loadBets();
+            else if (view === 'leaderboard') content = await loadLeaderboard();
+            
+            const profitClass = user.profit >= 0 ? '' : 'negative';
+            
+            document.getElementById('app').innerHTML = `
+                <div class="header">
+                    <div>
+                        <div class="logo">🎯 BookieVerse</div>
+                        <div style="margin-top: 5px; opacity: 0.8;">${user.username} • ${user.wins}W - ${user.losses}L</div>
+                    </div>
+                    <div class="balance">
+                        <div class="balance-label">Balance</div>
+                        <div class="balance-amount">$${user.balance.toLocaleString()}</div>
+                        <div class="profit ${profitClass}">
+                            ${user.profit >= 0 ? '+' : ''}$${user.profit.toLocaleString()} P/L
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tabs">
+                    <div class="tab ${view === 'marketplace' ? 'active' : ''}" onclick="changeView('marketplace')">
+                        🛒 Marketplace
+                    </div>
+                    <div class="tab ${view === 'create' ? 'active' : ''}" onclick="changeView('create')">
+                        ⚡ Set Lines
+                    </div>
+                    <div class="tab ${view === 'bets' ? 'active' : ''}" onclick="changeView('bets')">
+                        📊 My Bets
+                    </div>
+                    <div class="tab ${view === 'leaderboard' ? 'active' : ''}" onclick="changeView('leaderboard')">
+                        🏆 Leaderboard
+                    </div>
+                </div>
+                
+                <div id="content">${content}</div>
+            `;
+        }
+        
+        function changeView(newView) {
+            view = newView;
+            renderApp();
+        }
+        
+        // Initialize
+        if (!token) {
+            document.getElementById('app').innerHTML = `
+                <div class="login-box">
+                    <h1>🎯 BookieVerse</h1>
+                    <p style="margin: 20px 0; opacity: 0.8;">
+                        You are the house. Set lines. Take action.
+                    </p>
+                    <input id="username" placeholder="Choose username" autofocus />
+                    <input id="password" type="password" placeholder="Password (optional)" />
+                    <button onclick="login()" style="width:100%; margin-top:10px;">
+                        Enter BookieVerse
+                    </button>
+                    <p style="margin-top:20px; font-size:14px; opacity:0.6;">
+                        New users get $10,000 play money
+                    </p>
+                </div>
+            `;
+            
+            document.getElementById('username').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
+        } else {
+            renderApp();
+        }
+    </script>
+</body>
+</html>
