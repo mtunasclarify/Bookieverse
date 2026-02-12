@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookieVerse - Complete P2P Sportsbook</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        .header { 
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .logo { font-size: 28px; font-weight: bold; }
+        .user-info { opacity: 0.9; margin-top: 5px; }
+        .balance-widget {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .balance-amount { font-size: 24px; font-weight: bold; color: #4ade80; }
+        .hourly-widget {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        .hourly-badge {
+            background: rgba(74, 222, 128, 0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: #4ade80;
+            font-weight: 600;
+        }
+        .countdown {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .profit { color: #4ade80; font-size: 18px; }
+        .profit.negative { color: #f87171; }
+        
+        button { 
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: scale(1.05); }
+        button:active { transform: scale(0.95); }
+        button.secondary { background: rgba(255,255,255,0.2); }
+        button.danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+        button.small { padding: 6px 12px; font-size: 14px; }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+        .tab {
+            background: rgba(0,0,0,0.3);
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .card {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 10px 0;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .line-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            position: relative;
+        }
+        .line-info { flex: 1; min-width: 200px; }
+        .line-game { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .line-details { opacity: 0.8; font-size: 14px; margin: 3px 0; }
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(239, 68, 68, 0.2);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #ef4444;
+            margin: 5px 0;
+        }
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .score-display {
+            font-size: 16px;
+            font-weight: bold;
+            color: #60a5fa;
+            margin: 5px 0;
+        }
+        .bet-status {
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        .bet-status.winning { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+        .bet-status.losing { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        .badge-spread { background: rgba(147, 51, 234, 0.3); }
+        .badge-moneyline { background: rgba(59, 130, 246, 0.3); }
+        .badge-total { background: rgba(245, 158, 11, 0.3); }
+        .badge-future { background: rgba(16, 185, 129, 0.3); }
+        .badge-parlay { background: rgba(236, 72, 153, 0.3); }
+        .badge-private { background: rgba(139, 92, 246, 0.3); }
+        
+        .bookie-link {
+            color: #60a5fa;
+            text-decoration: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .bookie-link:hover { text-decoration: underline; }
+        .star-rating {
+            color: #fbbf24;
+            font-size: 14px;
+            margin-left: 5px;
+        }
+        .follow-btn {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid #60a5fa;
+            padding: 4px 12px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .follow-btn.following {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+            border-color: #4ade80;
+        }
+        
+        .limit-badge {
+            background: rgba(255,255,255,0.1);
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-right: 8px;
+        }
+        .limit-badge.warning { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        
+        .my-lines-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid rgba(255,255,255,0.1);
+        }
+        .line-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .profile-header {
+            text-align: center;
+            padding: 30px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        .profile-username { font-size: 32px; font-weight: bold; margin-bottom: 10px; }
+        .profile-rating {
+            font-size: 24px;
+            color: #fbbf24;
+            margin: 10px 0;
+        }
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-box {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-label { font-size: 12px; opacity: 0.7; margin-bottom: 5px; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #4ade80; }
+        
+        .group-card {
+            background: rgba(139, 92, 246, 0.1);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+        }
+        .group-members {
+            opacity: 0.8;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        
+        .parlay-legs {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .parlay-leg {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin: 5px 0;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .modal-body { margin: 20px 0; }
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+        textarea { min-height: 80px; resize: vertical; }
+        
+        .form-group { margin: 15px 0; }
+        .form-label { 
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            opacity: 0.6;
+        }
+        .empty-state-icon { font-size: 64px; margin-bottom: 20px; }
+        
+        .login-box {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 400px;
+            margin: 100px auto;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; text-align: center; }
+            .line-card { flex-direction: column; text-align: center; }
+            .balance-widget { text-align: center; }
+            .form-row { grid-template-columns: 1fr; }
+            .profile-stats { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="app"></div>
+    </div>
+    
+    <!-- Modals -->
+    <div id="editLineModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">✏️ Edit Your Line</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Line Value</label>
+                    <input type="number" id="editValue" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount</label>
+                    <input type="number" id="editAmount">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Max Bettors (optional)</label>
+                    <input type="number" id="editMaxBettors" placeholder="Leave blank for unlimited">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="saveLineEdit()">Save Changes</button>
+                <button class="secondary" onclick="closeModal('editLineModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="rateBookieModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">⭐ Rate Bookie</div>
+            <div class="modal-body">
+                <p id="rateBookieName" style="text-align: center; font-size: 18px; margin-bottom: 20px;"></p>
+                <div style="text-align: center; font-size: 32px; margin: 20px 0;">
+                    <span onclick="setRating(1)" class="star-btn" data-rating="1">⭐</span>
+                    <span onclick="setRating(2)" class="star-btn" data-rating="2">⭐</span>
+                    <span onclick="setRating(3)" class="star-btn" data-rating="3">⭐</span>
+                    <span onclick="setRating(4)" class="star-btn" data-rating="4">⭐</span>
+                    <span onclick="setRating(5)" class="star-btn" data-rating="5">⭐</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Comment (optional)</label>
+                    <textarea id="ratingComment" placeholder="How was your experience?"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="submitRating()">Submit Rating</button>
+                <button class="secondary" onclick="closeModal('rateBookieModal')">Skip</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="createGroupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">👥 Create Group</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Group Name</label>
+                    <input type="text" id="groupName" placeholder="NFL Sundays">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description (optional)</label>
+                    <textarea id="groupDescription" placeholder="Betting group for Sunday NFL games"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="createGroup()">Create Group</button>
+                <button class="secondary" onclick="closeModal('createGroupModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="inviteToGroupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">📨 Invite to Group</div>
+            <div class="modal-body">
+                <p id="inviteGroupName" style="text-align: center; margin-bottom: 15px;"></p>
+                <div class="form-group">
+                    <label class="form-label">Username to Invite</label>
+                    <input type="text" id="inviteUsername" placeholder="@username">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="inviteToGroup()">Send Invite</button>
+                <button class="secondary" onclick="closeModal('inviteToGroupModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API = window.location.origin + '/api';
+        let token = localStorage.getItem('token');
+        let user = null;
+        let view = 'marketplace';
+        let parlayMode = false;
+        let parlayLegs = [];
+        let countdownInterval = null;
+        let currentEditLine = null;
+        let currentRateBookie = null;
+        let currentInviteGroup = null;
+        let followingBookies = [];
+        let userGroups = [];
+        
+        // ==================== AUTH ====================
+        
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value || 'demo123';
+            
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            try {
+                let res = await fetch(API + '/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password})
+                });
+                
+                if (!res.ok) {
+                    res = await fetch(API + '/auth/register', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({username, password})
+                    });
+                }
+                
+                const data = await res.json();
+                token = data.token;
+                localStorage.setItem('token', token);
+                user = data.user;
+                await loadFollowing();
+                await loadGroups();
+                renderApp();
+                startCountdown();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function loadUser() {
+            const res = await fetch(API + '/user?token=' + token);
+            user = await res.json();
+        }
+        
+        async function loadFollowing() {
+            try {
+                const res = await fetch(API + '/bookie/following?token=' + token);
+                followingBookies = await res.json();
+            } catch (e) {
+                followingBookies = [];
+            }
+        }
+        
+        async function loadGroups() {
+            try {
+                const res = await fetch(API + '/groups?token=' + token);
+                userGroups = await res.json();
+            } catch (e) {
+                userGroups = [];
+            }
+        }
+        
+        // ==================== HOURLY CURRENCY ====================
+        
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            
+            countdownInterval = setInterval(async () => {
+                if (!user) return;
+                
+                user.next_drop_seconds--;
+                
+                if (user.next_drop_seconds <= 0) {
+                    await loadUser();
+                    renderApp();
+                }
+                
+                updateCountdownDisplay();
+            }, 1000);
+        }
+        
+        function updateCountdownDisplay() {
+            const el = document.getElementById('countdown');
+            if (el && user) {
+                const minutes = Math.floor(user.next_drop_seconds / 60);
+                const seconds = user.next_drop_seconds % 60;
+                el.textContent = `Next: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        }
+        
+        // ==================== LINES ====================
+        
+        async function loadLines() {
+            const res = await fetch(API + '/lines?token=' + token);
+            const lines = await res.json();
+            
+            if (lines.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🎯</div>
+                        <h2>No Lines Available</h2>
+                        <p>Be the first bookie! Go to "Set Lines" to create one.</p>
+                    </div>
+                `;
+            }
+            
+            let html = '<h2>📊 Available Lines</h2>';
+            
+            if (parlayMode) {
+                html += `
+                    <div class="card" style="background: rgba(236, 72, 153, 0.2);">
+                        <strong>🎰 Parlay Mode Active</strong> - Select 2-10 lines
+                        <button onclick="toggleParlayMode()" style="margin-left: 15px;" class="secondary small">Cancel</button>
+                        ${parlayLegs.length >= 2 ? `<button onclick="placeParlayBet()" style="margin-left: 10px;" class="small">Place Parlay (${parlayLegs.length} legs)</button>` : ''}
+                    </div>
+                `;
+            } else {
+                html += `<button onclick="toggleParlayMode()" class="secondary small" style="margin-bottom: 15px;">🎰 Build Parlay</button>`;
+            }
+            
+            for (const line of lines) {
+                const badgeClass = line.type === 'spread' ? 'badge-spread' : 
+                                  line.type === 'moneyline' ? 'badge-moneyline' : 
+                                  line.type === 'future' ? 'badge-future' : 'badge-total';
+                
+                const isInParlay = parlayLegs.includes(line.id);
+                const spotsText = line.max_bettors ? `${line.current_bettors}/${line.max_bettors} spots` : 'Unlimited';
+                const spotsWarning = line.max_bettors && line.current_bettors >= line.max_bettors * 0.8;
+                
+                // Get bookie profile for rating
+                let bookieRating = '';
+                try {
+                    const profileRes = await fetch(API + `/bookie/${line.bookie_id}/profile`);
+                    if (profileRes.ok) {
+                        const profile = await profileRes.json();
+                        if (profile.rating > 0) {
+                            bookieRating = `<span class="star-rating">⭐${profile.rating.toFixed(1)}</span>`;
+                        }
+                    }
+                } catch (e) {}
+                
+                const isFollowing = followingBookies.some(b => b.username === line.bookie_name);
+                
+                // Check if game has live scores
+                let liveScoreHtml = '';
+                if (line.game_id) {
+                    try {
+                        const gamesRes = await fetch(API + '/games');
+                        const games = await gamesRes.json();
+                        const game = games.find(g => g.id === line.game_id);
+                        
+                        if (game && game.status === 'live' && game.home_score !== null) {
+                            liveScoreHtml = `
+                                <div class="live-indicator">
+                                    <span class="live-dot"></span>
+                                    LIVE
+                                </div>
+                                <div class="score-display">${game.away} ${game.away_score}, ${game.home} ${game.home_score}</div>
+                            `;
+                        } else if (game && game.status === 'final') {
+                            liveScoreHtml = `
+                                <div class="line-details" style="color: #60a5fa;">
+                                    FINAL: ${game.away} ${game.away_score}, ${game.home} ${game.home_score}
+                                </div>
+                            `;
+                        }
+                    } catch (e) {}
+                }
+                
+                html += `
+                    <div class="card line-card" style="${isInParlay ? 'border: 2px solid #ec4899;' : ''}">
+                        <div class="line-info">
+                            <div>
+                                <span class="badge ${badgeClass}">${line.type.toUpperCase()}</span>
+                                ${line.is_private ? '<span class="badge badge-private">🔒 PRIVATE</span>' : ''}
+                                <a class="bookie-link" onclick="viewBookieProfile('${line.bookie_id}')">
+                                    @${line.bookie_name}${bookieRating}
+                                </a>
+                                <button class="follow-btn ${isFollowing ? 'following' : ''} small" onclick="toggleFollow('${line.bookie_id}', '${line.bookie_name}')">
+                                    ${isFollowing ? '✓ Following' : 'Follow'}
+                                </button>
+                            </div>
+                            <div class="line-game">${line.game}</div>
+                            ${liveScoreHtml}
+                            <div class="line-details">
+                                Taking ${line.side === 'home' ? line.game.split('@')[1]?.trim() || line.side : line.game.split('@')[0]?.trim() || line.side}
+                                ${line.value > 0 ? '+' : ''}${line.value} (${line.odds})
+                            </div>
+                            <div style="margin-top: 8px;">
+                                <span class="limit-badge ${spotsWarning ? 'warning' : ''}">${spotsText}</span>
+                                ${line.max_bet_per_user ? `<span class="limit-badge">Max: $${line.max_bet_per_user}</span>` : ''}
+                                ${line.max_total_action ? `<span class="limit-badge">Action: $${line.total_action}/$${line.max_total_action}</span>` : ''}
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; font-weight: bold; color: #4ade80; margin-bottom: 10px;">$${line.amount}</div>
+                            ${parlayMode ? 
+                                `<button onclick="addToParlay('${line.id}')" class="${isInParlay ? 'danger' : ''} small">${isInParlay ? 'Remove' : 'Add'}</button>` :
+                                `<button onclick="takeLine('${line.id}')" class="small">Take It</button>`
+                            }
+                        </div>
+                    </div>
+                `;
+            }
+            
+            return html;
+        }
+        
+        async function takeLine(lineId) {
+            try {
+                const res = await fetch(API + '/lines/take?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({line_id: lineId})
+                });
+                
+                if (res.ok) {
+                    alert('✅ Bet placed!');
+                    await loadUser();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function cancelLine(lineId) {
+            if (!confirm('Cancel this line and refund your balance?')) return;
+            
+            try {
+                const res = await fetch(API + `/lines/${lineId}?token=${token}`, {
+                    method: 'DELETE'
+                });
+                
+                if (res.ok) {
+                    alert('✅ Line cancelled!');
+                    await loadUser();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        function openEditLine(line) {
+            currentEditLine = line;
+            document.getElementById('editValue').value = line.value;
+            document.getElementById('editAmount').value = line.amount;
+            document.getElementById('editMaxBettors').value = line.max_bettors || '';
+            openModal('editLineModal');
+        }
+        
+        async function saveLineEdit() {
+            const value = parseFloat(document.getElementById('editValue').value);
+            const amount = parseFloat(document.getElementById('editAmount').value);
+            const maxBettors = document.getElementById('editMaxBettors').value ? parseInt(document.getElementById('editMaxBettors').value) : null;
+            
+            try {
+                const res = await fetch(API + `/lines/${currentEditLine.id}?token=${token}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({value, amount, max_bettors: maxBettors})
+                });
+                
+                if (res.ok) {
+                    alert('✅ Line updated!');
+                    closeModal('editLineModal');
+                    await loadUser();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        // ==================== PARLAYS ====================
+        
+        function toggleParlayMode() {
+            parlayMode = !parlayMode;
+            parlayLegs = [];
+            renderApp();
+        }
+        
+        function addToParlay(lineId) {
+            if (parlayLegs.includes(lineId)) {
+                parlayLegs = parlayLegs.filter(id => id !== lineId);
+            } else {
+                if (parlayLegs.length >= 10) {
+                    alert('Max 10 legs per parlay');
+                    return;
+                }
+                parlayLegs.push(lineId);
+            }
+            renderApp();
+        }
+        
+        async function placeParlayBet() {
+            if (parlayLegs.length < 2) {
+                alert('Need at least 2 legs');
+                return;
+            }
+            
+            const amount = parseFloat(prompt('Enter parlay stake:'));
+            if (!amount || amount <= 0) return;
+            
+            try {
+                const res = await fetch(API + '/parlays?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({line_ids: parlayLegs, amount})
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(`✅ Parlay placed! Potential: $${data.potential_payout.toFixed(2)}`);
+                    parlayMode = false;
+                    parlayLegs = [];
+                    await loadUser();
+                    view = 'bets';
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        // ==================== BOOKIE PROFILES ====================
+        
+        async function viewBookieProfile(bookieId) {
+            try {
+                const res = await fetch(API + `/bookie/${bookieId}/profile`);
+                const profile = await res.json();
+                
+                const isFollowing = followingBookies.some(b => b.username === profile.username);
+                
+                let html = `
+                    <div class="profile-header">
+                        <div class="profile-username">@${profile.username}</div>
+                        ${profile.rating > 0 ? `<div class="profile-rating">⭐⭐⭐⭐⭐ ${profile.rating.toFixed(2)}/5.0</div>` : ''}
+                        <div style="opacity: 0.8; margin: 5px 0;">Based on ${profile.rating_count} ratings</div>
+                        <button onclick="toggleFollow('${bookieId}', '${profile.username}')" class="follow-btn ${isFollowing ? 'following' : ''}" style="margin-top: 15px;">
+                            ${isFollowing ? '✓ Following' : '+ Follow'}
+                        </button>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 style="margin-bottom: 15px;">📊 Stats</h3>
+                        <div class="profile-stats">
+                            <div class="stat-box">
+                                <div class="stat-label">Win Rate</div>
+                                <div class="stat-value">${profile.win_rate}%</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Record</div>
+                                <div class="stat-value">${profile.wins}W - ${profile.losses}L</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Lines Created</div>
+                                <div class="stat-value">${profile.total_lines_created}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Followers</div>
+                                <div class="stat-value">${profile.followers}</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Profit</div>
+                                <div class="stat-value" style="color: ${profile.profit >= 0 ? '#4ade80' : '#f87171'}">
+                                    ${profile.profit >= 0 ? '+' : ''}$${profile.profit}
+                                </div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-label">Active Lines</div>
+                                <div class="stat-value">${profile.active_lines}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('content').innerHTML = html;
+                view = 'profile';
+            } catch (e) {
+                alert('Error loading profile');
+            }
+        }
+        
+        async function toggleFollow(bookieId, bookieName) {
+            const isFollowing = followingBookies.some(b => b.username === bookieName);
+            
+            try {
+                const res = await fetch(API + `/bookie/${bookieId}/follow?token=${token}`, {
+                    method: isFollowing ? 'DELETE' : 'POST'
+                });
+                
+                if (res.ok) {
+                    await loadFollowing();
+                    if (view === 'profile') {
+                        viewBookieProfile(bookieId);
+                    } else {
+                        renderApp();
+                    }
+                } else {
+                    const err = await res.json();
+                    alert(err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        function openRating(bookieId, bookieName) {
+            currentRateBookie = bookieId;
+            document.getElementById('rateBookieName').textContent = `@${bookieName}`;
+            openModal('rateBookieModal');
+        }
+        
+        let selectedRating = 0;
+        function setRating(rating) {
+            selectedRating = rating;
+            document.querySelectorAll('.star-btn').forEach((btn, i) => {
+                btn.style.opacity = i < rating ? '1' : '0.3';
+            });
+        }
+        
+        async function submitRating() {
+            if (selectedRating === 0) {
+                alert('Please select a rating');
+                return;
+            }
+            
+            const comment = document.getElementById('ratingComment').value;
+            
+            try {
+                const res = await fetch(API + '/bookie/rate?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        bookie_id: currentRateBookie,
+                        rating: selectedRating,
+                        comment: comment || null
+                    })
+                });
+                
+                if (res.ok) {
+                    alert('✅ Rating submitted!');
+                    closeModal('rateBookieModal');
+                    selectedRating = 0;
+                    document.getElementById('ratingComment').value = '';
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        // ==================== GROUPS ====================
+        
+        async function renderGroups() {
+            let html = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>👥 My Groups</h2>
+                    <button onclick="openModal('createGroupModal')" class="small">+ Create Group</button>
+                </div>
+            `;
+            
+            if (userGroups.length === 0) {
+                html += `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👥</div>
+                        <h3>No Groups Yet</h3>
+                        <p>Create a private betting group with friends!</p>
+                    </div>
+                `;
+            } else {
+                for (const group of userGroups) {
+                    html += `
+                        <div class="card group-card">
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <div>
+                                    <h3>${group.is_creator ? '⭐ ' : ''}${group.name}</h3>
+                                    <div class="group-members">${group.member_count} members</div>
+                                    ${group.description ? `<p style="opacity: 0.8; margin: 10px 0;">${group.description}</p>` : ''}
+                                </div>
+                                ${group.is_creator ? `<button class="small" onclick="openInviteModal('${group.id}', '${group.name}')">📨 Invite</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            return html;
+        }
+        
+        async function createGroup() {
+            const name = document.getElementById('groupName').value;
+            const description = document.getElementById('groupDescription').value;
+            
+            if (!name) {
+                alert('Please enter a group name');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API + '/groups?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, description: description || null})
+                });
+                
+                if (res.ok) {
+                    alert('✅ Group created!');
+                    closeModal('createGroupModal');
+                    document.getElementById('groupName').value = '';
+                    document.getElementById('groupDescription').value = '';
+                    await loadGroups();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        function openInviteModal(groupId, groupName) {
+            currentInviteGroup = groupId;
+            document.getElementById('inviteGroupName').textContent = `Invite to: ${groupName}`;
+            openModal('inviteToGroupModal');
+        }
+        
+        async function inviteToGroup() {
+            const username = document.getElementById('inviteUsername').value.replace('@', '');
+            
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API + '/groups/invite?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        group_id: currentInviteGroup,
+                        username: username
+                    })
+                });
+                
+                if (res.ok) {
+                    alert('✅ User invited!');
+                    closeModal('inviteToGroupModal');
+                    document.getElementById('inviteUsername').value = '';
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        // ==================== BETS ====================
+        
+        async function loadBets() {
+            const res = await fetch(API + '/bets?token=' + token);
+            const data = await res.json();
+            
+            const singleBets = data.single_bets || [];
+            const parlays = data.parlays || [];
+            
+            if (singleBets.length === 0 && parlays.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <h2>No Bets Yet</h2>
+                        <p>Create a line or take someone else's!</p>
+                    </div>
+                `;
+            }
+            
+            let html = '<h2>📈 My Bets</h2>';
+            
+            if (parlays.length > 0) {
+                html += '<h3 style="margin: 20px 0 10px 0;">🎰 Parlays</h3>';
+                for (const parlay of parlays) {
+                    html += `
+                        <div class="card">
+                            <div style="margin-bottom: 10px;">
+                                <span class="badge badge-parlay">${parlay.legs.length}-LEG PARLAY</span>
+                                <span class="badge">${parlay.status.toUpperCase()}</span>
+                            </div>
+                            <div class="parlay-legs">
+                                ${parlay.legs.map((leg, i) => `
+                                    <div class="parlay-leg">
+                                        <div>
+                                            <strong>Leg ${i+1}:</strong> ${leg.game}<br>
+                                            <small>${leg.side} ${leg.value > 0 ? '+' : ''}${leg.value} - ${leg.status}</small>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div style="margin-top: 15px;">
+                                Stake: $${parlay.amount} • Potential: $${parlay.potential_payout.toFixed(2)}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            if (singleBets.length > 0) {
+                html += '<h3 style="margin: 20px 0 10px 0;">Single Bets</h3>';
+                for (const bet of singleBets) {
+                    const isBookieMe = bet.bookie_id === user.id;
+                    
+                    // Check for live scores
+                    let liveScoreHtml = '';
+                    let betStatusHtml = '';
+                    if (bet.game_id && bet.status === 'pending') {
+                        try {
+                            const gamesRes = await fetch(API + '/games');
+                            const games = await gamesRes.json();
+                            const game = games.find(g => g.id === bet.game_id);
+                            
+                            if (game && game.status === 'live' && game.home_score !== null) {
+                                liveScoreHtml = `
+                                    <div class="live-indicator">
+                                        <span class="live-dot"></span>
+                                        LIVE
+                                    </div>
+                                    <div class="score-display">${game.away} ${game.away_score}, ${game.home} ${game.home_score}</div>
+                                `;
+                                
+                                // Calculate if currently winning/losing
+                                const diff = game.home_score - game.away_score;
+                                const mySide = isBookieMe ? bet.bookie_side : bet.bettor_side;
+                                const value = bet.value;
+                                
+                                let status = '';
+                                if (bet.type === 'spread') {
+                                    const adjustedDiff = mySide === 'home' ? diff + value : diff - value;
+                                    status = adjustedDiff > 0 ? 'winning' : 'losing';
+                                    betStatusHtml = `
+                                        <div class="bet-status ${status}">
+                                            Currently ${status === 'winning' ? 'covering ✅' : 'NOT covering ❌'}
+                                        </div>
+                                    `;
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                    
+                    html += `
+                        <div class="card">
+                            <div style="margin-bottom: 15px;">
+                                <span class="badge">${isBookieMe ? '🏦 You are Bookie' : '🎯 You are Bettor'}</span>
+                                <span class="badge">${bet.status.toUpperCase()}</span>
+                                ${bet.auto_settled ? '<span class="badge">⚡ Auto-Settled</span>' : ''}
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">
+                                        ${bet.game}
+                                    </div>
+                                    ${liveScoreHtml}
+                                    ${betStatusHtml}
+                                    <div style="opacity: 0.8; font-size: 14px; margin: 5px 0;">
+                                        vs ${isBookieMe ? bet.bettor_name : bet.bookie_name}
+                                        ${bet.status === 'settled' && !isBookieMe ? `
+                                            <button class="small secondary" onclick="openRating('${bet.bookie_id}', '${bet.bookie_name}')" style="margin-left: 10px;">
+                                                ⭐ Rate
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                    <div style="opacity: 0.7; font-size: 14px;">
+                                        Your side: ${isBookieMe ? bet.bookie_side : bet.bettor_side} 
+                                        ${bet.value > 0 ? '+' : ''}${bet.value}
+                                    </div>
+                                </div>
+                                
+                                <div style="text-align: center;">
+                                    <div style="font-size: 28px; font-weight: bold; color: #4ade80; margin-bottom: 10px;">
+                                        $${bet.amount}
+                                    </div>
+                                    ${bet.status === 'pending' && !liveScoreHtml ? `
+                                        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                                            <button onclick="settleBet('${bet.id}', 'bookie')" class="small" style="background: #22c55e;">
+                                                Bookie Wins
+                                            </button>
+                                            <button onclick="settleBet('${bet.id}', 'bettor')" class="small danger">
+                                                Bettor Wins
+                                            </button>
+                                        </div>
+                                    ` : bet.status === 'pending' ? `
+                                        <div style="font-size: 14px; opacity: 0.7;">
+                                            Will auto-settle when game ends
+                                        </div>
+                                    ` : `
+                                        <div style="font-size: 18px; font-weight: bold; color: ${
+                                            (bet.winner === 'bookie' && isBookieMe) || (bet.winner === 'bettor' && !isBookieMe)
+                                                ? '#4ade80' : '#f87171'
+                                        };">
+                                            ${(bet.winner === 'bookie' && isBookieMe) || (bet.winner === 'bettor' && !isBookieMe)
+                                                ? '✓ WON' : '✗ LOST'}
+                                        </div>
+                                        ${bet.auto_settled ? '<div style="font-size: 12px; opacity: 0.6; margin-top: 5px;">Auto-settled</div>' : ''}
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            return html;
+        }
+        
+        async function settleBet(betId, winner) {
+            try {
+                const res = await fetch(API + `/bets/${betId}/settle?token=${token}&winner=${winner}`, {
+                    method: 'POST'
+                });
+                
+                if (res.ok) {
+                    alert('✅ Bet settled!');
+                    await loadUser();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        // ==================== CREATE LINE ====================
+        
+        async function renderCreateLine() {
+            const games = await fetch(API + '/games').then(r => r.json());
+            const futures = await fetch(API + '/futures').then(r => r.json());
+            const res = await fetch(API + '/lines?token=' + token);
+            const allLines = await res.json();
+            const myLines = allLines.filter(l => l.bookie_id === user.id && l.status === 'open');
+            
+            let html = `
+                <h2>⚡ Set Your Line</h2>
+                <div class="card" style="max-width: 700px;">
+                    <div class="form-group">
+                        <label class="form-label">Select Game or Future</label>
+                        <select id="game">
+                            <option value="">Choose...</option>
+                            <optgroup label="📅 Upcoming Games">
+                                ${games.map(g => `<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home} - ${g.date}</option>`).join('')}
+                            </optgroup>
+                            <optgroup label="🔮 Futures">
+                                ${futures.map(f => `<option value="${f.id}">[FUTURE] ${f.market_name}</option>`).join('')}
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Bet Type</label>
+                            <select id="type">
+                                <option value="spread">Spread</option>
+                                <option value="moneyline">Moneyline</option>
+                                <option value="total">Over/Under</option>
+                                <option value="future">Future</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Your Side</label>
+                            <select id="side">
+                                <option value="home">Home Team</option>
+                                <option value="away">Away Team</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Line Value</label>
+                            <input id="value" type="number" step="0.5" placeholder="-5.5">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Amount to Risk *</label>
+                            <input id="amount" type="number" placeholder="100">
+                            <div style="font-size: 12px; opacity: 0.7; margin-top: 5px;">Available: $${user.balance.toLocaleString()}</div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin: 20px 0 10px 0; font-size: 18px;">📊 Set Your Limits (Optional)</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Max Bettors</label>
+                            <input id="max_bettors" type="number" placeholder="Unlimited">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Max Bet Per User</label>
+                            <input id="max_bet" type="number" placeholder="Unlimited">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Max Total Action</label>
+                        <input id="max_total" type="number" placeholder="Unlimited">
+                    </div>
+                    
+                    ${userGroups.length > 0 ? `
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="is_private" style="width: auto;">
+                                <span>🔒 Make this a private line (group only)</span>
+                            </label>
+                            <select id="group_id" style="margin-top: 10px; display: none;">
+                                <option value="">Select group...</option>
+                                ${userGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+                            </select>
+                        </div>
+                    ` : ''}
+                    
+                    <button onclick="createLine()" style="width: 100%; margin-top: 20px;">
+                        Post Line to Marketplace
+                    </button>
+                </div>
+            `;
+            
+            if (myLines.length > 0) {
+                html += `
+                    <div class="my-lines-section">
+                        <h3>📋 Your Active Lines (${myLines.length})</h3>
+                `;
+                
+                for (const line of myLines) {
+                    html += `
+                        <div class="card">
+                            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 15px;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; margin-bottom: 5px;">${line.game}</div>
+                                    <div style="opacity: 0.8; font-size: 14px;">
+                                        ${line.type.toUpperCase()}: ${line.side} ${line.value > 0 ? '+' : ''}${line.value}
+                                    </div>
+                                    <div style="opacity: 0.7; font-size: 14px; margin-top: 5px;">
+                                        $${line.amount} • ${line.current_bettors}/${line.max_bettors || '∞'} spots • ${line.status.toUpperCase()}
+                                    </div>
+                                </div>
+                                <div class="line-actions">
+                                    ${line.current_bettors === 0 ? `
+                                        <button class="secondary small" onclick='openEditLine(${JSON.stringify(line)})'>✏️ Edit</button>
+                                        <button class="danger small" onclick="cancelLine('${line.id}')">❌ Cancel</button>
+                                    ` : `
+                                        <span style="opacity: 0.6; font-size: 14px;">Line has bets</span>
+                                    `}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+            }
+            
+            return html;
+        }
+        
+        async function createLine() {
+            const gameId = document.getElementById('game').value;
+            const type = document.getElementById('type').value;
+            const side = document.getElementById('side').value;
+            const value = parseFloat(document.getElementById('value').value);
+            const amount = parseFloat(document.getElementById('amount').value);
+            
+            const maxBettors = document.getElementById('max_bettors').value ? parseInt(document.getElementById('max_bettors').value) : null;
+            const maxBetPerUser = document.getElementById('max_bet').value ? parseFloat(document.getElementById('max_bet').value) : null;
+            const maxTotalAction = document.getElementById('max_total').value ? parseFloat(document.getElementById('max_total').value) : null;
+            
+            let isPrivate = false;
+            let groupId = null;
+            if (document.getElementById('is_private')) {
+                isPrivate = document.getElementById('is_private').checked;
+                if (isPrivate) {
+                    groupId = document.getElementById('group_id').value;
+                    if (!groupId) {
+                        alert('Please select a group for private line');
+                        return;
+                    }
+                }
+            }
+            
+            if (!gameId || !value || !amount) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API + '/lines?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        game_id: gameId,
+                        type,
+                        side,
+                        value,
+                        amount,
+                        max_bettors: maxBettors,
+                        max_bet_per_user: maxBetPerUser,
+                        max_total_action: maxTotalAction,
+                        is_private: isPrivate,
+                        group_id: groupId
+                    })
+                });
+                
+                if (res.ok) {
+                    alert('✅ Line created!');
+                    await loadUser();
+                    view = 'marketplace';
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        // Toggle group dropdown when private checkbox changes
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'is_private') {
+                const groupSelect = document.getElementById('group_id');
+                if (groupSelect) {
+                    groupSelect.style.display = e.target.checked ? 'block' : 'none';
+                }
+            }
+        });
+        
+        // ==================== LEADERBOARD ====================
+        
+        async function loadLeaderboard() {
+            const res = await fetch(API + '/leaderboard');
+            const leaders = await res.json();
+            
+            let html = '<h2>🏆 Top Bookies</h2>';
+            html += `
+                <div class="card">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding: 15px; border-bottom: 2px solid rgba(255,255,255,0.2);">Rank</th>
+                                <th style="text-align: left; padding: 15px; border-bottom: 2px solid rgba(255,255,255,0.2);">Username</th>
+                                <th style="text-align: left; padding: 15px; border-bottom: 2px solid rgba(255,255,255,0.2);">Profit/Loss</th>
+                                <th style="text-align: left; padding: 15px; border-bottom: 2px solid rgba(255,255,255,0.2);">Record</th>
+                                <th style="text-align: left; padding: 15px; border-bottom: 2px solid rgba(255,255,255,0.2);">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            leaders.forEach((u, i) => {
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+                const isMe = u.username === user.username;
+                html += `
+                    <tr style="${isMe ? 'background: rgba(102, 126, 234, 0.3);' : ''} ${i > 0 ? 'border-top: 1px solid rgba(255,255,255,0.1);' : ''}">
+                        <td style="padding: 15px; font-size: 24px;">${medal}</td>
+                        <td style="padding: 15px;">
+                            <a class="bookie-link" onclick="viewBookieProfile('${u.id}')">
+                                <strong>@${u.username}</strong>
+                            </a>
+                            ${isMe ? '<span style="opacity: 0.6; margin-left: 8px;">(You)</span>' : ''}
+                        </td>
+                        <td style="padding: 15px; color: ${u.profit >= 0 ? '#4ade80' : '#f87171'}; font-weight: bold;">
+                            ${u.profit >= 0 ? '+' : ''}$${u.profit.toLocaleString()}
+                        </td>
+                        <td style="padding: 15px; opacity: 0.8;">
+                            ${u.wins}W - ${u.losses}L
+                        </td>
+                        <td style="padding: 15px; color: #4ade80;">
+                            $${u.balance.toLocaleString()}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table></div>';
+            return html;
+        }
+        
+        // ==================== FOLLOWING ====================
+        
+        async function renderFollowing() {
+            let html = `
+                <h2>⭐ Following (${followingBookies.length})</h2>
+            `;
+            
+            if (followingBookies.length === 0) {
+                html += `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⭐</div>
+                        <h3>Not Following Anyone Yet</h3>
+                        <p>Follow bookies to see their new lines!</p>
+                    </div>
+                `;
+            } else {
+                for (const bookie of followingBookies) {
+                    html += `
+                        <div class="card">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <a class="bookie-link" onclick="viewBookieProfile('${bookie.username}')" style="font-size: 18px; font-weight: bold;">
+                                        @${bookie.username}
+                                    </a>
+                                    ${bookie.rating > 0 ? `<span class="star-rating">⭐${bookie.rating.toFixed(1)}</span>` : ''}
+                                    <div style="opacity: 0.8; margin-top: 5px;">
+                                        ${bookie.win_rate}% win rate • ${bookie.followers} followers
+                                    </div>
+                                </div>
+                                <button class="follow-btn following small" onclick="toggleFollow('${bookie.username}', '${bookie.username}')">
+                                    Unfollow
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            return html;
+        }
+        
+        // ==================== MODALS ====================
+        
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+        
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+        
+        // Close modals on outside click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+        
+        // ==================== RENDER ====================
+        
+        async function renderApp() {
+            if (!user) await loadUser();
+            
+            let content = '';
+            if (view === 'marketplace') content = await loadLines();
+            else if (view === 'create') content = await renderCreateLine();
+            else if (view === 'bets') content = await loadBets();
+            else if (view === 'leaderboard') content = await loadLeaderboard();
+            else if (view === 'groups') content = await renderGroups();
+            else if (view === 'following') content = await renderFollowing();
+            
+            const profitClass = user.profit >= 0 ? '' : 'negative';
+            
+            document.getElementById('app').innerHTML = `
+                <div class="header">
+                    <div>
+                        <div class="logo">🎯 BookieVerse MEGA</div>
+                        <div class="user-info">@${user.username} • ${user.wins}W - ${user.losses}L</div>
+                    </div>
+                    <div class="balance-widget">
+                        <div style="font-size: 12px; opacity: 0.8;">Balance</div>
+                        <div class="balance-amount">$${user.balance.toLocaleString()}</div>
+                        <div class="profit ${profitClass}">
+                            ${user.profit >= 0 ? '+' : ''}$${user.profit.toLocaleString()} P/L
+                        </div>
+                        <div class="hourly-widget">
+                            <span class="hourly-badge">+$${user.hourly_rate}/hr</span>
+                            <span class="countdown" id="countdown">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tabs">
+                    <div class="tab ${view === 'marketplace' ? 'active' : ''}" onclick="changeView('marketplace')">
+                        🛒 Marketplace
+                    </div>
+                    <div class="tab ${view === 'create' ? 'active' : ''}" onclick="changeView('create')">
+                        ⚡ Set Lines
+                    </div>
+                    <div class="tab ${view === 'bets' ? 'active' : ''}" onclick="changeView('bets')">
+                        📊 My Bets
+                    </div>
+                    <div class="tab ${view === 'leaderboard' ? 'active' : ''}" onclick="changeView('leaderboard')">
+                        🏆 Leaderboard
+                    </div>
+                    <div class="tab ${view === 'groups' ? 'active' : ''}" onclick="changeView('groups')">
+                        👥 Groups ${userGroups.length > 0 ? `(${userGroups.length})` : ''}
+                    </div>
+                    <div class="tab ${view === 'following' ? 'active' : ''}" onclick="changeView('following')">
+                        ⭐ Following ${followingBookies.length > 0 ? `(${followingBookies.length})` : ''}
+                    </div>
+                </div>
+                
+                <div id="content">${content}</div>
+            `;
+            
+            updateCountdownDisplay();
+        }
+        
+        function changeView(newView) {
+            view = newView;
+            parlayMode = false;
+            parlayLegs = [];
+            renderApp();
+        }
+        
+        // ==================== INIT ====================
+        
+        if (!token) {
+            document.getElementById('app').innerHTML = `
+                <div class="login-box">
+                    <h1>🎯 BookieVerse MEGA</h1>
+                    <p style="margin: 20px 0; opacity: 0.8;">
+                        Complete P2P Sportsbook<br>
+                        <strong>5 New Features!</strong>
+                    </p>
+                    <ul style="text-align: left; margin: 20px 0; opacity: 0.9;">
+                        <li>⚡ Auto-settlement</li>
+                        <li>✏️ Cancel/Edit lines</li>
+                        <li>📊 Live scores</li>
+                        <li>⭐ Bookie ratings</li>
+                        <li>👥 Private groups</li>
+                    </ul>
+                    <input id="username" placeholder="Choose username" autofocus />
+                    <input id="password" type="password" placeholder="Password (optional)" />
+                    <button onclick="login()" style="width:100%; margin-top:10px;">
+                        Enter BookieVerse
+                    </button>
+                    <p style="margin-top:20px; font-size:14px; opacity:0.6;">
+                        Start with $1,000 + earn $5/hour
+                    </p>
+                </div>
+            `;
+            
+            document.getElementById('username')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
+        } else {
+            (async () => {
+                await loadFollowing();
+                await loadGroups();
+                renderApp();
+                startCountdown();
+            })();
+        }
+    </script>
+</body>
+</html>
