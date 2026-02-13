@@ -1,4 +1,4 @@
-# main.py - BookieVerse COMPLETE - All Features + New Features
+# main.py - BookieVerse Professional Edition (No Timer System)
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +14,7 @@ import requests
 from apscheduler.schedulers.background import BackgroundScheduler
 import stripe
 
-app = FastAPI(title="BookieVerse - Complete Edition")
+app = FastAPI(title="BookieVerse Professional")
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,9 +32,7 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
-HOURLY_CURRENCY = 5
 STARTING_BALANCE = 1000
-MAX_OFFLINE_HOURS = 72
 
 CREDIT_PACKAGES = {
     "small": {"amount": 299, "credits": 300, "name": "$2.99 - 300 Credits"},
@@ -118,27 +116,6 @@ def verify_token(token: str) -> Optional[str]:
     except:
         return None
 
-def apply_hourly_currency(user_id: str):
-    user = users_db.get(user_id)
-    if not user:
-        return
-    
-    now = datetime.utcnow()
-    last_accrual = user.get("last_accrual")
-    
-    if not last_accrual:
-        user["last_accrual"] = now
-        return
-    
-    hours_passed = (now - last_accrual).total_seconds() / 3600
-    hours_passed = min(hours_passed, MAX_OFFLINE_HOURS)
-    currency_to_add = int(hours_passed) * HOURLY_CURRENCY
-    
-    if currency_to_add > 0:
-        user["balance"] += currency_to_add
-        user["last_accrual"] = now
-        user["total_earned"] = user.get("total_earned", 0) + currency_to_add
-
 def get_bookie_rating(bookie_id: str) -> dict:
     bookie_ratings = [r for r in ratings_db.values() if r["bookie_id"] == bookie_id]
     if not bookie_ratings:
@@ -193,20 +170,6 @@ def is_game_started(game_id: str) -> bool:
         except:
             pass
     return False
-
-def migrate_old_users():
-    for user_id, user in users_db.items():
-        if "last_accrual" not in user:
-            user["last_accrual"] = datetime.utcnow()
-        if "total_earned" not in user:
-            user["total_earned"] = 0
-        if "total_purchased" not in user:
-            user["total_purchased"] = 0
-        if "groups" not in user:
-            user["groups"] = []
-        if "lines_created" not in user:
-            user["lines_created"] = 0
-    print(f"✅ Migrated {len(users_db)} users")
 
 def determine_bet_winner(bet: dict, line: dict, home_score: int, away_score: int) -> Optional[str]:
     bet_type = line.get("type")
@@ -272,6 +235,7 @@ def load_demo_games():
     games_db = {
         'demo_1': {"id": 'demo_1', "home": "Lakers", "away": "Warriors", "sport": "NBA", "date": "2026-02-14", "time": "7:30 PM", "status": "upcoming", "commence_time": (now + timedelta(hours=2)).isoformat(), "home_score": None, "away_score": None},
         'demo_2': {"id": 'demo_2', "home": "Celtics", "away": "Heat", "sport": "NBA", "date": "2026-02-14", "time": "8:00 PM", "status": "upcoming", "commence_time": (now + timedelta(hours=3)).isoformat(), "home_score": None, "away_score": None},
+        'demo_3': {"id": 'demo_3', "home": "Chiefs", "away": "Bills", "sport": "NFL", "date": "2026-02-15", "time": "1:00 PM", "status": "upcoming", "commence_time": (now + timedelta(hours=20)).isoformat(), "home_score": None, "away_score": None},
     }
 
 def load_default_futures():
@@ -283,7 +247,6 @@ def load_default_futures():
 
 @app.on_event("startup")
 async def startup_event():
-    migrate_old_users()
     load_demo_games()
     load_default_futures()
     scheduler = BackgroundScheduler()
@@ -293,7 +256,7 @@ async def startup_event():
 # API Routes
 @app.get("/")
 def home():
-    return {"message": "🎯 BookieVerse", "app": "/app", "features": ["all_features"]}
+    return {"message": "🎯 BookieVerse Professional", "app": "/app"}
 
 @app.post("/api/auth/register")
 def register(user: UserCreate):
@@ -306,7 +269,7 @@ def register(user: UserCreate):
     users_db[user_id] = {
         "id": user_id, "username": user.username, "password": hash_password(user.password),
         "balance": STARTING_BALANCE, "profit": 0, "wins": 0, "losses": 0, "lines_created": 0,
-        "last_accrual": datetime.utcnow(), "total_earned": 0, "total_purchased": 0, "groups": []
+        "total_purchased": 0, "groups": []
     }
     token = create_token(user_id)
     return {"token": token, "user": {"id": user_id, "username": user.username, "balance": STARTING_BALANCE}}
@@ -315,7 +278,6 @@ def register(user: UserCreate):
 def login(user: UserCreate):
     for uid, u in users_db.items():
         if u["username"] == user.username and u["password"] == hash_password(user.password):
-            apply_hourly_currency(uid)
             token = create_token(uid)
             return {"token": token, "user": {"id": uid, "username": u["username"], "balance": u["balance"], "profit": u["profit"]}}
     raise HTTPException(401, "Invalid username or password")
@@ -343,7 +305,6 @@ def create_line(line: LineCreate, token: str):
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(401, "Invalid token")
-    apply_hourly_currency(user_id)
     user = users_db[user_id]
     if user["balance"] < line.amount:
         raise HTTPException(400, "Insufficient balance")
@@ -436,7 +397,6 @@ def take_line(take: TakeLine, token: str):
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(401, "Invalid token")
-    apply_hourly_currency(user_id)
     line = lines_db.get(take.line_id)
     if not line or line["status"] != "open":
         raise HTTPException(404, "Line not available")
@@ -475,7 +435,6 @@ def create_parlay(parlay: ParlayCreate, token: str):
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(401, "Invalid token")
-    apply_hourly_currency(user_id)
     if len(parlay.line_ids) < 2 or len(parlay.line_ids) > 10:
         raise HTTPException(400, "Parlay needs 2-10 legs")
     user = users_db[user_id]
@@ -514,7 +473,6 @@ def get_bets(token: str):
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(401, "Invalid token")
-    apply_hourly_currency(user_id)
     user_bets = [b for b in bets_db.values() if b["bookie_id"] == user_id or b["bettor_id"] == user_id]
     user_parlays = [p for p in parlays_db.values() if p["bettor_id"] == user_id]
     return {"single_bets": user_bets, "parlays": user_parlays}
@@ -770,18 +728,14 @@ def get_user(token: str):
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(401, "Invalid token")
-    apply_hourly_currency(user_id)
     user = users_db[user_id]
-    now = datetime.utcnow()
-    last_accrual = user.get("last_accrual", now)
-    seconds_until_next = 3600 - ((now - last_accrual).total_seconds() % 3600)
     following_count = len([f for f in follows_db.values() if f["user_id"] == user_id])
     return {
         "id": user["id"], "username": user["username"], "balance": user["balance"],
         "profit": user["profit"], "wins": user["wins"], "losses": user["losses"],
-        "lines_created": user.get("lines_created", 0), "total_earned": user.get("total_earned", 0),
-        "total_purchased": user.get("total_purchased", 0), "hourly_rate": HOURLY_CURRENCY,
-        "next_drop_seconds": int(seconds_until_next), "groups": user.get("groups", []),
+        "lines_created": user.get("lines_created", 0),
+        "total_purchased": user.get("total_purchased", 0),
+        "groups": user.get("groups", []),
         "following": following_count
     }
 
