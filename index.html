@@ -3,242 +3,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookieVerse - P2P Sportsbook</title>
+    <title>BookieVerse - Professional Sportsbook</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: white;
-        }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        /* HEADER */
         .header { 
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
+            background: #1e293b;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 20px;
+            border: 1px solid #334155;
         }
-        .logo { font-size: 28px; font-weight: bold; }
-        .user-info { opacity: 0.9; margin-top: 5px; }
+        
+        .logo { 
+            font-size: 28px; 
+            font-weight: 700; 
+            color: #10b981;
+            letter-spacing: -0.5px;
+        }
+        
+        .user-info { 
+            color: #94a3b8; 
+            margin-top: 6px;
+            font-size: 14px;
+        }
+        
         .balance-widget {
             text-align: right;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
         }
-        .balance-amount { font-size: 24px; font-weight: bold; color: #4ade80; }
-        .hourly-widget {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 14px;
+        
+        .balance-label { 
+            font-size: 12px; 
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .hourly-badge {
-            background: rgba(74, 222, 128, 0.2);
-            padding: 4px 8px;
-            border-radius: 6px;
-            color: #4ade80;
+        
+        .balance-amount { 
+            font-size: 32px; 
+            font-weight: 700; 
+            color: #10b981;
+            line-height: 1;
+        }
+        
+        .profit { 
+            color: #10b981; 
+            font-size: 16px;
             font-weight: 600;
         }
-        .countdown {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-        }
-        .profit { color: #4ade80; font-size: 18px; }
-        .profit.negative { color: #f87171; }
+        .profit.negative { color: #ef4444; }
         
+        /* BUTTONS */
         button { 
-            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            background: #10b981;
             color: white;
             border: none;
             padding: 12px 24px;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
-            transition: transform 0.2s;
+            transition: all 0.2s;
+            font-family: inherit;
         }
-        button:hover { transform: scale(1.05); }
-        button:active { transform: scale(0.95); }
-        button.secondary { background: rgba(255,255,255,0.2); }
-        button.danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
-        button.small { padding: 6px 12px; font-size: 14px; }
+        button:hover { 
+            background: #059669;
+            transform: translateY(-1px);
+        }
+        button:active { transform: translateY(0); }
+        button.secondary { 
+            background: #334155;
+            color: #e2e8f0;
+        }
+        button.secondary:hover { background: #475569; }
+        button.danger { background: #ef4444; }
+        button.danger:hover { background: #dc2626; }
+        button.small { padding: 8px 16px; font-size: 13px; }
         button:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
             transform: none;
         }
         
+        /* TABS */
         .tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 24px;
             overflow-x: auto;
-            padding-bottom: 5px;
+            padding-bottom: 8px;
         }
         .tab {
-            background: rgba(0,0,0,0.3);
+            background: #1e293b;
             padding: 12px 20px;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
             white-space: nowrap;
             transition: all 0.2s;
             font-size: 14px;
+            font-weight: 500;
+            color: #94a3b8;
+            border: 1px solid #334155;
+        }
+        .tab:hover {
+            background: #334155;
+            color: #e2e8f0;
         }
         .tab.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
         }
         
+        /* CARDS */
         .card {
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 15px;
-            margin: 10px 0;
-            border: 1px solid rgba(255,255,255,0.1);
+            background: #1e293b;
+            padding: 24px;
+            border-radius: 12px;
+            margin: 12px 0;
+            border: 1px solid #334155;
+            transition: border-color 0.2s;
+        }
+        .card:hover {
+            border-color: #475569;
         }
         
+        /* BADGES */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-spread { background: #7c3aed; color: white; }
+        .badge-moneyline { background: #3b82f6; color: white; }
+        .badge-total { background: #f59e0b; color: white; }
+        .badge-private { background: #8b5cf6; color: white; }
+        .locked-badge {
+            display: inline-block;
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        /* SHOP */
         .shop-packages {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
         }
         .package-card {
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            padding: 25px;
-            border-radius: 15px;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #334155;
+            padding: 32px 24px;
+            border-radius: 12px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s;
             position: relative;
         }
         .package-card:hover {
-            transform: translateY(-5px);
-            border-color: #4ade80;
+            transform: translateY(-4px);
+            border-color: #10b981;
+            box-shadow: 0 12px 24px rgba(16, 185, 129, 0.2);
         }
         .package-card.popular {
-            border-color: #fbbf24;
+            border-color: #f59e0b;
         }
         .package-badge {
             position: absolute;
-            top: -10px;
-            right: 15px;
-            background: #fbbf24;
+            top: -12px;
+            right: 20px;
+            background: #f59e0b;
             color: #000;
-            padding: 3px 10px;
-            border-radius: 15px;
+            padding: 4px 14px;
+            border-radius: 20px;
             font-size: 11px;
-            font-weight: bold;
+            font-weight: 700;
+            letter-spacing: 0.5px;
         }
         .package-price {
-            font-size: 36px;
-            font-weight: bold;
-            color: #4ade80;
-            margin: 8px 0;
+            font-size: 42px;
+            font-weight: 700;
+            color: #10b981;
+            margin: 12px 0;
         }
         .package-credits {
-            font-size: 18px;
-            opacity: 0.9;
-            margin: 8px 0;
+            font-size: 20px;
+            color: #94a3b8;
+            margin: 12px 0;
         }
         .package-bonus {
-            color: #fbbf24;
+            color: #f59e0b;
             font-weight: 600;
-            margin: 8px 0;
+            margin: 12px 0;
             font-size: 14px;
         }
         
+        /* USER SEARCH */
         .search-box {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            padding: 12px 20px;
-            border-radius: 10px;
-            color: white;
-            font-size: 16px;
+            background: #1e293b;
+            border: 2px solid #334155;
+            padding: 14px 20px;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 15px;
             width: 100%;
             max-width: 500px;
             margin-bottom: 20px;
+            font-family: inherit;
         }
-        .search-box::placeholder { color: rgba(255, 255, 255, 0.5); }
+        .search-box:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+        .search-box::placeholder { color: #64748b; }
         
         .user-card {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            margin: 10px 0;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            background: #1e293b;
+            border-radius: 12px;
+            margin: 12px 0;
+            border: 1px solid #334155;
+            transition: all 0.2s;
         }
         .user-card:hover {
-            background: rgba(255, 255, 255, 0.1);
+            border-color: #10b981;
+            background: #334155;
         }
         .user-stats {
             display: flex;
-            gap: 15px;
+            gap: 20px;
             flex-wrap: wrap;
-            margin-top: 8px;
+            margin-top: 10px;
             font-size: 13px;
         }
-        .stat-item { opacity: 0.8; }
+        .stat-item { color: #94a3b8; }
         
-        .locked-badge {
-            display: inline-block;
-            background: rgba(239, 68, 68, 0.3);
-            color: #ef4444;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            margin: 5px 0;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-right: 6px;
-        }
-        .badge-spread { background: rgba(147, 51, 234, 0.3); }
-        .badge-moneyline { background: rgba(59, 130, 246, 0.3); }
-        .badge-total { background: rgba(245, 158, 11, 0.3); }
-        .badge-private { background: rgba(139, 92, 246, 0.3); }
-        
+        /* LINKS */
         .bookie-link {
-            color: #60a5fa;
+            color: #10b981;
             text-decoration: none;
             cursor: pointer;
+            font-weight: 600;
         }
         .bookie-link:hover { text-decoration: underline; }
+        
         .star-rating {
-            color: #fbbf24;
-            font-size: 13px;
-            margin-left: 5px;
+            color: #f59e0b;
+            font-size: 14px;
+            margin-left: 6px;
         }
         
+        /* EMPTY STATE */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            opacity: 0.6;
+            padding: 80px 20px;
+            color: #64748b;
         }
         .empty-state-icon { font-size: 64px; margin-bottom: 20px; }
         
+        /* MODAL */
         .modal {
             display: none;
             position: fixed;
@@ -246,51 +301,68 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             z-index: 1000;
             align-items: center;
             justify-content: center;
         }
         .modal.active { display: flex; }
         .modal-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 30px;
-            border-radius: 20px;
-            max-width: 500px;
+            background: #1e293b;
+            padding: 32px;
+            border-radius: 16px;
+            max-width: 550px;
             width: 90%;
-            max-height: 80vh;
+            max-height: 85vh;
             overflow-y: auto;
+            border: 1px solid #334155;
         }
         .modal-header {
             font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-align: center;
+            font-weight: 700;
+            margin-bottom: 24px;
+            color: #e2e8f0;
         }
-        .modal-body { margin: 20px 0; }
+        .modal-body { margin: 24px 0; }
         .modal-footer {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             justify-content: center;
-            margin-top: 20px;
+            margin-top: 24px;
         }
         
+        /* FORM ELEMENTS */
         input, select, textarea {
             width: 100%;
-            padding: 12px;
+            padding: 14px 16px;
             margin: 8px 0;
-            border-radius: 10px;
-            border: none;
-            font-size: 16px;
-            background: rgba(255,255,255,0.9);
-            color: #333;
+            border-radius: 8px;
+            border: 2px solid #334155;
+            font-size: 15px;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: inherit;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #10b981;
+        }
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 4px;
+            margin-top: 12px;
         }
         
+        /* RESPONSIVE */
         @media (max-width: 768px) {
             .header { flex-direction: column; text-align: center; }
             .balance-widget { text-align: center; }
-            .tabs { font-size: 12px; }
-            .tab { padding: 10px 15px; }
+            .tabs { font-size: 13px; }
+            .tab { padding: 10px 16px; }
+            .balance-amount { font-size: 28px; }
         }
     </style>
 </head>
@@ -299,6 +371,7 @@
         <div id="app"></div>
     </div>
     
+    <!-- MODALS -->
     <div id="editLineModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">✏️ Edit Your Line</div>
@@ -307,11 +380,11 @@
                 <input type="number" id="editValue" step="0.5">
                 <label>Amount</label>
                 <input type="number" id="editAmount">
-                <label>Max Bettors</label>
-                <input type="number" id="editMaxBettors" placeholder="Unlimited">
+                <label>Max Bettors (optional)</label>
+                <input type="number" id="editMaxBettors" placeholder="Leave blank for unlimited">
             </div>
             <div class="modal-footer">
-                <button onclick="saveLineEdit()">Save</button>
+                <button onclick="saveLineEdit()">Save Changes</button>
                 <button class="secondary" onclick="closeModal('editLineModal')">Cancel</button>
             </div>
         </div>
@@ -319,15 +392,15 @@
     
     <div id="createGroupModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">👥 Create Group</div>
+            <div class="modal-header">👥 Create Private Group</div>
             <div class="modal-body">
                 <label>Group Name</label>
                 <input type="text" id="groupName" placeholder="My Betting Group">
                 <label>Description (optional)</label>
-                <textarea id="groupDesc" placeholder="Group description..." rows="3"></textarea>
+                <textarea id="groupDesc" placeholder="Description..." rows="3"></textarea>
             </div>
             <div class="modal-footer">
-                <button onclick="saveGroup()">Create</button>
+                <button onclick="saveGroup()">Create Group</button>
                 <button class="secondary" onclick="closeModal('createGroupModal')">Cancel</button>
             </div>
         </div>
@@ -339,7 +412,6 @@
         let user = null;
         let view = 'marketplace';
         let currentEditLine = null;
-        let countdownInterval = null;
         let searchQuery = '';
         let searchSort = 'rating';
         
@@ -378,7 +450,6 @@
                 localStorage.setItem('token', token);
                 user = data.user;
                 renderApp();
-                startCountdown();
             } catch (e) {
                 alert('Error: ' + e.message);
             }
@@ -389,77 +460,54 @@
             user = await res.json();
         }
         
-        // COUNTDOWN
-        function startCountdown() {
-            if (countdownInterval) clearInterval(countdownInterval);
-            countdownInterval = setInterval(async () => {
-                if (!user) return;
-                user.next_drop_seconds--;
-                if (user.next_drop_seconds <= 0) {
-                    await loadUser();
-                    renderApp();
-                }
-                updateCountdownDisplay();
-            }, 1000);
-        }
-        
-        function updateCountdownDisplay() {
-            const el = document.getElementById('countdown');
-            if (el && user) {
-                const minutes = Math.floor(user.next_drop_seconds / 60);
-                const seconds = user.next_drop_seconds % 60;
-                el.textContent = `Next: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }
-        
         // SHOP
         async function renderShop() {
             const purchasesRes = await fetch(API + '/shop/purchases?token=' + token);
             const purchases = await purchasesRes.json();
             
             let html = `
-                <h2>💰 Credit Shop</h2>
-                <p style="opacity: 0.8; margin: 10px 0;">Buy credits to continue betting!</p>
+                <h2 style="font-size: 28px; margin-bottom: 8px;">💰 Credit Shop</h2>
+                <p style="color: #94a3b8; margin-bottom: 24px;">Purchase credits to keep betting!</p>
                 <div class="shop-packages">
                     <div class="package-card" onclick="buyCredits('small')">
                         <div class="package-price">$2.99</div>
                         <div class="package-credits">300 Credits</div>
-                        <button class="small" style="margin-top: 10px;">Buy</button>
+                        <button class="small" style="margin-top: 16px; width: 100%;">Purchase</button>
                     </div>
                     <div class="package-card" onclick="buyCredits('medium')">
                         <div class="package-price">$4.99</div>
                         <div class="package-credits">500 Credits</div>
-                        <button class="small" style="margin-top: 10px;">Buy</button>
+                        <button class="small" style="margin-top: 16px; width: 100%;">Purchase</button>
                     </div>
                     <div class="package-card popular" onclick="buyCredits('large')">
-                        <div class="package-badge">POPULAR</div>
+                        <div class="package-badge">MOST POPULAR</div>
                         <div class="package-price">$9.99</div>
                         <div class="package-credits">1,100 Credits</div>
                         <div class="package-bonus">+10% Bonus!</div>
-                        <button class="small" style="margin-top: 10px;">Buy</button>
+                        <button class="small" style="margin-top: 16px; width: 100%;">Purchase</button>
                     </div>
                     <div class="package-card" onclick="buyCredits('xl')">
                         <div class="package-price">$19.99</div>
                         <div class="package-credits">2,400 Credits</div>
                         <div class="package-bonus">+20% Bonus!</div>
-                        <button class="small" style="margin-top: 10px;">Buy</button>
+                        <button class="small" style="margin-top: 16px; width: 100%;">Purchase</button>
                     </div>
                     <div class="package-card" onclick="buyCredits('mega')">
                         <div class="package-price">$49.99</div>
                         <div class="package-credits">6,500 Credits</div>
                         <div class="package-bonus">+30% Bonus!</div>
-                        <button class="small" style="margin-top: 10px;">Buy</button>
+                        <button class="small" style="margin-top: 16px; width: 100%;">Purchase</button>
                     </div>
                 </div>
             `;
             
             if (purchases.length > 0) {
-                html += `<h3 style="margin-top: 30px;">📜 Purchase History</h3><div class="card">`;
+                html += `<h3 style="font-size: 20px; margin-top: 40px; margin-bottom: 16px;">📜 Purchase History</h3><div class="card">`;
                 purchases.slice(0, 10).forEach(p => {
                     const date = new Date(p.created_at).toLocaleDateString();
-                    html += `<div style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
-                        <strong>${p.credits} credits</strong> - $${p.amount_paid.toFixed(2)}
-                        <span style="opacity: 0.6; margin-left: 10px; font-size: 13px;">${date}</span>
+                    html += `<div style="padding: 12px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between;">
+                        <div><strong style="color: #10b981;">${p.credits} credits</strong> <span style="color: #64748b;">• $${p.amount_paid.toFixed(2)}</span></div>
+                        <span style="color: #64748b; font-size: 13px;">${date}</span>
                     </div>`;
                 });
                 html += '</div>';
@@ -492,27 +540,27 @@
             const users = await res.json();
             
             let html = `
-                <h2>🔍 Find Bookies</h2>
-                <div style="display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap;">
+                <h2 style="font-size: 28px; margin-bottom: 24px;">🔍 Find Bookies</h2>
+                <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
                     <input type="text" class="search-box" placeholder="Search by username..." 
                         value="${searchQuery}" onchange="searchQuery = this.value; renderApp();" 
                         style="flex: 1; margin: 0;">
-                    <select onchange="searchSort = this.value; renderApp();" style="width: 180px; margin: 0;">
+                    <select onchange="searchSort = this.value; renderApp();" style="width: 200px; margin: 0;">
                         <option value="rating" ${searchSort === 'rating' ? 'selected' : ''}>Top Rated</option>
                         <option value="profit" ${searchSort === 'profit' ? 'selected' : ''}>Most Profit</option>
                         <option value="win_rate" ${searchSort === 'win_rate' ? 'selected' : ''}>Win Rate</option>
-                        <option value="followers" ${searchSort === 'followers' ? 'selected' : ''}>Followers</option>
+                        <option value="followers" ${searchSort === 'followers' ? 'selected' : ''}>Most Followers</option>
                     </select>
                 </div>
             `;
             
             if (users.length === 0) {
-                html += '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3>No users found</h3></div>';
+                html += '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3 style="color: #64748b;">No users found</h3></div>';
             } else {
                 users.forEach(u => {
                     html += `<div class="user-card">
                         <div style="flex: 1;">
-                            <div><strong style="font-size: 16px;">@${u.username}</strong>
+                            <div><strong style="font-size: 18px; color: #e2e8f0;">@${u.username}</strong>
                                 ${u.rating > 0 ? `<span class="star-rating">⭐${u.rating.toFixed(1)}</span>` : ''}
                             </div>
                             <div class="user-stats">
@@ -549,30 +597,30 @@
             const res = await fetch(API + '/lines?token=' + token);
             const lines = await res.json();
             if (lines.length === 0) {
-                return '<div class="empty-state"><div class="empty-state-icon">🎯</div><h2>No Lines Available</h2><p>Be the first to create one!</p></div>';
+                return '<div class="empty-state"><div class="empty-state-icon">🎯</div><h2 style="color: #64748b;">No Lines Available</h2><p style="color: #64748b;">Be the first to create one!</p></div>';
             }
             
-            let html = '<h2>📊 Available Lines</h2>';
+            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">📊 Available Lines</h2>';
             for (const line of lines) {
                 const badgeClass = line.type === 'spread' ? 'badge-spread' : line.type === 'moneyline' ? 'badge-moneyline' : 'badge-total';
                 const isLocked = await isGameStarted(line.game_id);
                 
                 html += `<div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
                         <div style="flex: 1;">
-                            <div>
+                            <div style="margin-bottom: 8px;">
                                 <span class="badge ${badgeClass}">${line.type.toUpperCase()}</span>
-                                ${line.is_private ? '<span class="badge badge-private">🔒 PRIVATE</span>' : ''}
-                                ${isLocked ? '<span class="locked-badge">🔒 LOCKED - Game Started</span>' : ''}
+                                ${line.is_private ? '<span class="badge badge-private">PRIVATE</span>' : ''}
+                                ${isLocked ? '<span class="locked-badge">🔒 LOCKED</span>' : ''}
                             </div>
-                            <div style="font-size: 17px; font-weight: bold; margin: 5px 0;">${line.game}</div>
-                            <div style="opacity: 0.8; font-size: 14px;">Taking ${line.side} ${line.value > 0 ? '+' : ''}${line.value}</div>
-                            <div style="opacity: 0.6; font-size: 13px; margin-top: 5px;">by @${line.bookie_name}</div>
+                            <div style="font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #e2e8f0;">${line.game}</div>
+                            <div style="color: #94a3b8; font-size: 15px;">Taking ${line.side} ${line.value > 0 ? '+' : ''}${line.value}</div>
+                            <div style="color: #64748b; font-size: 13px; margin-top: 6px;">by @${line.bookie_name}</div>
                         </div>
                         <div style="text-align: center;">
-                            <div style="font-size: 28px; font-weight: bold; color: #4ade80;">$${line.amount}</div>
-                            <button onclick="takeLine('${line.id}')" class="small" ${isLocked ? 'disabled' : ''}>
-                                ${isLocked ? 'Locked' : 'Take It'}
+                            <div style="font-size: 36px; font-weight: 700; color: #10b981;">$${line.amount}</div>
+                            <button onclick="takeLine('${line.id}')" class="small" ${isLocked ? 'disabled' : ''} style="margin-top: 12px;">
+                                ${isLocked ? 'Locked' : 'Take Bet'}
                             </button>
                         </div>
                     </div>
@@ -667,64 +715,121 @@
             }
         }
         
-        // CREATE LINE
+        // CREATE LINE (WITH ALL ADVANCED CONTROLS!)
         async function renderCreateLine() {
             const games = await fetch(API + '/games').then(r => r.json());
+            const groups = await fetch(API + '/groups?token=' + token).then(r => r.json());
             const allLines = await fetch(API + '/lines?token=' + token).then(r => r.json());
             const myLines = allLines.filter(l => l.bookie_id === user.id && l.status === 'open');
             
-            let html = `<h2>⚡ Set Your Line</h2>
-                <div class="card" style="max-width: 700px;">
+            let html = `<h2 style="font-size: 28px; margin-bottom: 24px;">⚡ Set Your Line</h2>
+                <div class="card" style="max-width: 800px;">
                     <label>Select Game</label>
                     <select id="game">
-                        <option value="">Choose...</option>
+                        <option value="">Choose a game...</option>
                         ${games.map(g => `<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home} - ${g.date}</option>`).join('')}
                     </select>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div><label>Bet Type</label>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div>
+                            <label>Bet Type</label>
                             <select id="type">
                                 <option value="spread">Spread</option>
                                 <option value="moneyline">Moneyline</option>
                                 <option value="total">Over/Under</option>
                             </select>
                         </div>
-                        <div><label>Your Side</label>
+                        <div>
+                            <label>Your Side</label>
                             <select id="side">
                                 <option value="home">Home</option>
                                 <option value="away">Away</option>
                             </select>
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                        <div><label>Line Value</label><input id="value" type="number" step="0.5" placeholder="-5.5"></div>
-                        <div><label>Amount</label><input id="amount" type="number" placeholder="100"></div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div>
+                            <label>Line Value</label>
+                            <input id="value" type="number" step="0.5" placeholder="-5.5">
+                        </div>
+                        <div>
+                            <label>Amount</label>
+                            <input id="amount" type="number" placeholder="100">
+                        </div>
                     </div>
-                    <button onclick="createLine()" style="width: 100%; margin-top: 20px;">Post Line</button>
+                    
+                    <div style="background: #0f172a; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                        <h4 style="color: #94a3b8; margin-bottom: 16px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">⚙️ Advanced Controls (Optional)</h4>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                            <div>
+                                <label>Max Bettors</label>
+                                <input id="maxBettors" type="number" placeholder="Unlimited">
+                            </div>
+                            <div>
+                                <label>Max Bet/User</label>
+                                <input id="maxBetPerUser" type="number" placeholder="No limit">
+                            </div>
+                            <div>
+                                <label>Max Total Action</label>
+                                <input id="maxTotalAction" type="number" placeholder="No limit">
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 16px;">
+                            <label style="display: flex; align-items: center; cursor: pointer;">
+                                <input type="checkbox" id="isPrivate" onchange="togglePrivateControls()" style="width: auto; margin: 0 8px 0 0;">
+                                <span>Make this a private line (group members only)</span>
+                            </label>
+                        </div>
+                        
+                        <div id="groupSelection" style="display: none; margin-top: 16px;">
+                            <label>Select Group</label>
+                            <select id="groupId">
+                                <option value="">Choose a group...</option>
+                                ${groups.map(g => `<option value="${g.id}">${g.name} (${g.member_count} members)</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button onclick="createLine()" style="width: 100%; margin-top: 24px; padding: 16px;">
+                        Post Line
+                    </button>
                 </div>`;
             
             if (myLines.length > 0) {
-                html += '<h3 style="margin-top: 30px;">📋 Your Active Lines</h3>';
+                html += '<h3 style="font-size: 22px; margin-top: 40px; margin-bottom: 16px;">📋 Your Active Lines</h3>';
                 for (const line of myLines) {
                     const isLocked = await isGameStarted(line.game_id);
                     html += `<div class="card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                            <div><strong>${line.game}</strong>
-                                ${isLocked ? '<span class="locked-badge" style="margin-left: 10px;">🔒 Game Started</span>' : ''}
-                                <div style="opacity: 0.8; margin-top: 5px; font-size: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                            <div style="flex: 1;">
+                                <div style="font-size: 18px; font-weight: 700; color: #e2e8f0; margin-bottom: 6px;">
+                                    ${line.game}
+                                    ${isLocked ? '<span class="locked-badge" style="margin-left: 12px;">🔒 LOCKED</span>' : ''}
+                                </div>
+                                <div style="color: #94a3b8;">
                                     ${line.type.toUpperCase()}: ${line.side} ${line.value > 0 ? '+' : ''}${line.value} - $${line.amount}
                                 </div>
                             </div>
                             ${!isLocked && line.current_bettors === 0 ? `
-                                <div style="display: flex; gap: 10px;">
+                                <div style="display: flex; gap: 12px;">
                                     <button class="secondary small" onclick='openEditLine(${JSON.stringify(line)})'>✏️ Edit</button>
                                     <button class="danger small" onclick="cancelLine('${line.id}')">❌ Cancel</button>
                                 </div>
-                            ` : `<span style="opacity: 0.6; font-size: 14px;">${isLocked ? 'Locked' : 'Has bets'}</span>`}
+                            ` : `<span style="color: #64748b; font-size: 14px;">${isLocked ? 'Locked' : 'Has bets'}</span>`}
                         </div>
                     </div>`;
                 }
             }
+            
             return html;
+        }
+        
+        function togglePrivateControls() {
+            const isPrivate = document.getElementById('isPrivate').checked;
+            document.getElementById('groupSelection').style.display = isPrivate ? 'block' : 'none';
         }
         
         async function createLine() {
@@ -733,15 +838,34 @@
             const side = document.getElementById('side').value;
             const value = parseFloat(document.getElementById('value').value);
             const amount = parseFloat(document.getElementById('amount').value);
+            const maxBettors = document.getElementById('maxBettors').value ? parseInt(document.getElementById('maxBettors').value) : null;
+            const maxBetPerUser = document.getElementById('maxBetPerUser').value ? parseFloat(document.getElementById('maxBetPerUser').value) : null;
+            const maxTotalAction = document.getElementById('maxTotalAction').value ? parseFloat(document.getElementById('maxTotalAction').value) : null;
+            const isPrivate = document.getElementById('isPrivate').checked;
+            const groupId = isPrivate ? document.getElementById('groupId').value : null;
+            
             if (!gameId || !value || !amount) {
-                alert('Please fill all fields');
+                alert('Please fill in Game, Line Value, and Amount');
                 return;
             }
+            
+            if (isPrivate && !groupId) {
+                alert('Please select a group for private lines');
+                return;
+            }
+            
             try {
                 const res = await fetch(API + '/lines?token=' + token, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({game_id: gameId, type, side, value, amount})
+                    body: JSON.stringify({
+                        game_id: gameId, type, side, value, amount,
+                        max_bettors: maxBettors,
+                        max_bet_per_user: maxBetPerUser,
+                        max_total_action: maxTotalAction,
+                        is_private: isPrivate,
+                        group_id: groupId
+                    })
                 });
                 if (res.ok) {
                     alert('✅ Line created!');
@@ -764,34 +888,36 @@
             const bets = data.single_bets || [];
             const parlays = data.parlays || [];
             
-            let html = '<h2>📊 My Bets</h2>';
+            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">📊 My Bets</h2>';
             
             if (bets.length === 0 && parlays.length === 0) {
-                return html + '<div class="empty-state"><div class="empty-state-icon">📊</div><h3>No bets yet</h3></div>';
+                return html + '<div class="empty-state"><div class="empty-state-icon">📊</div><h3 style="color: #64748b;">No bets yet</h3></div>';
             }
             
             if (bets.length > 0) {
-                html += '<h3 style="margin-top: 20px;">Single Bets</h3>';
+                html += '<h3 style="font-size: 20px; margin-bottom: 16px; color: #94a3b8;">Single Bets</h3>';
                 bets.forEach(bet => {
                     const isBookie = bet.bookie_id === user.id;
-                    const statusColor = bet.status === 'pending' ? '#fbbf24' : bet.winner === (isBookie ? 'bookie' : 'bettor') ? '#4ade80' : '#ef4444';
+                    const statusColor = bet.status === 'pending' ? '#f59e0b' : bet.winner === (isBookie ? 'bookie' : 'bettor') ? '#10b981' : '#ef4444';
                     html += `<div class="card">
-                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
                             <div style="flex: 1;">
-                                <div style="font-weight: bold; font-size: 16px;">${bet.game}</div>
-                                <div style="opacity: 0.8; margin-top: 5px; font-size: 14px;">
+                                <div style="font-weight: 700; font-size: 18px; color: #e2e8f0;">${bet.game}</div>
+                                <div style="color: #94a3b8; margin-top: 6px;">
                                     ${bet.type.toUpperCase()}: ${isBookie ? bet.bookie_side : bet.bettor_side} ${bet.value > 0 ? '+' : ''}${bet.value}
                                 </div>
-                                <div style="opacity: 0.6; font-size: 13px; margin-top: 5px;">
+                                <div style="color: #64748b; font-size: 13px; margin-top: 6px;">
                                     ${isBookie ? 'vs @' + bet.bettor_name : 'vs @' + bet.bookie_name}
                                 </div>
                             </div>
                             <div style="text-align: right;">
-                                <div style="font-size: 20px; font-weight: bold; color: ${statusColor};">$${bet.amount}</div>
-                                <div style="font-size: 13px; opacity: 0.8; margin-top: 5px;">${bet.status === 'pending' ? 'Pending' : bet.winner === (isBookie ? 'bookie' : 'bettor') ? 'Won' : 'Lost'}</div>
+                                <div style="font-size: 28px; font-weight: 700; color: ${statusColor};">$${bet.amount}</div>
+                                <div style="font-size: 14px; color: #94a3b8; margin-top: 6px;">${bet.status === 'pending' ? 'Pending' : bet.winner === (isBookie ? 'bookie' : 'bettor') ? 'Won ✅' : 'Lost'}</div>
                                 ${bet.status === 'pending' && isBookie ? `
-                                    <button class="small" onclick="settleBet('${bet.id}', 'bookie')" style="margin-top: 5px; font-size: 12px;">Bookie Wins</button>
-                                    <button class="small secondary" onclick="settleBet('${bet.id}', 'bettor')" style="margin-top: 5px; font-size: 12px;">Bettor Wins</button>
+                                    <div style="margin-top: 12px; display: flex; gap: 8px;">
+                                        <button class="small" onclick="settleBet('${bet.id}', 'bookie')" style="font-size: 11px;">I Won</button>
+                                        <button class="small secondary" onclick="settleBet('${bet.id}', 'bettor')" style="font-size: 11px;">They Won</button>
+                                    </div>
                                 ` : ''}
                             </div>
                         </div>
@@ -800,18 +926,18 @@
             }
             
             if (parlays.length > 0) {
-                html += '<h3 style="margin-top: 30px;">Parlays</h3>';
+                html += '<h3 style="font-size: 20px; margin-top: 32px; margin-bottom: 16px; color: #94a3b8;">Parlays</h3>';
                 parlays.forEach(parlay => {
                     html += `<div class="card">
-                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
                             <div style="flex: 1;">
-                                <div style="font-weight: bold; font-size: 16px;">${parlay.legs.length}-Leg Parlay</div>
-                                ${parlay.legs.map(leg => `<div style="opacity: 0.8; font-size: 13px; margin-top: 3px;">• ${leg.game}: ${leg.side} ${leg.value > 0 ? '+' : ''}${leg.value}</div>`).join('')}
+                                <div style="font-weight: 700; font-size: 18px; color: #e2e8f0;">${parlay.legs.length}-Leg Parlay</div>
+                                ${parlay.legs.map(leg => `<div style="color: #94a3b8; margin-top: 4px; font-size: 14px;">• ${leg.game}: ${leg.side} ${leg.value > 0 ? '+' : ''}${leg.value}</div>`).join('')}
                             </div>
                             <div style="text-align: right;">
-                                <div style="font-size: 18px; font-weight: bold; color: #fbbf24;">$${parlay.amount}</div>
-                                <div style="font-size: 13px; opacity: 0.8;">Win: $${parlay.potential_payout.toFixed(2)}</div>
-                                <div style="font-size: 13px; opacity: 0.8; margin-top: 5px;">${parlay.status}</div>
+                                <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">$${parlay.amount}</div>
+                                <div style="color: #94a3b8; font-size: 13px; margin-top: 4px;">Win: $${parlay.potential_payout.toFixed(2)}</div>
+                                <div style="color: #64748b; font-size: 13px; margin-top: 4px;">${parlay.status}</div>
                             </div>
                         </div>
                     </div>`;
@@ -846,22 +972,22 @@
             const res = await fetch(API + '/leaderboard');
             const leaders = await res.json();
             
-            let html = '<h2>🏆 Leaderboard</h2><p style="opacity: 0.8; margin: 10px 0;">Top 10 by profit</p>';
+            let html = '<h2 style="font-size: 28px; margin-bottom: 8px;">🏆 Leaderboard</h2><p style="color: #94a3b8; margin-bottom: 24px;">Top 10 by profit</p>';
             
             leaders.forEach((leader, idx) => {
                 const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
-                const profitColor = leader.profit >= 0 ? '#4ade80' : '#ef4444';
+                const profitColor = leader.profit >= 0 ? '#10b981' : '#ef4444';
                 html += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="font-size: 24px; min-width: 40px;">${medal}</div>
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div style="font-size: 28px; min-width: 50px; text-align: center;">${medal}</div>
                         <div>
-                            <div style="font-weight: bold; font-size: 16px;">@${leader.username}</div>
-                            <div style="opacity: 0.8; font-size: 14px; margin-top: 3px;">${leader.wins}W - ${leader.losses}L</div>
+                            <div style="font-weight: 700; font-size: 18px; color: #e2e8f0;">@${leader.username}</div>
+                            <div style="color: #94a3b8; margin-top: 4px;">${leader.wins}W - ${leader.losses}L</div>
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 22px; font-weight: bold; color: ${profitColor};">${leader.profit >= 0 ? '+' : ''}$${leader.profit}</div>
-                        <div style="opacity: 0.6; font-size: 13px;">Balance: $${leader.balance}</div>
+                        <div style="font-size: 28px; font-weight: 700; color: ${profitColor};">${leader.profit >= 0 ? '+' : ''}$${leader.profit}</div>
+                        <div style="color: #64748b; font-size: 13px; margin-top: 4px;">Balance: $${leader.balance}</div>
                     </div>
                 </div>`;
             });
@@ -874,20 +1000,20 @@
             const res = await fetch(API + '/groups?token=' + token);
             const groups = await res.json();
             
-            let html = `<h2>👥 Groups</h2>
-                <button onclick="openModal('createGroupModal')" style="margin: 10px 0;">+ Create Group</button>`;
+            let html = `<h2 style="font-size: 28px; margin-bottom: 24px;">👥 Private Groups</h2>
+                <button onclick="openModal('createGroupModal')" style="margin-bottom: 24px;">+ Create Group</button>`;
             
             if (groups.length === 0) {
-                return html + '<div class="empty-state"><div class="empty-state-icon">👥</div><h3>No groups yet</h3></div>';
+                return html + '<div class="empty-state"><div class="empty-state-icon">👥</div><h3 style="color: #64748b;">No groups yet</h3></div>';
             }
             
             groups.forEach(group => {
                 html += `<div class="card">
-                    <div style="font-weight: bold; font-size: 18px;">${group.name}</div>
-                    ${group.description ? `<div style="opacity: 0.8; margin-top: 5px; font-size: 14px;">${group.description}</div>` : ''}
-                    <div style="opacity: 0.6; margin-top: 10px; font-size: 13px;">
+                    <div style="font-weight: 700; font-size: 20px; color: #e2e8f0;">${group.name}</div>
+                    ${group.description ? `<div style="color: #94a3b8; margin-top: 8px;">${group.description}</div>` : ''}
+                    <div style="color: #64748b; margin-top: 12px; font-size: 13px;">
                         ${group.member_count} members • Created by @${group.creator_name}
-                        ${group.is_creator ? ' • <strong>You created this</strong>' : ''}
+                        ${group.is_creator ? ' • <strong style="color: #10b981;">You created this</strong>' : ''}
                     </div>
                 </div>`;
             });
@@ -928,16 +1054,16 @@
             const res = await fetch(API + '/bookie/following?token=' + token);
             const following = await res.json();
             
-            let html = '<h2>⭐ Following</h2>';
+            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">⭐ Following</h2>';
             
             if (following.length === 0) {
-                return html + '<div class="empty-state"><div class="empty-state-icon">⭐</div><h3>Not following anyone yet</h3></div>';
+                return html + '<div class="empty-state"><div class="empty-state-icon">⭐</div><h3 style="color: #64748b;">Not following anyone yet</h3></div>';
             }
             
             following.forEach(bookie => {
                 html += `<div class="user-card">
                     <div style="flex: 1;">
-                        <div><strong style="font-size: 16px;">@${bookie.username}</strong>
+                        <div><strong style="font-size: 18px; color: #e2e8f0;">@${bookie.username}</strong>
                             ${bookie.rating > 0 ? `<span class="star-rating">⭐${bookie.rating.toFixed(1)}</span>` : ''}
                         </div>
                         <div class="user-stats">
@@ -946,7 +1072,7 @@
                             <div class="stat-item">Profit: ${bookie.profit >= 0 ? '+' : ''}$${bookie.profit}</div>
                         </div>
                     </div>
-                    <button class="small secondary" onclick="unfollowBookie('${bookie.id}', '${bookie.username}')">Unfollow</button>
+                    <button class="secondary small" onclick="unfollowBookie('${bookie.id}', '${bookie.username}')">Unfollow</button>
                 </div>`;
             });
             
@@ -1006,13 +1132,9 @@
                         <div class="user-info">@${user.username} • ${user.wins}W - ${user.losses}L</div>
                     </div>
                     <div class="balance-widget">
-                        <div style="font-size: 12px; opacity: 0.8;">Balance</div>
+                        <div class="balance-label">Balance</div>
                         <div class="balance-amount">$${user.balance.toLocaleString()}</div>
                         <div class="profit ${profitClass}">${user.profit >= 0 ? '+' : ''}$${user.profit.toLocaleString()} P/L</div>
-                        <div class="hourly-widget">
-                            <span class="hourly-badge">+$${user.hourly_rate}/hr</span>
-                            <span class="countdown" id="countdown">Loading...</span>
-                        </div>
                     </div>
                 </div>
                 
@@ -1029,8 +1151,6 @@
                 
                 <div id="content">${content}</div>
             `;
-            
-            updateCountdownDisplay();
         }
         
         function changeView(newView) {
@@ -1041,13 +1161,19 @@
         // INIT
         if (!token) {
             document.getElementById('app').innerHTML = `
-                <div style="background: rgba(0,0,0,0.5); backdrop-filter: blur(10px); padding: 40px; border-radius: 20px; max-width: 400px; margin: 100px auto; text-align: center;">
-                    <h1>🎯 BookieVerse</h1>
-                    <p style="margin: 20px 0; opacity: 0.8;">P2P Sportsbook Platform</p>
+                <div style="background: #1e293b; padding: 48px; border-radius: 16px; max-width: 450px; margin: 100px auto; text-align: center; border: 1px solid #334155;">
+                    <h1 style="font-size: 36px; margin-bottom: 12px; color: #10b981;">🎯 BookieVerse</h1>
+                    <p style="margin-bottom: 32px; color: #94a3b8; font-size: 15px;">
+                        Professional P2P Sportsbook
+                    </p>
                     <input id="username" placeholder="Username" autofocus style="margin: 0;" />
                     <input id="password" type="password" placeholder="Password (6+ chars)" style="margin: 0;" />
-                    <button onclick="login()" style="width:100%; margin-top:10px;">Enter</button>
-                    <p style="margin-top: 15px; opacity: 0.6; font-size: 13px;">Password required • Usernames locked once taken</p>
+                    <button onclick="login()" style="width:100%; margin-top:16px; padding: 16px;">
+                        Enter Platform
+                    </button>
+                    <p style="margin-top: 24px; color: #64748b; font-size: 13px;">
+                        Usernames locked once taken • Play money only
+                    </p>
                 </div>
             `;
             document.getElementById('username')?.addEventListener('keypress', (e) => {
@@ -1059,7 +1185,6 @@
         } else {
             (async () => {
                 renderApp();
-                startCountdown();
             })();
         }
     </script>
