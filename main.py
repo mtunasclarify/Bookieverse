@@ -1,6 +1,6 @@
-# main.py - BookieVerse Complete with Player Props, Auto-Settlement, Parlays, Futures
+# main.py - BookieVerse with PostgreSQL - ALL FEATURES
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -10,60 +10,292 @@ import jwt
 from datetime import datetime, timedelta
 import uvicorn
 import os
+import stripe
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
-import stripe
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+import json
 
 app = FastAPI(title="BookieVerse Complete")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-SECRET_KEY = os.getenv("SECRET_KEY", "bookieverse-secret-change-in-production")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")  # Change this in production!
+SECRET_KEY = os.getenv("SECRET_KEY", "bookieverse-secret")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bookieverse.db")
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-
+ODDS_API_KEY = os.getenv("ODDS_API_KEY", "")
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
-STARTING_BALANCE = 1000
-RAKE_PERCENTAGE = 0.0  # 0% rake for play money!
-
-CREDIT_PACKAGES = {
-    "small": {"amount": 299, "credits": 300, "name": "$2.99 - 300 Credits"},
-    "medium": {"amount": 499, "credits": 500, "name": "$4.99 - 500 Credits"},
-    "large": {"amount": 999, "credits": 1100, "name": "$9.99 - 1,100 Credits (+10%)"},
-    "xl": {"amount": 1999, "credits": 2400, "name": "$19.99 - 2,400 Credits (+20%)"},
-    "mega": {"amount": 4999, "credits": 6500, "name": "$49.99 - 6,500 Credits (+30%)"}
-}
-
 PROP_TYPES = {
-    "NBA": ["Points", "Rebounds", "Assists", "3-Pointers Made", "Pts+Reb+Ast"],
-    "NFL": ["Passing Yards", "Rushing Yards", "Receiving Yards", "Touchdowns", "Receptions"]
+    "NBA": ["Points", "Rebounds", "Assists", "3-Pointers Made"],
+    "NFL": ["Passing Yards", "Rushing Yards", "Touchdowns"]
 }
 
-# Storage
-users_db = {}
-lines_db = {}
-bets_db = {}
-games_db = {}
-futures_db = {}
-parlays_db = {}
-groups_db = {}
-ratings_db = {}
-follows_db = {}
-purchases_db = {}
-props_db = {}
-prop_bets_db = {}
-player_stats_db = {}
+# Database
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
-# Pydantic Models
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, index=True)
+    password = Column(String)
+    balance = Column(Float, default=1000.0)
+    profit = Column(Float, default=0.0)
+    wins = Column(Integer, default=0)
+    losses = Column(Integer, default=0)
+    lines_created = Column(Integer, default=0)
+    is_admin = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Line(Base):
+    __tablename__ = "lines"
+    id = Column(Integer, primary_key=True)
+    bookie_id = Column(Integer)
+    bookie_name = Column(String)
+    game_id = Column(String)
+    game = Column(String)
+    sport = Column(String)
+    type = Column(String)
+    side = Column(String)
+    value = Column(Float)
+    amount = Column(Float)
+    status = Column(String, default="open")
+    current_bettors = Column(Integer, default=0)
+    max_bettors = Column(Integer, nullable=True)
+    max_bet_per_user = Column(Float, nullable=True)
+    max_total_action = Column(Float, nullable=True)
+    is_private = Column(Boolean, default=False)
+    group_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Bet(Base):
+    __tablename__ = "bets"
+    id = Column(Integer, primary_key=True)
+    line_id = Column(Integer)
+    bookie_id = Column(Integer)
+    bookie_name = Column(String)
+    bettor_id = Column(Integer)
+    bettor_name = Column(String)
+    game = Column(String)
+    type = Column(String)
+    bookie_side = Column(String)
+    bettor_side = Column(String)
+    value = Column(Float)
+    amount = Column(Float)
+    status = Column(String, default="pending")
+    winner = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Prop(Base):
+    __tablename__ = "props"
+    id = Column(Integer, primary_key=True)
+    bookie_id = Column(Integer)
+    bookie_name = Column(String)
+    sport = Column(String)
+    player_name = Column(String)
+    prop_type = Column(String)
+    line = Column(Float)
+    side = Column(String)
+    amount = Column(Float)
+    status = Column(String, default="open")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class PropBet(Base):
+    __tablename__ = "prop_bets"
+    id = Column(Integer, primary_key=True)
+    prop_id = Column(Integer)
+    bookie_id = Column(Integer)
+    bookie_name = Column(String)
+    bettor_id = Column(Integer)
+    bettor_name = Column(String)
+    player_name = Column(String)
+    prop_type = Column(String)
+    line = Column(Float)
+    bookie_side = Column(String)
+    bettor_side = Column(String)
+    amount = Column(Float)
+    status = Column(String, default="pending")
+    winner = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class Group(Base):
+    __tablename__ = "groups"
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    description = Column(Text, nullable=True)
+    creator_id = Column(Integer)
+    creator_name = Column(String)
+    members = Column(Text, default="[]")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+Base.metadata.create_all(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+GAMES = [
+    {"id": "demo_1", "home": "Lakers", "away": "Warriors", "sport": "NBA", "date": "2026-02-14"},
+    {"id": "demo_2", "home": "Celtics", "away": "Heat", "sport": "NBA", "date": "2026-02-14"},
+    {"id": "demo_3", "home": "Chiefs", "away": "Bills", "sport": "NFL", "date": "2026-02-15"},
+]
+
+FUTURES = [
+    {"id": "f1", "market_name": "NBA Championship", "sport": "NBA", "options": ["Lakers", "Celtics", "Warriors"]},
+    {"id": "f2", "market_name": "Super Bowl", "sport": "NFL", "options": ["Chiefs", "Bills", "49ers"]},
+]
+
+# Odds API Integration
+def fetch_live_games():
+    """Fetch real games from Odds API"""
+    if not ODDS_API_KEY:
+        return GAMES  # Return demo games if no API key
+    
+    try:
+        # Fetch NBA games
+        nba_url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey={ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals"
+        nba_response = requests.get(nba_url, timeout=10)
+        
+        # Fetch NFL games
+        nfl_url = f"https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds/?apiKey={ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals"
+        nfl_response = requests.get(nfl_url, timeout=10)
+        
+        games = []
+        
+        # Process NBA games
+        if nba_response.status_code == 200:
+            nba_data = nba_response.json()
+            for game in nba_data[:10]:  # Limit to 10 games
+                games.append({
+                    "id": game["id"],
+                    "home": game["home_team"],
+                    "away": game["away_team"],
+                    "sport": "NBA",
+                    "date": game["commence_time"][:10],
+                    "commence_time": game["commence_time"],
+                    "status": "upcoming"
+                })
+        
+        # Process NFL games
+        if nfl_response.status_code == 200:
+            nfl_data = nfl_response.json()
+            for game in nfl_data[:10]:
+                games.append({
+                    "id": game["id"],
+                    "home": game["home_team"],
+                    "away": game["away_team"],
+                    "sport": "NFL",
+                    "date": game["commence_time"][:10],
+                    "commence_time": game["commence_time"],
+                    "status": "upcoming"
+                })
+        
+        return games if games else GAMES
+    except Exception as e:
+        print(f"Error fetching games: {e}")
+        return GAMES
+
+def check_game_scores():
+    """Check scores and auto-settle bets"""
+    if not ODDS_API_KEY:
+        return
+    
+    try:
+        # Fetch scores from Odds API
+        scores_url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/scores/?apiKey={ODDS_API_KEY}&daysFrom=1"
+        response = requests.get(scores_url, timeout=10)
+        
+        if response.status_code == 200:
+            scores_data = response.json()
+            db = SessionLocal()
+            
+            for game_data in scores_data:
+                if game_data.get("completed") and game_data.get("scores"):
+                    game_id = game_data["id"]
+                    scores = game_data["scores"]
+                    
+                    home_score = next((s["score"] for s in scores if s["name"] == game_data["home_team"]), None)
+                    away_score = next((s["score"] for s in scores if s["name"] == game_data["away_team"]), None)
+                    
+                    if home_score and away_score:
+                        # Find all bets for this game
+                        bets = db.query(Bet).filter(Bet.game_id == game_id, Bet.status == "pending").all()
+                        
+                        for bet in bets:
+                            # Auto-settle based on bet type
+                            winner = determine_winner(bet, int(home_score), int(away_score))
+                            if winner:
+                                settle_bet(db, bet, winner)
+            
+            db.commit()
+            db.close()
+    except Exception as e:
+        print(f"Error checking scores: {e}")
+
+def determine_winner(bet, home_score, away_score):
+    """Determine bet winner based on scores"""
+    score_diff = home_score - away_score
+    
+    if bet.type == "spread":
+        if bet.bookie_side == "home":
+            adjusted = score_diff + bet.value
+            return "bookie" if adjusted > 0 else "bettor"
+        else:
+            adjusted = score_diff - bet.value
+            return "bookie" if adjusted < 0 else "bettor"
+    elif bet.type == "moneyline":
+        if bet.bookie_side == "home":
+            return "bookie" if home_score > away_score else "bettor"
+        else:
+            return "bookie" if away_score > home_score else "bettor"
+    elif bet.type == "total":
+        total = home_score + away_score
+        if bet.bookie_side == "over":
+            return "bookie" if total > bet.value else "bettor"
+        else:
+            return "bookie" if total < bet.value else "bettor"
+    return None
+
+def settle_bet(db, bet, winner):
+    """Auto-settle a bet"""
+    payout = bet.amount * 2  # 0% rake
+    
+    bookie = db.query(User).filter(User.id == bet.bookie_id).first()
+    bettor = db.query(User).filter(User.id == bet.bettor_id).first()
+    
+    if winner == "bookie":
+        bookie.balance += payout
+        bookie.profit += bet.amount
+        bookie.wins += 1
+        bettor.profit -= bet.amount
+        bettor.losses += 1
+    else:
+        bettor.balance += payout
+        bettor.profit += bet.amount
+        bettor.wins += 1
+        bookie.profit -= bet.amount
+        bookie.losses += 1
+    
+    bet.status = "settled"
+    bet.winner = winner
+
+# Initialize scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(check_game_scores, 'interval', minutes=5)  # Check scores every 5 minutes
+scheduler.start()
+
+# Models
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -78,988 +310,256 @@ class LineCreate(BaseModel):
     max_bet_per_user: Optional[float] = None
     max_total_action: Optional[float] = None
     is_private: Optional[bool] = False
-    group_id: Optional[str] = None
+    group_id: Optional[int] = None
 
 class PropCreate(BaseModel):
     sport: str
     player_name: str
     prop_type: str
     line: float
-    side: str  # "over" or "under"
+    side: str
     amount: float
-    game_id: Optional[str] = None
-    max_bettors: Optional[int] = None
-    is_private: Optional[bool] = False
-    group_id: Optional[str] = None
-
-class LineUpdate(BaseModel):
-    value: Optional[float] = None
-    amount: Optional[float] = None
-    max_bettors: Optional[int] = None
 
 class TakeLine(BaseModel):
-    line_id: str
+    line_id: int
 
 class TakeProp(BaseModel):
-    prop_id: str
-
-class ParlayCreate(BaseModel):
-    line_ids: List[str]
-    amount: float
+    prop_id: int
 
 class GroupCreate(BaseModel):
     name: str
     description: Optional[str] = None
 
-class RateBookie(BaseModel):
-    bookie_id: str
-    rating: int
-    comment: Optional[str] = None
+def hash_password(pw: str) -> str:
+    return hashlib.sha256(pw.encode()).hexdigest()
 
-class CreditPurchase(BaseModel):
-    package: str
+def create_token(user_id: int) -> str:
+    return jwt.encode({"user_id": user_id, "exp": datetime.utcnow() + timedelta(days=7)}, SECRET_KEY, algorithm="HS256")
 
-class AdminStatsEntry(BaseModel):
-    admin_password: str
-    game_id: str
-    player_name: str
-    stats: dict  # {"points": 32, "rebounds": 8, "assists": 6}
-
-class AdminGameScore(BaseModel):
-    admin_password: str
-    game_id: str
-    home_score: int
-    away_score: int
-
-# Helper Functions
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
-
-def create_token(user_id: str) -> str:
-    payload = {"user_id": user_id, "exp": datetime.utcnow() + timedelta(days=7)}
-    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-
-def verify_token(token: str) -> Optional[str]:
+def verify_token(token: str) -> Optional[int]:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        return payload.get("user_id")
+        return jwt.decode(token, SECRET_KEY, algorithms=["HS256"]).get("user_id")
     except:
         return None
 
-def verify_admin(password: str) -> bool:
-    return password == ADMIN_PASSWORD
-
-def get_bookie_rating(bookie_id: str) -> dict:
-    bookie_ratings = [r for r in ratings_db.values() if r["bookie_id"] == bookie_id]
-    if not bookie_ratings:
-        return {"average": 0, "count": 0}
-    total = sum(r["rating"] for r in bookie_ratings)
-    avg = total / len(bookie_ratings)
-    return {"average": round(avg, 2), "count": len(bookie_ratings)}
-
-def get_bookie_stats(bookie_id: str) -> dict:
-    user = users_db.get(bookie_id)
-    if not user:
-        return {}
-    
-    bookie_lines = [l for l in lines_db.values() if l["bookie_id"] == bookie_id]
-    bookie_bets = [b for b in bets_db.values() if b["bookie_id"] == bookie_id and b["status"] == "settled"]
-    
-    total_lines = len(bookie_lines)
-    active_lines = len([l for l in bookie_lines if l["status"] == "open"])
-    
-    wins = len([b for b in bookie_bets if b.get("winner") == "bookie"])
-    losses = len([b for b in bookie_bets if b.get("winner") == "bettor"])
-    win_rate = (wins / (wins + losses) * 100) if (wins + losses) > 0 else 0
-    
-    rating_data = get_bookie_rating(bookie_id)
-    followers = len([f for f in follows_db.values() if f["bookie_id"] == bookie_id])
-    
-    return {
-        "id": bookie_id,
-        "username": user["username"],
-        "total_lines_created": total_lines,
-        "active_lines": active_lines,
-        "settled_bets": len(bookie_bets),
-        "win_rate": round(win_rate, 1),
-        "wins": wins,
-        "losses": losses,
-        "rating": rating_data["average"],
-        "rating_count": rating_data["count"],
-        "followers": followers,
-        "profit": user["profit"]
-    }
-
-def is_game_started(game_id: str) -> bool:
-    game = games_db.get(game_id)
-    if not game:
-        return False
-    if game.get('status') in ['live', 'final']:
-        return True
-    if game.get('commence_time'):
-        try:
-            commence_time = datetime.fromisoformat(game['commence_time'].replace('Z', '+00:00'))
-            return datetime.now(commence_time.tzinfo) >= commence_time
-        except:
-            pass
-    return False
-
-def auto_settle_bet(bet_id: str, winner: str):
-    """Auto-settle a bet with 0% rake"""
-    bet = bets_db.get(bet_id)
-    if not bet or bet["status"] != "pending":
-        return
-    
-    total_pot = bet["amount"] * 2
-    payout = total_pot  # 0% rake - winner takes all!
-    
-    bookie = users_db.get(bet["bookie_id"])
-    bettor = users_db.get(bet["bettor_id"])
-    
-    if not bookie or not bettor:
-        return
-    
-    if winner == "bookie":
-        bookie["balance"] += payout
-        bookie["profit"] += bet["amount"]
-        bookie["wins"] += 1
-        bettor["profit"] -= bet["amount"]
-        bettor["losses"] += 1
-    else:
-        bettor["balance"] += payout
-        bettor["profit"] += bet["amount"]
-        bettor["wins"] += 1
-        bookie["profit"] -= bet["amount"]
-        bookie["losses"] += 1
-    
-    bet["status"] = "settled"
-    bet["winner"] = winner
-    bet["settled_at"] = datetime.utcnow().isoformat()
-    bet["auto_settled"] = True
-
-def auto_settle_prop_bet(prop_bet_id: str, result: str):
-    """Auto-settle a prop bet (result is 'over' or 'under')"""
-    prop_bet = prop_bets_db.get(prop_bet_id)
-    if not prop_bet or prop_bet["status"] != "pending":
-        return
-    
-    total_pot = prop_bet["amount"] * 2
-    payout = total_pot  # 0% rake
-    
-    bookie = users_db.get(prop_bet["bookie_id"])
-    bettor = users_db.get(prop_bet["bettor_id"])
-    
-    if not bookie or not bettor:
-        return
-    
-    # Bookie took 'over' or 'under', bettor took opposite
-    bookie_wins = (prop_bet["bookie_side"] == result)
-    
-    if bookie_wins:
-        bookie["balance"] += payout
-        bookie["profit"] += prop_bet["amount"]
-        bookie["wins"] += 1
-        bettor["profit"] -= prop_bet["amount"]
-        bettor["losses"] += 1
-        prop_bet["winner"] = "bookie"
-    else:
-        bettor["balance"] += payout
-        bettor["profit"] += prop_bet["amount"]
-        bettor["wins"] += 1
-        bookie["profit"] -= prop_bet["amount"]
-        bookie["losses"] += 1
-        prop_bet["winner"] = "bettor"
-    
-    prop_bet["status"] = "settled"
-    prop_bet["settled_at"] = datetime.utcnow().isoformat()
-    prop_bet["auto_settled"] = True
-
-def load_demo_games():
-    global games_db
-    now = datetime.utcnow()
-    games_db = {
-        'demo_1': {
-            "id": 'demo_1', "home": "Lakers", "away": "Warriors", "sport": "NBA",
-            "date": "2026-02-14", "time": "7:30 PM", "status": "upcoming",
-            "commence_time": (now + timedelta(hours=2)).isoformat(),
-            "home_score": None, "away_score": None
-        },
-        'demo_2': {
-            "id": 'demo_2', "home": "Celtics", "away": "Heat", "sport": "NBA",
-            "date": "2026-02-14", "time": "8:00 PM", "status": "upcoming",
-            "commence_time": (now + timedelta(hours=3)).isoformat(),
-            "home_score": None, "away_score": None
-        },
-        'demo_3': {
-            "id": 'demo_3', "home": "Chiefs", "away": "Bills", "sport": "NFL",
-            "date": "2026-02-15", "time": "1:00 PM", "status": "upcoming",
-            "commence_time": (now + timedelta(hours=20)).isoformat(),
-            "home_score": None, "away_score": None
-        },
-    }
-
-def load_default_futures():
-    global futures_db
-    futures_db = {
-        'future_1': {
-            'id': 'future_1', 'market_name': 'NBA Championship Winner',
-            'sport': 'NBA', 'close_date': '2026-06-01', 'settle_date': '2026-06-30',
-            'status': 'open', 'options': ['Lakers', 'Celtics', 'Warriors', 'Bucks', 'Nuggets']
-        },
-        'future_2': {
-            'id': 'future_2', 'market_name': 'Super Bowl Winner',
-            'sport': 'NFL', 'close_date': '2026-02-05', 'settle_date': '2026-02-09',
-            'status': 'open', 'options': ['Chiefs', 'Bills', 'Eagles', 'Cowboys', '49ers']
-        }
-    }
-
-@app.on_event("startup")
-async def startup_event():
-    load_demo_games()
-    load_default_futures()
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(load_demo_games, 'interval', hours=1)
-    scheduler.start()
-
-# API Routes
 @app.get("/")
 def home():
-    return {"message": "🎯 BookieVerse Complete", "app": "/app"}
+    return {"message": "🎯 BookieVerse", "app": "/app"}
 
 @app.post("/api/auth/register")
-def register(user: UserCreate):
+def register(user: UserCreate, db: Session = Depends(get_db)):
     if len(user.password) < 6:
-        raise HTTPException(400, "Password must be at least 6 characters")
-    if user.username in [u["username"] for u in users_db.values()]:
-        raise HTTPException(400, "Username already taken")
+        raise HTTPException(400, "Password 6+ chars")
+    if db.query(User).filter(User.username == user.username).first():
+        raise HTTPException(400, "Username taken")
     
-    user_id = f"user_{len(users_db) + 1}"
-    users_db[user_id] = {
-        "id": user_id, "username": user.username, "password": hash_password(user.password),
-        "balance": STARTING_BALANCE, "profit": 0, "wins": 0, "losses": 0,
-        "lines_created": 0, "total_purchased": 0, "groups": [], "is_admin": False
-    }
-    token = create_token(user_id)
-    return {"token": token, "user": {"id": user_id, "username": user.username, "balance": STARTING_BALANCE}}
+    is_admin = db.query(User).count() == 0
+    new_user = User(username=user.username, password=hash_password(user.password), is_admin=is_admin)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"token": create_token(new_user.id), "user": {"id": new_user.id, "username": new_user.username, "balance": new_user.balance}}
 
 @app.post("/api/auth/login")
-def login(user: UserCreate):
-    for uid, u in users_db.items():
-        if u["username"] == user.username and u["password"] == hash_password(user.password):
-            token = create_token(uid)
-            return {"token": token, "user": {"id": uid, "username": u["username"], "balance": u["balance"], "profit": u["profit"]}}
-    raise HTTPException(401, "Invalid username or password")
+def login(user: UserCreate, db: Session = Depends(get_db)):
+    u = db.query(User).filter(User.username == user.username).first()
+    if not u or u.password != hash_password(user.password):
+        raise HTTPException(401, "Invalid credentials")
+    return {"token": create_token(u.id), "user": {"id": u.id, "username": u.username, "balance": u.balance}}
 
 @app.get("/api/games")
 def get_games():
-    return list(games_db.values())
+    return fetch_live_games()
 
 @app.get("/api/futures")
 def get_futures():
-    return list(futures_db.values())
-
-@app.get("/api/lines")
-def get_lines(token: Optional[str] = None):
-    user_id = verify_token(token) if token else None
-    user = users_db.get(user_id) if user_id else None
-    all_lines = [l for l in lines_db.values() if l["status"] == "open"]
-    if user:
-        user_groups = user.get("groups", [])
-        return [l for l in all_lines if not l.get("is_private") or l.get("group_id") in user_groups]
-    return [l for l in all_lines if not l.get("is_private")]
-
-@app.post("/api/lines")
-def create_line(line: LineCreate, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    user = users_db[user_id]
-    if user["balance"] < line.amount:
-        raise HTTPException(400, "Insufficient balance")
-    
-    if line.is_private and not line.group_id:
-        raise HTTPException(400, "Private lines require a group_id")
-    if line.is_private and line.group_id not in user.get("groups", []):
-        raise HTTPException(403, "You're not in this group")
-    
-    if line.type == "future":
-        market = futures_db.get(line.game_id)
-        if not market:
-            raise HTTPException(404, "Future market not found")
-        game_display = market['market_name']
-        sport = market.get('sport', 'FUTURE')
-    else:
-        game = games_db.get(line.game_id)
-        if not game:
-            raise HTTPException(404, "Game not found")
-        if is_game_started(line.game_id):
-            raise HTTPException(400, "Cannot create line - game has already started")
-        game_display = f"{game['away']} @ {game['home']}"
-        sport = game.get('sport', 'NBA')
-    
-    line_id = f"line_{len(lines_db) + 1}"
-    lines_db[line_id] = {
-        "id": line_id, "bookie_id": user_id, "bookie_name": user["username"],
-        "game_id": line.game_id, "game": game_display, "sport": sport,
-        "type": line.type, "side": line.side, "value": line.value,
-        "amount": line.amount, "odds": -110, "status": "open",
-        "max_bettors": line.max_bettors, "max_bet_per_user": line.max_bet_per_user,
-        "max_total_action": line.max_total_action, "current_bettors": 0,
-        "total_action": 0, "is_private": line.is_private or False,
-        "group_id": line.group_id, "created_at": datetime.utcnow().isoformat()
-    }
-    user["balance"] -= line.amount
-    user["lines_created"] += 1
-    return {"message": "Line created", "line_id": line_id}
-
-@app.delete("/api/lines/{line_id}")
-def cancel_line(line_id: str, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    line = lines_db.get(line_id)
-    if not line:
-        raise HTTPException(404, "Line not found")
-    if line["bookie_id"] != user_id:
-        raise HTTPException(403, "Not your line")
-    if line["status"] != "open":
-        raise HTTPException(400, "Can't cancel matched line")
-    if line["current_bettors"] > 0:
-        raise HTTPException(400, "Line has bets on it")
-    if is_game_started(line.get("game_id")):
-        raise HTTPException(400, "Cannot cancel - game has started")
-    
-    user = users_db[user_id]
-    user["balance"] += line["amount"]
-    line["status"] = "cancelled"
-    return {"message": "Line cancelled", "refunded": line["amount"]}
-
-@app.put("/api/lines/{line_id}")
-def edit_line(line_id: str, updates: LineUpdate, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    line = lines_db.get(line_id)
-    if not line:
-        raise HTTPException(404, "Line not found")
-    if line["bookie_id"] != user_id:
-        raise HTTPException(403, "Not your line")
-    if line["status"] != "open":
-        raise HTTPException(400, "Can't edit matched line")
-    if line["current_bettors"] > 0:
-        raise HTTPException(400, "Line has bets on it")
-    if is_game_started(line.get("game_id")):
-        raise HTTPException(400, "Cannot edit - game has started")
-    
-    if updates.value is not None:
-        line["value"] = updates.value
-    if updates.amount is not None:
-        user = users_db[user_id]
-        balance_diff = updates.amount - line["amount"]
-        if balance_diff > 0 and user["balance"] < balance_diff:
-            raise HTTPException(400, "Insufficient balance for increase")
-        user["balance"] -= balance_diff
-        line["amount"] = updates.amount
-    if updates.max_bettors is not None:
-        line["max_bettors"] = updates.max_bettors
-    
-    return {"message": "Line updated", "line": line}
-
-@app.post("/api/lines/take")
-def take_line(take: TakeLine, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    line = lines_db.get(take.line_id)
-    if not line or line["status"] != "open":
-        raise HTTPException(404, "Line not available")
-    if is_game_started(line.get("game_id")):
-        raise HTTPException(400, "Cannot bet - game has started")
-    if line["bookie_id"] == user_id:
-        raise HTTPException(400, "Can't bet against your own line")
-    
-    user = users_db[user_id]
-    if line.get("max_bettors") and line["current_bettors"] >= line["max_bettors"]:
-        raise HTTPException(400, "Line full")
-    if line.get("max_bet_per_user") and line["amount"] > line["max_bet_per_user"]:
-        raise HTTPException(400, "Exceeds max bet")
-    if line.get("max_total_action") and line["total_action"] + line["amount"] > line["max_total_action"]:
-        raise HTTPException(400, "Exceeds total action limit")
-    if user["balance"] < line["amount"]:
-        raise HTTPException(400, "Insufficient balance")
-    
-    bet_id = f"bet_{len(bets_db) + 1}"
-    bets_db[bet_id] = {
-        "id": bet_id, "line_id": take.line_id, "bookie_id": line["bookie_id"],
-        "bookie_name": line["bookie_name"], "bettor_id": user_id,
-        "bettor_name": user["username"], "game": line["game"],
-        "game_id": line["game_id"], "sport": line.get("sport", "NBA"),
-        "type": line["type"], "bookie_side": line["side"],
-        "bettor_side": "away" if line["side"] == "home" else "home",
-        "value": line["value"], "amount": line["amount"],
-        "status": "pending", "created_at": datetime.utcnow().isoformat()
-    }
-    user["balance"] -= line["amount"]
-    line["status"] = "matched"
-    line["current_bettors"] += 1
-    line["total_action"] += line["amount"]
-    return {"message": "Bet placed", "bet_id": bet_id}
-
-# PLAYER PROPS
-@app.post("/api/props")
-def create_prop(prop: PropCreate, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    user = users_db[user_id]
-    if user["balance"] < prop.amount:
-        raise HTTPException(400, "Insufficient balance")
-    
-    if prop.sport not in PROP_TYPES:
-        raise HTTPException(400, f"Invalid sport. Must be one of: {list(PROP_TYPES.keys())}")
-    if prop.prop_type not in PROP_TYPES[prop.sport]:
-        raise HTTPException(400, f"Invalid prop type for {prop.sport}")
-    if prop.side not in ["over", "under"]:
-        raise HTTPException(400, "Side must be 'over' or 'under'")
-    
-    prop_id = f"prop_{len(props_db) + 1}"
-    props_db[prop_id] = {
-        "id": prop_id, "bookie_id": user_id, "bookie_name": user["username"],
-        "sport": prop.sport, "player_name": prop.player_name,
-        "prop_type": prop.prop_type, "line": prop.line, "side": prop.side,
-        "amount": prop.amount, "game_id": prop.game_id,
-        "status": "open", "max_bettors": prop.max_bettors,
-        "current_bettors": 0, "is_private": prop.is_private or False,
-        "group_id": prop.group_id, "created_at": datetime.utcnow().isoformat()
-    }
-    user["balance"] -= prop.amount
-    user["lines_created"] += 1
-    return {"message": "Prop created", "prop_id": prop_id}
-
-@app.get("/api/props")
-def get_props(token: Optional[str] = None):
-    user_id = verify_token(token) if token else None
-    user = users_db.get(user_id) if user_id else None
-    all_props = [p for p in props_db.values() if p["status"] == "open"]
-    if user:
-        user_groups = user.get("groups", [])
-        return [p for p in all_props if not p.get("is_private") or p.get("group_id") in user_groups]
-    return [p for p in all_props if not p.get("is_private")]
-
-@app.post("/api/props/take")
-def take_prop(take: TakeProp, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    prop = props_db.get(take.prop_id)
-    if not prop or prop["status"] != "open":
-        raise HTTPException(404, "Prop not available")
-    if prop["bookie_id"] == user_id:
-        raise HTTPException(400, "Can't bet against your own prop")
-    
-    user = users_db[user_id]
-    if prop.get("max_bettors") and prop["current_bettors"] >= prop["max_bettors"]:
-        raise HTTPException(400, "Prop full")
-    if user["balance"] < prop["amount"]:
-        raise HTTPException(400, "Insufficient balance")
-    
-    prop_bet_id = f"propbet_{len(prop_bets_db) + 1}"
-    prop_bets_db[prop_bet_id] = {
-        "id": prop_bet_id, "prop_id": take.prop_id, "bookie_id": prop["bookie_id"],
-        "bookie_name": prop["bookie_name"], "bettor_id": user_id,
-        "bettor_name": user["username"], "player_name": prop["player_name"],
-        "sport": prop["sport"], "prop_type": prop["prop_type"],
-        "line": prop["line"], "bookie_side": prop["side"],
-        "bettor_side": "under" if prop["side"] == "over" else "over",
-        "amount": prop["amount"], "status": "pending",
-        "created_at": datetime.utcnow().isoformat()
-    }
-    user["balance"] -= prop["amount"]
-    prop["status"] = "matched"
-    prop["current_bettors"] += 1
-    return {"message": "Prop bet placed", "prop_bet_id": prop_bet_id}
-
-@app.delete("/api/props/{prop_id}")
-def cancel_prop(prop_id: str, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    prop = props_db.get(prop_id)
-    if not prop:
-        raise HTTPException(404, "Prop not found")
-    if prop["bookie_id"] != user_id:
-        raise HTTPException(403, "Not your prop")
-    if prop["status"] != "open":
-        raise HTTPException(400, "Can't cancel matched prop")
-    if prop["current_bettors"] > 0:
-        raise HTTPException(400, "Prop has bets on it")
-    
-    user = users_db[user_id]
-    user["balance"] += prop["amount"]
-    prop["status"] = "cancelled"
-    return {"message": "Prop cancelled", "refunded": prop["amount"]}
-
-# PARLAYS
-@app.post("/api/parlays")
-def create_parlay(parlay: ParlayCreate, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    if len(parlay.line_ids) < 2 or len(parlay.line_ids) > 10:
-        raise HTTPException(400, "Parlay needs 2-10 legs")
-    
-    user = users_db[user_id]
-    if user["balance"] < parlay.amount:
-        raise HTTPException(400, "Insufficient balance")
-    
-    legs = []
-    for line_id in parlay.line_ids:
-        line = lines_db.get(line_id)
-        if not line or line["status"] != "open":
-            raise HTTPException(400, f"Line {line_id} not available")
-        if is_game_started(line.get("game_id")):
-            raise HTTPException(400, f"Cannot bet on {line['game']} - game has started")
-        if line["bookie_id"] == user_id:
-            raise HTTPException(400, "Can't bet against your own line in parlay")
-        legs.append({
-            "line_id": line_id, "game": line["game"], "game_id": line.get("game_id"),
-            "type": line["type"], "side": line["side"], "value": line["value"],
-            "status": "pending"
-        })
-        line["current_bettors"] += 1
-        line["total_action"] += parlay.amount / len(parlay.line_ids)
-    
-    # 0% rake - simple multiplier
-    multiplier = 2.5 ** len(parlay.line_ids)
-    potential_payout = parlay.amount * multiplier
-    
-    parlay_id = f"parlay_{len(parlays_db) + 1}"
-    parlays_db[parlay_id] = {
-        "id": parlay_id, "bettor_id": user_id, "bettor_name": user["username"],
-        "legs": legs, "amount": parlay.amount, "potential_payout": potential_payout,
-        "status": "pending", "created_at": datetime.utcnow().isoformat()
-    }
-    user["balance"] -= parlay.amount
-    return {"message": "Parlay created", "parlay_id": parlay_id, "potential_payout": potential_payout}
-
-@app.get("/api/bets")
-def get_bets(token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    user_bets = [b for b in bets_db.values() if b["bookie_id"] == user_id or b["bettor_id"] == user_id]
-    user_parlays = [p for p in parlays_db.values() if p["bettor_id"] == user_id]
-    user_prop_bets = [p for p in prop_bets_db.values() if p["bookie_id"] == user_id or p["bettor_id"] == user_id]
-    return {"single_bets": user_bets, "parlays": user_parlays, "prop_bets": user_prop_bets}
-
-# ADMIN ENDPOINTS
-@app.post("/api/admin/game-score")
-def admin_set_game_score(score_data: AdminGameScore):
-    if not verify_admin(score_data.admin_password):
-        raise HTTPException(403, "Invalid admin password")
-    
-    game = games_db.get(score_data.game_id)
-    if not game:
-        raise HTTPException(404, "Game not found")
-    
-    game["home_score"] = score_data.home_score
-    game["away_score"] = score_data.away_score
-    game["status"] = "final"
-    
-    # Auto-settle all bets on this game
-    settled_count = 0
-    for bet_id, bet in bets_db.items():
-        if bet["game_id"] == score_data.game_id and bet["status"] == "pending":
-            # Determine winner based on bet type
-            home_score = score_data.home_score
-            away_score = score_data.away_score
-            score_diff = home_score - away_score
-            
-            if bet["type"] == "spread":
-                if bet["bookie_side"] == "home":
-                    adjusted_diff = score_diff + bet["value"]
-                    winner = "bookie" if adjusted_diff > 0 else "bettor"
-                else:
-                    adjusted_diff = score_diff - bet["value"]
-                    winner = "bookie" if adjusted_diff < 0 else "bettor"
-            elif bet["type"] == "moneyline":
-                if bet["bookie_side"] == "home":
-                    winner = "bookie" if home_score > away_score else "bettor"
-                else:
-                    winner = "bookie" if away_score > home_score else "bettor"
-            elif bet["type"] == "total":
-                total_points = home_score + away_score
-                if bet["bookie_side"] == "over":
-                    winner = "bookie" if total_points > bet["value"] else "bettor"
-                else:
-                    winner = "bookie" if total_points < bet["value"] else "bettor"
-            else:
-                continue
-            
-            auto_settle_bet(bet_id, winner)
-            settled_count += 1
-    
-    return {
-        "message": "Game score set and bets auto-settled",
-        "game": game["game"],
-        "score": f"{game['away']} {away_score} - {home_score} {game['home']}",
-        "bets_settled": settled_count
-    }
-
-@app.post("/api/admin/player-stats")
-def admin_set_player_stats(stats_data: AdminStatsEntry):
-    if not verify_admin(stats_data.admin_password):
-        raise HTTPException(403, "Invalid admin password")
-    
-    # Store player stats
-    stats_key = f"{stats_data.game_id}_{stats_data.player_name}"
-    player_stats_db[stats_key] = {
-        "game_id": stats_data.game_id,
-        "player_name": stats_data.player_name,
-        "stats": stats_data.stats,
-        "entered_at": datetime.utcnow().isoformat()
-    }
-    
-    # Auto-settle all prop bets for this player
-    settled_count = 0
-    for prop_bet_id, prop_bet in prop_bets_db.items():
-        if prop_bet["player_name"] == stats_data.player_name and prop_bet["status"] == "pending":
-            prop_type_key = prop_bet["prop_type"].lower().replace(" ", "_").replace("-", "_").replace("+", "_")
-            
-            # Map prop types to stat keys
-            stat_value = None
-            if "points" in prop_type_key:
-                stat_value = stats_data.stats.get("points")
-            elif "rebounds" in prop_type_key:
-                stat_value = stats_data.stats.get("rebounds")
-            elif "assists" in prop_type_key:
-                stat_value = stats_data.stats.get("assists")
-            elif "3_pointers" in prop_type_key or "3pointers" in prop_type_key:
-                stat_value = stats_data.stats.get("three_pointers")
-            elif "pts_reb_ast" in prop_type_key:
-                stat_value = stats_data.stats.get("points", 0) + stats_data.stats.get("rebounds", 0) + stats_data.stats.get("assists", 0)
-            elif "passing_yards" in prop_type_key:
-                stat_value = stats_data.stats.get("passing_yards")
-            elif "rushing_yards" in prop_type_key:
-                stat_value = stats_data.stats.get("rushing_yards")
-            elif "receiving_yards" in prop_type_key:
-                stat_value = stats_data.stats.get("receiving_yards")
-            elif "touchdowns" in prop_type_key:
-                stat_value = stats_data.stats.get("touchdowns")
-            elif "receptions" in prop_type_key:
-                stat_value = stats_data.stats.get("receptions")
-            
-            if stat_value is not None:
-                # Determine if over or under hit
-                if stat_value > prop_bet["line"]:
-                    result = "over"
-                elif stat_value < prop_bet["line"]:
-                    result = "under"
-                else:
-                    result = "push"  # Exact hit - refund both
-                
-                if result != "push":
-                    auto_settle_prop_bet(prop_bet_id, result)
-                    settled_count += 1
-                else:
-                    # Refund both sides
-                    bookie = users_db.get(prop_bet["bookie_id"])
-                    bettor = users_db.get(prop_bet["bettor_id"])
-                    if bookie and bettor:
-                        bookie["balance"] += prop_bet["amount"]
-                        bettor["balance"] += prop_bet["amount"]
-                        prop_bet["status"] = "push"
-                        prop_bet["settled_at"] = datetime.utcnow().isoformat()
-                        settled_count += 1
-    
-    return {
-        "message": "Player stats entered and props auto-settled",
-        "player": stats_data.player_name,
-        "stats": stats_data.stats,
-        "props_settled": settled_count
-    }
-
-@app.get("/api/admin/pending-settlements")
-def admin_pending_settlements(admin_password: str):
-    if not verify_admin(admin_password):
-        raise HTTPException(403, "Invalid admin password")
-    
-    pending_games = {}
-    for bet in bets_db.values():
-        if bet["status"] == "pending":
-            game_id = bet.get("game_id")
-            if game_id not in pending_games:
-                game = games_db.get(game_id, {})
-                pending_games[game_id] = {
-                    "game_id": game_id,
-                    "game": bet.get("game", "Unknown"),
-                    "sport": game.get("sport", "Unknown"),
-                    "pending_bets": 0
-                }
-            pending_games[game_id]["pending_bets"] += 1
-    
-    pending_props = {}
-    for prop_bet in prop_bets_db.values():
-        if prop_bet["status"] == "pending":
-            player = prop_bet["player_name"]
-            if player not in pending_props:
-                pending_props[player] = {
-                    "player_name": player,
-                    "sport": prop_bet["sport"],
-                    "pending_props": 0
-                }
-            pending_props[player]["pending_props"] += 1
-    
-    return {
-        "pending_games": list(pending_games.values()),
-        "pending_props": list(pending_props.values())
-    }
-
-# REST OF ENDPOINTS (Groups, Following, Shop, etc. - keeping same as before)
-@app.post("/api/bookie/rate")
-def rate_bookie(rating_data: RateBookie, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    if rating_data.rating < 1 or rating_data.rating > 5:
-        raise HTTPException(400, "Rating must be 1-5")
-    
-    user_bets = [b for b in bets_db.values() if b["bettor_id"] == user_id and b["bookie_id"] == rating_data.bookie_id and b["status"] == "settled"]
-    if not user_bets:
-        raise HTTPException(400, "You haven't bet with this bookie")
-    
-    rating_id = f"rating_{len(ratings_db) + 1}"
-    ratings_db[rating_id] = {
-        "id": rating_id, "bookie_id": rating_data.bookie_id, "user_id": user_id,
-        "rating": rating_data.rating, "comment": rating_data.comment,
-        "created_at": datetime.utcnow().isoformat()
-    }
-    return {"message": "Rating submitted"}
-
-@app.post("/api/bookie/{bookie_id}/follow")
-def follow_bookie(bookie_id: str, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    if bookie_id not in users_db:
-        raise HTTPException(404, "Bookie not found")
-    if bookie_id == user_id:
-        raise HTTPException(400, "Can't follow yourself")
-    
-    existing = [f for f in follows_db.values() if f["user_id"] == user_id and f["bookie_id"] == bookie_id]
-    if existing:
-        raise HTTPException(400, "Already following")
-    
-    follow_id = f"follow_{len(follows_db) + 1}"
-    follows_db[follow_id] = {
-        "id": follow_id, "user_id": user_id, "bookie_id": bookie_id,
-        "created_at": datetime.utcnow().isoformat()
-    }
-    return {"message": "Now following"}
-
-@app.delete("/api/bookie/{bookie_id}/follow")
-def unfollow_bookie(bookie_id: str, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    
-    follow = None
-    for f in follows_db.values():
-        if f["user_id"] == user_id and f["bookie_id"] == bookie_id:
-            follow = f
-            break
-    
-    if not follow:
-        raise HTTPException(404, "Not following this bookie")
-    
-    del follows_db[follow["id"]]
-    return {"message": "Unfollowed"}
-
-@app.get("/api/bookie/following")
-def get_following(token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    
-    user_follows = [f for f in follows_db.values() if f["user_id"] == user_id]
-    following = []
-    for follow in user_follows:
-        stats = get_bookie_stats(follow["bookie_id"])
-        if stats:
-            following.append(stats)
-    return following
-
-@app.get("/api/users/search")
-def search_users(q: Optional[str] = None, sort: Optional[str] = "rating"):
-    all_users = list(users_db.values())
-    if q:
-        q_lower = q.lower()
-        all_users = [u for u in all_users if q_lower in u["username"].lower()]
-    
-    users_with_stats = []
-    for user in all_users:
-        stats = get_bookie_stats(user["id"])
-        if stats:
-            users_with_stats.append(stats)
-    
-    if sort == "rating":
-        users_with_stats.sort(key=lambda x: x.get("rating", 0), reverse=True)
-    elif sort == "profit":
-        users_with_stats.sort(key=lambda x: x.get("profit", 0), reverse=True)
-    elif sort == "win_rate":
-        users_with_stats.sort(key=lambda x: x.get("win_rate", 0), reverse=True)
-    elif sort == "followers":
-        users_with_stats.sort(key=lambda x: x.get("followers", 0), reverse=True)
-    
-    return users_with_stats[:50]
-
-@app.post("/api/groups")
-def create_group(group_data: GroupCreate, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    user = users_db[user_id]
-    
-    group_id = f"group_{len(groups_db) + 1}"
-    groups_db[group_id] = {
-        "id": group_id, "name": group_data.name, "description": group_data.description,
-        "creator_id": user_id, "creator_name": user["username"],
-        "members": [user_id], "created_at": datetime.utcnow().isoformat()
-    }
-    
-    if "groups" not in user:
-        user["groups"] = []
-    user["groups"].append(group_id)
-    
-    return {"message": "Group created", "group_id": group_id}
-
-@app.get("/api/groups")
-def get_user_groups(token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    user = users_db[user_id]
-    user_group_ids = user.get("groups", [])
-    
-    user_groups = []
-    for group_id in user_group_ids:
-        group = groups_db.get(group_id)
-        if group:
-            user_groups.append({
-                **group, "member_count": len(group["members"]),
-                "is_creator": group["creator_id"] == user_id
-            })
-    
-    return user_groups
-
-@app.get("/api/shop/packages")
-def get_packages():
-    return CREDIT_PACKAGES
-
-@app.post("/api/shop/create-checkout")
-async def create_checkout(purchase: CreditPurchase, token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    if not STRIPE_SECRET_KEY:
-        raise HTTPException(500, "Stripe not configured")
-    
-    package = CREDIT_PACKAGES.get(purchase.package)
-    if not package:
-        raise HTTPException(400, "Invalid package")
-    
-    try:
-        checkout_session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'usd',
-                    'product_data': {
-                        'name': package['name'],
-                        'description': f'{package["credits"]} BookieVerse Credits',
-                    },
-                    'unit_amount': package['amount'],
-                },
-                'quantity': 1,
-            }],
-            mode='payment',
-            success_url=f"{os.getenv('APP_URL', 'https://bookieverse.onrender.com')}/app?payment=success",
-            cancel_url=f"{os.getenv('APP_URL', 'https://bookieverse.onrender.com')}/app?payment=cancelled",
-            client_reference_id=user_id,
-            metadata={'user_id': user_id, 'package': purchase.package, 'credits': package['credits']}
-        )
-        return {"checkout_url": checkout_session.url}
-    except Exception as e:
-        raise HTTPException(500, f"Error creating checkout: {str(e)}")
-
-@app.post("/api/shop/webhook")
-async def stripe_webhook(request: Request):
-    if not STRIPE_WEBHOOK_SECRET:
-        raise HTTPException(500, "Webhook secret not configured")
-    payload = await request.body()
-    sig_header = request.headers.get('stripe-signature')
-    
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
-    except Exception as e:
-        raise HTTPException(400, f"Webhook error: {str(e)}")
-    
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        user_id = session['metadata']['user_id']
-        credits = int(session['metadata']['credits'])
-        package = session['metadata']['package']
-        
-        user = users_db.get(user_id)
-        if user:
-            user['balance'] += credits
-            user['total_purchased'] = user.get('total_purchased', 0) + credits
-            
-            purchase_id = f"purchase_{len(purchases_db) + 1}"
-            purchases_db[purchase_id] = {
-                "id": purchase_id, "user_id": user_id, "package": package,
-                "credits": credits, "amount_paid": session['amount_total'] / 100,
-                "stripe_session_id": session['id'],
-                "created_at": datetime.utcnow().isoformat()
-            }
-    
-    return {"status": "success"}
-
-@app.get("/api/shop/purchases")
-def get_purchases(token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    
-    user_purchases = [p for p in purchases_db.values() if p["user_id"] == user_id]
-    user_purchases.sort(key=lambda x: x["created_at"], reverse=True)
-    return user_purchases
-
-@app.get("/api/leaderboard")
-def leaderboard():
-    sorted_users = sorted(users_db.values(), key=lambda x: x["profit"], reverse=True)
-    return sorted_users[:10]
-
-@app.get("/api/user")
-def get_user(token: str):
-    user_id = verify_token(token)
-    if not user_id:
-        raise HTTPException(401, "Invalid token")
-    user = users_db[user_id]
-    following_count = len([f for f in follows_db.values() if f["user_id"] == user_id])
-    
-    return {
-        "id": user["id"], "username": user["username"], "balance": user["balance"],
-        "profit": user["profit"], "wins": user["wins"], "losses": user["losses"],
-        "lines_created": user.get("lines_created", 0),
-        "total_purchased": user.get("total_purchased", 0),
-        "groups": user.get("groups", []), "following": following_count,
-        "is_admin": user.get("is_admin", False)
-    }
+    return FUTURES
 
 @app.get("/api/prop-types")
 def get_prop_types():
     return PROP_TYPES
+
+@app.get("/api/lines")
+def get_lines(db: Session = Depends(get_db)):
+    lines = db.query(Line).filter(Line.status == "open").all()
+    return [{"id": l.id, "bookie_id": l.bookie_id, "bookie_name": l.bookie_name, "game": l.game, "sport": l.sport,
+             "type": l.type, "side": l.side, "value": l.value, "amount": l.amount, "status": l.status,
+             "current_bettors": l.current_bettors, "is_private": l.is_private} for l in lines]
+
+@app.post("/api/lines")
+def create_line(line: LineCreate, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    user = db.query(User).filter(User.id == user_id).first()
+    if user.balance < line.amount:
+        raise HTTPException(400, "Insufficient balance")
+    
+    game = next((g for g in GAMES if g["id"] == line.game_id), None)
+    if not game:
+        raise HTTPException(404, "Game not found")
+    
+    new_line = Line(bookie_id=user.id, bookie_name=user.username, game_id=line.game_id,
+                   game=f"{game['away']} @ {game['home']}", sport=game["sport"],
+                   type=line.type, side=line.side, value=line.value, amount=line.amount,
+                   max_bettors=line.max_bettors, max_bet_per_user=line.max_bet_per_user,
+                   max_total_action=line.max_total_action, is_private=line.is_private, group_id=line.group_id)
+    user.balance -= line.amount
+    user.lines_created += 1
+    db.add(new_line)
+    db.commit()
+    db.refresh(new_line)
+    return {"message": "Line created", "line_id": new_line.id}
+
+@app.post("/api/lines/take")
+def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    
+    line = db.query(Line).filter(Line.id == take.line_id, Line.status == "open").first()
+    if not line:
+        raise HTTPException(404, "Line not available")
+    if line.bookie_id == user_id:
+        raise HTTPException(400, "Can't bet your own line")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if user.balance < line.amount:
+        raise HTTPException(400, "Insufficient balance")
+    
+    bet = Bet(line_id=line.id, bookie_id=line.bookie_id, bookie_name=line.bookie_name,
+             bettor_id=user.id, bettor_name=user.username, game=line.game, type=line.type,
+             bookie_side=line.side, bettor_side="away" if line.side == "home" else "home",
+             value=line.value, amount=line.amount)
+    line.status = "matched"
+    line.current_bettors += 1
+    user.balance -= line.amount
+    db.add(bet)
+    db.commit()
+    return {"message": "Bet placed"}
+
+@app.get("/api/props")
+def get_props(db: Session = Depends(get_db)):
+    props = db.query(Prop).filter(Prop.status == "open").all()
+    return [{"id": p.id, "bookie_id": p.bookie_id, "bookie_name": p.bookie_name, "sport": p.sport,
+             "player_name": p.player_name, "prop_type": p.prop_type, "line": p.line, "side": p.side,
+             "amount": p.amount} for p in props]
+
+@app.post("/api/props")
+def create_prop(prop: PropCreate, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    user = db.query(User).filter(User.id == user_id).first()
+    if user.balance < prop.amount:
+        raise HTTPException(400, "Insufficient balance")
+    
+    new_prop = Prop(bookie_id=user.id, bookie_name=user.username, sport=prop.sport,
+                   player_name=prop.player_name, prop_type=prop.prop_type, line=prop.line,
+                   side=prop.side, amount=prop.amount)
+    user.balance -= prop.amount
+    user.lines_created += 1
+    db.add(new_prop)
+    db.commit()
+    return {"message": "Prop created"}
+
+@app.post("/api/props/take")
+def take_prop(take: TakeProp, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    
+    prop = db.query(Prop).filter(Prop.id == take.prop_id, Prop.status == "open").first()
+    if not prop:
+        raise HTTPException(404, "Prop not available")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if user.balance < prop.amount:
+        raise HTTPException(400, "Insufficient balance")
+    
+    prop_bet = PropBet(prop_id=prop.id, bookie_id=prop.bookie_id, bookie_name=prop.bookie_name,
+                      bettor_id=user.id, bettor_name=user.username, player_name=prop.player_name,
+                      prop_type=prop.prop_type, line=prop.line, bookie_side=prop.side,
+                      bettor_side="under" if prop.side == "over" else "over", amount=prop.amount)
+    prop.status = "matched"
+    user.balance -= prop.amount
+    db.add(prop_bet)
+    db.commit()
+    return {"message": "Prop bet placed"}
+
+@app.get("/api/bets")
+def get_bets(token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    
+    bets = db.query(Bet).filter((Bet.bookie_id == user_id) | (Bet.bettor_id == user_id)).all()
+    prop_bets = db.query(PropBet).filter((PropBet.bookie_id == user_id) | (PropBet.bettor_id == user_id)).all()
+    
+    return {
+        "single_bets": [{"id": b.id, "bookie_id": b.bookie_id, "bookie_name": b.bookie_name,
+                        "bettor_id": b.bettor_id, "bettor_name": b.bettor_name, "game": b.game,
+                        "type": b.type, "bookie_side": b.bookie_side, "bettor_side": b.bettor_side,
+                        "value": b.value, "amount": b.amount, "status": b.status, "winner": b.winner} for b in bets],
+        "prop_bets": [{"id": p.id, "bookie_id": p.bookie_id, "bookie_name": p.bookie_name,
+                      "bettor_id": p.bettor_id, "bettor_name": p.bettor_name, "player_name": p.player_name,
+                      "prop_type": p.prop_type, "line": p.line, "bookie_side": p.bookie_side,
+                      "bettor_side": p.bettor_side, "amount": p.amount, "status": p.status, "winner": p.winner} for p in prop_bets],
+        "parlays": []
+    }
+
+@app.get("/api/groups")
+def get_groups(token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    
+    groups = db.query(Group).all()
+    result = []
+    for g in groups:
+        members = json.loads(g.members)
+        if user_id in members:
+            result.append({"id": g.id, "name": g.name, "description": g.description,
+                          "creator_id": g.creator_id, "creator_name": g.creator_name,
+                          "member_count": len(members), "is_creator": g.creator_id == user_id})
+    return result
+
+@app.post("/api/groups")
+def create_group(group: GroupCreate, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    new_group = Group(name=group.name, description=group.description,
+                     creator_id=user.id, creator_name=user.username, members=json.dumps([user.id]))
+    db.add(new_group)
+    db.commit()
+    return {"message": "Group created", "group_id": new_group.id}
+
+@app.get("/api/leaderboard")
+def leaderboard(db: Session = Depends(get_db)):
+    users = db.query(User).order_by(User.profit.desc()).limit(10).all()
+    return [{"id": u.id, "username": u.username, "balance": u.balance, "profit": u.profit,
+             "wins": u.wins, "losses": u.losses} for u in users]
+
+@app.get("/api/user")
+def get_user(token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    return {"id": user.id, "username": user.username, "balance": user.balance, "profit": user.profit,
+            "wins": user.wins, "losses": user.losses, "lines_created": user.lines_created, "is_admin": user.is_admin}
+
+@app.get("/api/users/search")
+def search_users(db: Session = Depends(get_db)):
+    users = db.query(User).limit(50).all()
+    return [{"id": u.id, "username": u.username, "wins": u.wins, "losses": u.losses, "profit": u.profit,
+             "win_rate": round((u.wins / (u.wins + u.losses) * 100) if (u.wins + u.losses) > 0 else 0, 1),
+             "rating": 0, "followers": 0} for u in users]
 
 @app.get("/app", response_class=HTMLResponse)
 def serve_app():
@@ -1067,5 +567,4 @@ def serve_app():
         return f.read()
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
