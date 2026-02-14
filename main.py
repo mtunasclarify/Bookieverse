@@ -348,17 +348,27 @@ def home():
 
 @app.post("/api/auth/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    if len(user.password) < 6:
-        raise HTTPException(400, "Password 6+ chars")
-    if db.query(User).filter(User.username == user.username).first():
-        raise HTTPException(400, "Username taken")
-    
-    is_admin = db.query(User).count() == 0
-    new_user = User(username=user.username, password=hash_password(user.password), is_admin=is_admin)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return {"token": create_token(new_user.id), "user": {"id": new_user.id, "username": new_user.username, "balance": new_user.balance}}
+    try:
+        if len(user.password) < 6:
+            raise HTTPException(400, "Password 6+ chars")
+        
+        # Check if username exists
+        existing = db.query(User).filter(User.username == user.username).first()
+        if existing:
+            raise HTTPException(400, "Username taken")
+        
+        is_admin = db.query(User).count() == 0
+        new_user = User(username=user.username, password=hash_password(user.password), is_admin=is_admin)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return {"token": create_token(new_user.id), "user": {"id": new_user.id, "username": new_user.username, "balance": new_user.balance}}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Registration error: {e}")
+        db.rollback()
+        raise HTTPException(500, f"Database error: {str(e)}")
 
 @app.post("/api/auth/login")
 def login(user: UserCreate, db: Session = Depends(get_db)):
