@@ -122,7 +122,7 @@
         let view = 'marketplace';
         let propTypes = {};
         
-        async function login() {
+        async function doLogin() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
@@ -132,18 +132,49 @@
             }
             
             try {
-                let res = await fetch(API + '/auth/login', {
+                const res = await fetch(API + '/auth/login', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({username, password})
                 });
                 
                 if (!res.ok) {
-                    res = await fetch(API + '/auth/register', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({username, password})
-                    });
+                    const errorData = await res.json();
+                    alert('Login failed: ' + (errorData.detail || 'Invalid username or password'));
+                    return;
+                }
+                
+                const data = await res.json();
+                token = data.token;
+                localStorage.setItem('token', token);
+                user = data.user;
+                await loadPropTypes();
+                renderApp();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function doRegister() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            if (!username || !password || password.length < 6) {
+                alert('Username required. Password must be 6+ characters.');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API + '/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password})
+                });
+                
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    alert('Registration failed: ' + (errorData.detail || 'Username may be taken'));
+                    return;
                 }
                 
                 const data = await res.json();
@@ -158,8 +189,24 @@
         }
         
         async function loadUser() {
-            const res = await fetch(API + '/user?token=' + token);
-            user = await res.json();
+            try {
+                const res = await fetch(API + '/user?token=' + token);
+                if (!res.ok) {
+                    // Token invalid - clear and show login
+                    localStorage.removeItem('token');
+                    token = null;
+                    user = null;
+                    location.reload();
+                    return;
+                }
+                user = await res.json();
+            } catch (e) {
+                console.error('Error loading user:', e);
+                localStorage.removeItem('token');
+                token = null;
+                user = null;
+                location.reload();
+            }
         }
         
         async function loadPropTypes() {
@@ -671,6 +718,12 @@
         async function renderApp() {
             if (!user) await loadUser();
             
+            // If still no user after loading, don't render
+            if (!user) {
+                console.error('No user found, redirecting to login');
+                return;
+            }
+            
             let content = '';
             if (view === 'marketplace') content = await loadLines();
             else if (view === 'create') content = await renderCreateLine();
@@ -729,7 +782,10 @@
                     <p style="margin-bottom: 32px; color: #94a3b8; font-size: 15px;">Professional P2P Sportsbook</p>
                     <input id="username" placeholder="Username" autofocus style="margin: 0;" />
                     <input id="password" type="password" placeholder="Password (6+ chars)" style="margin: 0;" />
-                    <button onclick="login()" style="width:100%; margin-top:16px; padding: 16px;">Enter Platform</button>
+                    <div style="display: flex; gap: 12px; margin-top: 16px;">
+                        <button onclick="doLogin()" style="flex: 1; padding: 16px;">Login</button>
+                        <button onclick="doRegister()" class="secondary" style="flex: 1; padding: 16px;">Register</button>
+                    </div>
                     <p style="margin-top: 24px; color: #64748b; font-size: 13px;">First user = admin • Play money only</p>
                 </div>
             `;
@@ -737,7 +793,7 @@
                 if (e.key === 'Enter') document.getElementById('password').focus();
             });
             document.getElementById('password')?.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') login();
+                if (e.key === 'Enter') doLogin();
             });
         } else {
             (async () => {
