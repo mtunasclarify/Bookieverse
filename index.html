@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookieVerse - Professional Sportsbook</title>
+    <title>BookieVerse - Complete Platform</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -16,7 +16,6 @@
         
         .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
         
-        /* HEADER */
         .header { 
             background: #1e293b;
             padding: 24px;
@@ -71,7 +70,6 @@
         }
         .profit.negative { color: #ef4444; }
         
-        /* BUTTONS */
         button { 
             background: #10b981;
             color: white;
@@ -103,7 +101,6 @@
             transform: none;
         }
         
-        /* TABS */
         .tabs {
             display: flex;
             gap: 8px;
@@ -133,7 +130,6 @@
             border-color: #10b981;
         }
         
-        /* CARDS */
         .card {
             background: #1e293b;
             padding: 24px;
@@ -146,7 +142,6 @@
             border-color: #475569;
         }
         
-        /* BADGES */
         .badge {
             display: inline-block;
             padding: 4px 12px;
@@ -161,6 +156,7 @@
         .badge-moneyline { background: #3b82f6; color: white; }
         .badge-total { background: #f59e0b; color: white; }
         .badge-private { background: #8b5cf6; color: white; }
+        .badge-prop { background: #ec4899; color: white; }
         .locked-badge {
             display: inline-block;
             background: rgba(239, 68, 68, 0.2);
@@ -172,7 +168,6 @@
             border: 1px solid rgba(239, 68, 68, 0.3);
         }
         
-        /* SHOP */
         .shop-packages {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -227,7 +222,6 @@
             font-size: 14px;
         }
         
-        /* USER SEARCH */
         .search-box {
             background: #1e293b;
             border: 2px solid #334155;
@@ -270,7 +264,6 @@
         }
         .stat-item { color: #94a3b8; }
         
-        /* LINKS */
         .bookie-link {
             color: #10b981;
             text-decoration: none;
@@ -285,7 +278,6 @@
             margin-left: 6px;
         }
         
-        /* EMPTY STATE */
         .empty-state {
             text-align: center;
             padding: 80px 20px;
@@ -293,7 +285,6 @@
         }
         .empty-state-icon { font-size: 64px; margin-bottom: 20px; }
         
-        /* MODAL */
         .modal {
             display: none;
             position: fixed;
@@ -331,7 +322,6 @@
             margin-top: 24px;
         }
         
-        /* FORM ELEMENTS */
         input, select, textarea {
             width: 100%;
             padding: 14px 16px;
@@ -356,7 +346,31 @@
             margin-top: 12px;
         }
         
-        /* RESPONSIVE */
+        .parlay-builder {
+            background: #0f172a;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 2px solid #10b981;
+        }
+        .parlay-leg {
+            padding: 12px;
+            background: #1e293b;
+            border-radius: 8px;
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .admin-panel {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid #ef4444;
+            padding: 24px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        
         @media (max-width: 768px) {
             .header { flex-direction: column; text-align: center; }
             .balance-widget { text-align: center; }
@@ -406,6 +420,25 @@
         </div>
     </div>
     
+    <div id="parlayModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">🎲 Build Parlay</div>
+            <div class="modal-body">
+                <div id="parlayLegs"></div>
+                <label style="margin-top: 20px;">Bet Amount</label>
+                <input type="number" id="parlayAmount" placeholder="Enter amount">
+                <div id="parlayPayout" style="margin-top: 16px; padding: 16px; background: #0f172a; border-radius: 8px; text-align: center;">
+                    <div style="color: #64748b; font-size: 13px;">Potential Payout</div>
+                    <div style="color: #10b981; font-size: 28px; font-weight: 700; margin-top: 4px;">$0.00</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="placeParlayBet()">Place Parlay</button>
+                <button class="secondary" onclick="closeModal('parlayModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         const API = window.location.origin + '/api';
         let token = localStorage.getItem('token');
@@ -414,6 +447,8 @@
         let currentEditLine = null;
         let searchQuery = '';
         let searchSort = 'rating';
+        let parlayLines = [];
+        let propTypes = {};
         
         // AUTH
         async function login() {
@@ -449,6 +484,7 @@
                 token = data.token;
                 localStorage.setItem('token', token);
                 user = data.user;
+                await loadPropTypes();
                 renderApp();
             } catch (e) {
                 alert('Error: ' + e.message);
@@ -458,6 +494,103 @@
         async function loadUser() {
             const res = await fetch(API + '/user?token=' + token);
             user = await res.json();
+        }
+        
+        async function loadPropTypes() {
+            const res = await fetch(API + '/prop-types');
+            propTypes = await res.json();
+        }
+        
+        // PARLAY BUILDER
+        function addToParlayBuilder(line) {
+            if (parlayLines.find(l => l.id === line.id)) {
+                alert('Line already in parlay!');
+                return;
+            }
+            parlayLines.push(line);
+            renderParlayModal();
+            openModal('parlayModal');
+        }
+        
+        function removeFromParlay(lineId) {
+            parlayLines = parlayLines.filter(l => l.id !== lineId);
+            renderParlayModal();
+            if (parlayLines.length === 0) {
+                closeModal('parlayModal');
+            }
+        }
+        
+        function calculateParlayPayout() {
+            const amount = parseFloat(document.getElementById('parlayAmount')?.value || 0);
+            if (parlayLines.length < 2 || amount <= 0) return 0;
+            const multiplier = Math.pow(2.5, parlayLines.length);
+            return amount * multiplier;
+        }
+        
+        function renderParlayModal() {
+            const legsHtml = parlayLines.map(line => `
+                <div class="parlay-leg">
+                    <div>
+                        <div style="font-weight: 600;">${line.game}</div>
+                        <div style="font-size: 13px; color: #94a3b8; margin-top: 4px;">
+                            ${line.type.toUpperCase()}: ${line.side} ${line.value > 0 ? '+' : ''}${line.value}
+                        </div>
+                    </div>
+                    <button class="danger small" onclick="removeFromParlay('${line.id}')">Remove</button>
+                </div>
+            `).join('');
+            
+            document.getElementById('parlayLegs').innerHTML = legsHtml;
+            
+            const amountInput = document.getElementById('parlayAmount');
+            if (amountInput) {
+                amountInput.oninput = updateParlayPayout;
+            }
+            updateParlayPayout();
+        }
+        
+        function updateParlayPayout() {
+            const payout = calculateParlayPayout();
+            const payoutEl = document.querySelector('#parlayPayout div:last-child');
+            if (payoutEl) {
+                payoutEl.textContent = '$' + payout.toFixed(2);
+            }
+        }
+        
+        async function placeParlayBet() {
+            const amount = parseFloat(document.getElementById('parlayAmount').value);
+            if (!amount || amount <= 0) {
+                alert('Enter valid amount');
+                return;
+            }
+            if (parlayLines.length < 2) {
+                alert('Need at least 2 lines');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API + '/parlays?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        line_ids: parlayLines.map(l => l.id),
+                        amount: amount
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(`✅ Parlay placed! Potential payout: $${data.potential_payout.toFixed(2)}`);
+                    parlayLines = [];
+                    closeModal('parlayModal');
+                    await loadUser();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
         }
         
         // SHOP
@@ -596,14 +729,22 @@
         async function loadLines() {
             const res = await fetch(API + '/lines?token=' + token);
             const lines = await res.json();
+            
             if (lines.length === 0) {
                 return '<div class="empty-state"><div class="empty-state-icon">🎯</div><h2 style="color: #64748b;">No Lines Available</h2><p style="color: #64748b;">Be the first to create one!</p></div>';
             }
             
-            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">📊 Available Lines</h2>';
+            let html = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 style="font-size: 28px;">📊 Available Lines</h2>
+                    ${parlayLines.length > 0 ? `<button onclick="openModal('parlayModal')">🎲 Build Parlay (${parlayLines.length})</button>` : ''}
+                </div>
+            `;
+            
             for (const line of lines) {
                 const badgeClass = line.type === 'spread' ? 'badge-spread' : line.type === 'moneyline' ? 'badge-moneyline' : 'badge-total';
                 const isLocked = await isGameStarted(line.game_id);
+                const isInParlay = parlayLines.find(l => l.id === line.id);
                 
                 html += `<div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
@@ -619,9 +760,12 @@
                         </div>
                         <div style="text-align: center;">
                             <div style="font-size: 36px; font-weight: 700; color: #10b981;">$${line.amount}</div>
-                            <button onclick="takeLine('${line.id}')" class="small" ${isLocked ? 'disabled' : ''} style="margin-top: 12px;">
-                                ${isLocked ? 'Locked' : 'Take Bet'}
-                            </button>
+                            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                                <button onclick="takeLine('${line.id}')" class="small" ${isLocked ? 'disabled' : ''}>
+                                    ${isLocked ? 'Locked' : 'Take Bet'}
+                                </button>
+                                ${!isLocked && !isInParlay ? `<button onclick='addToParlayBuilder(${JSON.stringify(line).replace(/'/g, "&apos;")})' class="secondary small">+ Parlay</button>` : ''}
+                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -714,8 +858,12 @@
                 alert('Error: ' + e.message);
             }
         }
+
+        // Continuing with CREATE LINE and other functions...
+        // (This is getting long - will continue in next message)
         
-        // CREATE LINE (WITH ALL ADVANCED CONTROLS!)
+        
+        // CREATE LINE (WITH ALL ADVANCED CONTROLS)
         async function renderCreateLine() {
             const games = await fetch(API + '/games').then(r => r.json());
             const groups = await fetch(API + '/groups?token=' + token).then(r => r.json());
@@ -881,21 +1029,215 @@
             }
         }
         
+        // PLAYER PROPS
+        async function renderProps() {
+            const props = await fetch(API + '/props?token=' + token).then(r => r.json());
+            const myProps = await fetch(API + '/bets?token=' + token).then(r => r.json()).then(d => d.prop_bets || []);
+            
+            let html = `<h2 style="font-size: 28px; margin-bottom: 24px;">🎲 Player Props</h2>
+                <div class="card" style="max-width: 800px;">
+                    <h3 style="margin-bottom: 16px;">Create Prop</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div>
+                            <label>Sport</label>
+                            <select id="propSport" onchange="updatePropTypes()">
+                                <option value="">Choose sport...</option>
+                                ${Object.keys(propTypes).map(sport => `<option value="${sport}">${sport}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label>Player Name</label>
+                            <input id="propPlayer" type="text" placeholder="LeBron James">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div>
+                            <label>Prop Type</label>
+                            <select id="propType">
+                                <option value="">Choose type...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Line</label>
+                            <input id="propLine" type="number" step="0.5" placeholder="28.5">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div>
+                            <label>Side</label>
+                            <select id="propSide">
+                                <option value="over">Over</option>
+                                <option value="under">Under</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Amount</label>
+                            <input id="propAmount" type="number" placeholder="100">
+                        </div>
+                    </div>
+                    <button onclick="createProp()" style="width: 100%; margin-top: 20px;">Post Prop</button>
+                </div>`;
+            
+            if (props.length > 0) {
+                html += '<h3 style="font-size: 22px; margin-top: 40px; margin-bottom: 16px;">Available Props</h3>';
+                props.forEach(prop => {
+                    html += `<div class="card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                            <div style="flex: 1;">
+                                <div style="margin-bottom: 8px;">
+                                    <span class="badge badge-prop">${prop.sport}</span>
+                                    ${prop.is_private ? '<span class="badge badge-private">PRIVATE</span>' : ''}
+                                </div>
+                                <div style="font-size: 20px; font-weight: 700; margin-bottom: 6px; color: #e2e8f0;">
+                                    ${prop.player_name} - ${prop.prop_type}
+                                </div>
+                                <div style="color: #94a3b8; font-size: 15px;">
+                                    ${prop.side.toUpperCase()} ${prop.line}
+                                </div>
+                                <div style="color: #64748b; font-size: 13px; margin-top: 6px;">by @${prop.bookie_name}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 36px; font-weight: 700; color: #10b981;">$${prop.amount}</div>
+                                <button onclick="takeProp('${prop.id}')" class="small" style="margin-top: 12px;">Take Prop</button>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+            
+            if (myProps.length > 0) {
+                html += '<h3 style="font-size: 22px; margin-top: 40px; margin-bottom: 16px;">My Prop Bets</h3>';
+                myProps.forEach(prop => {
+                    const isBookie = prop.bookie_id === user.id;
+                    const statusColor = prop.status === 'pending' ? '#f59e0b' : prop.winner === (isBookie ? 'bookie' : 'bettor') ? '#10b981' : '#ef4444';
+                    html += `<div class="card">
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 700; font-size: 18px; color: #e2e8f0;">${prop.player_name} - ${prop.prop_type}</div>
+                                <div style="color: #94a3b8; margin-top: 6px;">
+                                    ${isBookie ? prop.bookie_side : prop.bettor_side} ${prop.line}
+                                </div>
+                                <div style="color: #64748b; font-size: 13px; margin-top: 6px;">
+                                    ${isBookie ? 'vs @' + prop.bettor_name : 'vs @' + prop.bookie_name}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 28px; font-weight: 700; color: ${statusColor};">$${prop.amount}</div>
+                                <div style="font-size: 14px; color: #94a3b8; margin-top: 6px;">
+                                    ${prop.status === 'pending' ? 'Pending' : prop.winner === (isBookie ? 'bookie' : 'bettor') ? 'Won ✅' : 'Lost'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+            }
+            
+            return html;
+        }
+        
+        function updatePropTypes() {
+            const sport = document.getElementById('propSport').value;
+            const propTypeSelect = document.getElementById('propType');
+            if (sport && propTypes[sport]) {
+                propTypeSelect.innerHTML = '<option value="">Choose type...</option>' +
+                    propTypes[sport].map(type => `<option value="${type}">${type}</option>`).join('');
+            } else {
+                propTypeSelect.innerHTML = '<option value="">Choose type...</option>';
+            }
+        }
+        
+        async function createProp() {
+            const sport = document.getElementById('propSport').value;
+            const player = document.getElementById('propPlayer').value;
+            const propType = document.getElementById('propType').value;
+            const line = parseFloat(document.getElementById('propLine').value);
+            const side = document.getElementById('propSide').value;
+            const amount = parseFloat(document.getElementById('propAmount').value);
+            
+            if (!sport || !player || !propType || !line || !amount) {
+                alert('Please fill all fields');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API + '/props?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        sport, player_name: player, prop_type: propType,
+                        line, side, amount
+                    })
+                });
+                if (res.ok) {
+                    alert('✅ Prop created!');
+                    await loadUser();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        async function takeProp(propId) {
+            try {
+                const res = await fetch(API + '/props/take?token=' + token, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prop_id: propId})
+                });
+                if (res.ok) {
+                    alert('✅ Prop bet placed!');
+                    await loadUser();
+                    renderApp();
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
+        // FUTURES
+        async function renderFutures() {
+            const futures = await fetch(API + '/futures').then(r => r.json());
+            
+            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">🔮 Futures Markets</h2>';
+            
+            futures.forEach(future => {
+                html += `<div class="card">
+                    <h3 style="color: #e2e8f0; margin-bottom: 12px;">${future.market_name}</h3>
+                    <div style="color: #94a3b8; margin-bottom: 16px;">${future.sport} • Closes ${future.close_date}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                        ${future.options.map(option => `
+                            <button class="secondary small">${option}</button>
+                        `).join('')}
+                    </div>
+                </div>`;
+            });
+            
+            return html;
+        }
+        
         // MY BETS
         async function renderMyBets() {
             const res = await fetch(API + '/bets?token=' + token);
             const data = await res.json();
             const bets = data.single_bets || [];
             const parlays = data.parlays || [];
+            const propBets = data.prop_bets || [];
             
             let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">📊 My Bets</h2>';
             
-            if (bets.length === 0 && parlays.length === 0) {
+            if (bets.length === 0 && parlays.length === 0 && propBets.length === 0) {
                 return html + '<div class="empty-state"><div class="empty-state-icon">📊</div><h3 style="color: #64748b;">No bets yet</h3></div>';
             }
             
             if (bets.length > 0) {
-                html += '<h3 style="font-size: 20px; margin-bottom: 16px; color: #94a3b8;">Single Bets</h3>';
+                html += '<h3 style="font-size: 20px; margin-bottom: 16px; color: #94a3b8;">Game Lines</h3>';
                 bets.forEach(bet => {
                     const isBookie = bet.bookie_id === user.id;
                     const statusColor = bet.status === 'pending' ? '#f59e0b' : bet.winner === (isBookie ? 'bookie' : 'bettor') ? '#10b981' : '#ef4444';
@@ -912,13 +1254,9 @@
                             </div>
                             <div style="text-align: right;">
                                 <div style="font-size: 28px; font-weight: 700; color: ${statusColor};">$${bet.amount}</div>
-                                <div style="font-size: 14px; color: #94a3b8; margin-top: 6px;">${bet.status === 'pending' ? 'Pending' : bet.winner === (isBookie ? 'bookie' : 'bettor') ? 'Won ✅' : 'Lost'}</div>
-                                ${bet.status === 'pending' && isBookie ? `
-                                    <div style="margin-top: 12px; display: flex; gap: 8px;">
-                                        <button class="small" onclick="settleBet('${bet.id}', 'bookie')" style="font-size: 11px;">I Won</button>
-                                        <button class="small secondary" onclick="settleBet('${bet.id}', 'bettor')" style="font-size: 11px;">They Won</button>
-                                    </div>
-                                ` : ''}
+                                <div style="font-size: 14px; color: #94a3b8; margin-top: 6px;">
+                                    ${bet.status === 'pending' ? 'Pending ⏳' : bet.winner === (isBookie ? 'bookie' : 'bettor') ? 'Won ✅' : 'Lost ❌'}
+                                </div>
                             </div>
                         </div>
                     </div>`;
@@ -931,12 +1269,18 @@
                     html += `<div class="card">
                         <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
                             <div style="flex: 1;">
-                                <div style="font-weight: 700; font-size: 18px; color: #e2e8f0;">${parlay.legs.length}-Leg Parlay</div>
-                                ${parlay.legs.map(leg => `<div style="color: #94a3b8; margin-top: 4px; font-size: 14px;">• ${leg.game}: ${leg.side} ${leg.value > 0 ? '+' : ''}${leg.value}</div>`).join('')}
+                                <div style="font-weight: 700; font-size: 18px; color: #e2e8f0; margin-bottom: 8px;">
+                                    ${parlay.legs.length}-Leg Parlay
+                                </div>
+                                ${parlay.legs.map(leg => `
+                                    <div style="color: #94a3b8; margin-top: 4px; font-size: 14px;">
+                                        • ${leg.game}: ${leg.side} ${leg.value > 0 ? '+' : ''}${leg.value}
+                                    </div>
+                                `).join('')}
                             </div>
                             <div style="text-align: right;">
                                 <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">$${parlay.amount}</div>
-                                <div style="color: #94a3b8; font-size: 13px; margin-top: 4px;">Win: $${parlay.potential_payout.toFixed(2)}</div>
+                                <div style="color: #10b981; font-size: 13px; margin-top: 4px;">Win: $${parlay.potential_payout.toFixed(2)}</div>
                                 <div style="color: #64748b; font-size: 13px; margin-top: 4px;">${parlay.status}</div>
                             </div>
                         </div>
@@ -945,26 +1289,6 @@
             }
             
             return html;
-        }
-        
-        async function settleBet(betId, winner) {
-            try {
-                const res = await fetch(API + `/bets/${betId}/settle?token=${token}`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({winner, token})
-                });
-                if (res.ok) {
-                    alert('✅ Bet settled!');
-                    await loadUser();
-                    renderApp();
-                } else {
-                    const err = await res.json();
-                    alert('❌ ' + err.detail);
-                }
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
         }
         
         // LEADERBOARD
@@ -1094,6 +1418,99 @@
             }
         }
         
+        // ADMIN PANEL
+        async function renderAdmin() {
+            if (!user.is_admin) {
+                return '<div class="empty-state"><div class="empty-state-icon">🔒</div><h3 style="color: #64748b;">Admin access required</h3></div>';
+            }
+            
+            let html = `
+                <h2 style="font-size: 28px; margin-bottom: 24px;">⚙️ Admin Panel</h2>
+                
+                <div class="admin-panel">
+                    <h3 style="color: #ef4444; margin-bottom: 16px;">⚠️ Admin Only - Enter Player Stats</h3>
+                    <p style="color: #94a3b8; margin-bottom: 20px;">
+                        After a game ends, enter player stats here to auto-settle all prop bets.
+                    </p>
+                    
+                    <label>Player Name</label>
+                    <input id="adminPlayer" type="text" placeholder="LeBron James">
+                    
+                    <label>Points</label>
+                    <input id="adminPoints" type="number" placeholder="32">
+                    
+                    <label>Rebounds</label>
+                    <input id="adminRebounds" type="number" placeholder="8">
+                    
+                    <label>Assists</label>
+                    <input id="adminAssists" type="number" placeholder="6">
+                    
+                    <label>3-Pointers Made</label>
+                    <input id="admin3Pointers" type="number" placeholder="4">
+                    
+                    <button onclick="submitPlayerStats()" style="width: 100%; margin-top: 16px;">
+                        Submit Stats & Auto-Settle Props
+                    </button>
+                </div>
+                
+                <div class="card" style="margin-top: 24px;">
+                    <h3 style="margin-bottom: 16px;">ℹ️ How Auto-Settlement Works</h3>
+                    <p style="color: #94a3b8; line-height: 1.6;">
+                        <strong style="color: #10b981;">Game Lines:</strong> Automatically settle when games pull final scores from Odds API (every 5 minutes).<br><br>
+                        <strong style="color: #ec4899;">Player Props:</strong> You enter stats above, system instantly settles all related prop bets.<br><br>
+                        <strong style="color: #f59e0b;">Payouts:</strong> 0% rake - winner gets 100% of the pot!
+                    </p>
+                </div>
+            `;
+            
+            return html;
+        }
+        
+        async function submitPlayerStats() {
+            const player = document.getElementById('adminPlayer').value;
+            const points = parseFloat(document.getElementById('adminPoints').value) || 0;
+            const rebounds = parseFloat(document.getElementById('adminRebounds').value) || 0;
+            const assists = parseFloat(document.getElementById('adminAssists').value) || 0;
+            const threePointers = parseFloat(document.getElementById('admin3Pointers').value) || 0;
+            
+            if (!player) {
+                alert('Enter player name');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API + '/admin/player-stats', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        admin_password: 'admin123',
+                        game_id: 'game_1',
+                        player_name: player,
+                        stats: {
+                            points: points,
+                            rebounds: rebounds,
+                            assists: assists,
+                            three_pointers: threePointers
+                        }
+                    })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    alert(`✅ ${data.message}\n${data.props_settled} props auto-settled!`);
+                    document.getElementById('adminPlayer').value = '';
+                    document.getElementById('adminPoints').value = '';
+                    document.getElementById('adminRebounds').value = '';
+                    document.getElementById('adminAssists').value = '';
+                    document.getElementById('admin3Pointers').value = '';
+                } else {
+                    const err = await res.json();
+                    alert('❌ ' + err.detail);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+        
         // MODALS
         function openModal(modalId) {
             document.getElementById(modalId).classList.add('active');
@@ -1116,12 +1533,15 @@
             let content = '';
             if (view === 'marketplace') content = await loadLines();
             else if (view === 'create') content = await renderCreateLine();
+            else if (view === 'props') content = await renderProps();
+            else if (view === 'futures') content = await renderFutures();
             else if (view === 'bets') content = await renderMyBets();
             else if (view === 'leaderboard') content = await renderLeaderboard();
             else if (view === 'groups') content = await renderGroups();
             else if (view === 'following') content = await renderFollowing();
             else if (view === 'shop') content = await renderShop();
             else if (view === 'search') content = await renderUserSearch();
+            else if (view === 'admin') content = await renderAdmin();
             
             const profitClass = user.profit >= 0 ? '' : 'negative';
             
@@ -1129,7 +1549,7 @@
                 <div class="header">
                     <div>
                         <div class="logo">🎯 BookieVerse</div>
-                        <div class="user-info">@${user.username} • ${user.wins}W - ${user.losses}L</div>
+                        <div class="user-info">@${user.username} • ${user.wins}W - ${user.losses}L${user.is_admin ? ' • 👑 ADMIN' : ''}</div>
                     </div>
                     <div class="balance-widget">
                         <div class="balance-label">Balance</div>
@@ -1141,12 +1561,15 @@
                 <div class="tabs">
                     <div class="tab ${view === 'marketplace' ? 'active' : ''}" onclick="changeView('marketplace')">🛒 Marketplace</div>
                     <div class="tab ${view === 'create' ? 'active' : ''}" onclick="changeView('create')">⚡ Set Lines</div>
+                    <div class="tab ${view === 'props' ? 'active' : ''}" onclick="changeView('props')">🎲 Props</div>
+                    <div class="tab ${view === 'futures' ? 'active' : ''}" onclick="changeView('futures')">🔮 Futures</div>
                     <div class="tab ${view === 'bets' ? 'active' : ''}" onclick="changeView('bets')">📊 My Bets</div>
                     <div class="tab ${view === 'leaderboard' ? 'active' : ''}" onclick="changeView('leaderboard')">🏆 Leaderboard</div>
                     <div class="tab ${view === 'groups' ? 'active' : ''}" onclick="changeView('groups')">👥 Groups</div>
                     <div class="tab ${view === 'following' ? 'active' : ''}" onclick="changeView('following')">⭐ Following</div>
                     <div class="tab ${view === 'shop' ? 'active' : ''}" onclick="changeView('shop')">💰 Shop</div>
                     <div class="tab ${view === 'search' ? 'active' : ''}" onclick="changeView('search')">🔍 Find Bookies</div>
+                    ${user.is_admin ? `<div class="tab ${view === 'admin' ? 'active' : ''}" onclick="changeView('admin')">⚙️ Admin</div>` : ''}
                 </div>
                 
                 <div id="content">${content}</div>
@@ -1172,7 +1595,7 @@
                         Enter Platform
                     </button>
                     <p style="margin-top: 24px; color: #64748b; font-size: 13px;">
-                        Usernames locked once taken • Play money only
+                        First user = admin • Play money only
                     </p>
                 </div>
             `;
@@ -1184,6 +1607,7 @@
             });
         } else {
             (async () => {
+                await loadPropTypes();
                 renderApp();
             })();
         }
