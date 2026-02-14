@@ -138,6 +138,16 @@ class Group(Base):
 
 Base.metadata.create_all(bind=engine)
 
+@app.get("/api/reset-database-now")
+def reset_database():
+    """EMERGENCY: Wipe database clean and recreate tables"""
+    try:
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
+        return {"message": "✅ Database wiped clean - all tables recreated", "status": "success"}
+    except Exception as e:
+        return {"message": f"Error: {str(e)}", "status": "failed"}
+
 def get_db():
     db = SessionLocal()
     try:
