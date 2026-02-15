@@ -347,6 +347,41 @@
                         </div>
                     </div>
                     
+                    <div style="margin-top: 24px; padding: 20px; background: #0f172a; border-radius: 8px; border: 1px solid #334155;">
+                        <h3 style="margin-bottom: 16px; font-size: 16px; color: #10b981;">⚙️ Advanced Controls (Optional)</h3>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                            <div>
+                                <label>Max Bettors</label>
+                                <input id="maxBettors" type="number" placeholder="Unlimited">
+                                <small style="color: #64748b; font-size: 11px;">Leave empty for unlimited</small>
+                            </div>
+                            <div>
+                                <label>Max Bet Per User ($)</label>
+                                <input id="maxBetPerUser" type="number" placeholder="Unlimited">
+                                <small style="color: #64748b; font-size: 11px;">Limit per bettor</small>
+                            </div>
+                            <div>
+                                <label>Max Total Action ($)</label>
+                                <input id="maxTotalAction" type="number" placeholder="Unlimited">
+                                <small style="color: #64748b; font-size: 11px;">Total exposure limit</small>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 16px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="isPrivate" style="width: auto; margin: 0;" onchange="toggleGroupSelect()">
+                                <span>Private Line (Groups Only)</span>
+                            </label>
+                            ${groups.length > 0 ? `
+                                <select id="groupId" style="margin-top: 8px; display: none;">
+                                    <option value="">Select a group...</option>
+                                    ${groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
+                                </select>
+                            ` : '<small style="color: #64748b; margin-left: 28px;">Create a group first to use private lines</small>'}
+                        </div>
+                    </div>
+                    
                     <button onclick="createLine()" style="width: 100%; margin-top: 24px; padding: 16px;">Post Line</button>
                 </div>`;
             
@@ -360,16 +395,40 @@
             const value = parseFloat(document.getElementById('value').value);
             const amount = parseFloat(document.getElementById('amount').value);
             
+            // Advanced controls
+            const maxBettors = document.getElementById('maxBettors')?.value;
+            const maxBetPerUser = document.getElementById('maxBetPerUser')?.value;
+            const maxTotalAction = document.getElementById('maxTotalAction')?.value;
+            const isPrivate = document.getElementById('isPrivate')?.checked || false;
+            const groupId = document.getElementById('groupId')?.value;
+            
             if (!gameId || !value || !amount) {
                 alert('Please fill in all fields');
                 return;
+            }
+            
+            const body = {
+                game_id: gameId,
+                type,
+                side,
+                value,
+                amount
+            };
+            
+            // Add optional advanced controls if set
+            if (maxBettors) body.max_bettors = parseInt(maxBettors);
+            if (maxBetPerUser) body.max_bet_per_user = parseFloat(maxBetPerUser);
+            if (maxTotalAction) body.max_total_action = parseFloat(maxTotalAction);
+            if (isPrivate) {
+                body.is_private = true;
+                if (groupId) body.group_id = parseInt(groupId);
             }
             
             try {
                 const res = await fetch(API + '/lines?token=' + token, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({game_id: gameId, type, side, value, amount})
+                    body: JSON.stringify(body)
                 });
                 if (res.ok) {
                     alert('✅ Line created!');
