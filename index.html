@@ -178,12 +178,18 @@
                 }
                 
                 const data = await res.json();
+                console.log('Registration successful:', data);
                 token = data.token;
                 localStorage.setItem('token', token);
                 user = data.user;
+                console.log('User set:', user);
                 await loadPropTypes();
-                renderApp();
+                console.log('Prop types loaded');
+                console.log('Calling renderApp...');
+                await renderApp();
+                console.log('renderApp completed');
             } catch (e) {
+                console.error('Registration error:', e);
                 alert('Error: ' + e.message);
             }
         }
@@ -716,14 +722,19 @@
         });
         
         async function renderApp() {
-            if (!user) await loadUser();
+            console.log('renderApp called, user:', user);
+            if (!user) {
+                console.log('No user, calling loadUser...');
+                await loadUser();
+            }
             
             // If still no user after loading, don't render
             if (!user) {
-                console.error('No user found, redirecting to login');
+                console.error('No user found after loadUser, redirecting to login');
                 return;
             }
             
+            console.log('User confirmed, loading content...');
             let content = '';
             if (view === 'marketplace') content = await loadLines();
             else if (view === 'create') content = await renderCreateLine();
@@ -737,6 +748,7 @@
             else if (view === 'search') content = await renderUserSearch();
             else if (view === 'admin') content = await renderAdmin();
             
+            console.log('Content loaded, rendering HTML...');
             const profitClass = user.profit >= 0 ? '' : 'negative';
             
             document.getElementById('app').innerHTML = `
