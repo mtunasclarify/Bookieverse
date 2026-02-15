@@ -372,24 +372,42 @@ def home():
 @app.post("/api/auth/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     try:
+        print(f"=== REGISTER ATTEMPT: {user.username} ===")
+        
         if len(user.password) < 6:
+            print("Password too short")
             raise HTTPException(400, "Password 6+ chars")
         
         # Check if username exists
+        print(f"Checking if {user.username} exists...")
         existing = db.query(User).filter(User.username == user.username).first()
+        print(f"Existing user found: {existing is not None}")
+        
         if existing:
+            print(f"User {user.username} already exists!")
             raise HTTPException(400, "Username taken")
         
-        is_admin = db.query(User).count() == 0
+        print("Counting total users...")
+        user_count = db.query(User).count()
+        is_admin = user_count == 0
+        print(f"Total users: {user_count}, Will be admin: {is_admin}")
+        
+        print("Creating new user...")
         new_user = User(username=user.username, password=hash_password(user.password), is_admin=is_admin)
         db.add(new_user)
+        
+        print("Committing to database...")
         db.commit()
         db.refresh(new_user)
+        
+        print(f"User created successfully! ID: {new_user.id}")
         return {"token": create_token(new_user.id), "user": {"id": new_user.id, "username": new_user.username, "balance": new_user.balance}}
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Registration error: {e}")
+        print(f"!!! REGISTRATION ERROR: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
         raise HTTPException(500, f"Database error: {str(e)}")
 
