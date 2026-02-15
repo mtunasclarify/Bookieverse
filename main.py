@@ -401,7 +401,19 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         db.refresh(new_user)
         
         print(f"User created successfully! ID: {new_user.id}")
-        return {"token": create_token(new_user.id), "user": {"id": new_user.id, "username": new_user.username, "balance": new_user.balance}}
+        return {
+            "token": create_token(new_user.id), 
+            "user": {
+                "id": new_user.id, 
+                "username": new_user.username, 
+                "balance": new_user.balance,
+                "profit": new_user.profit,
+                "wins": new_user.wins,
+                "losses": new_user.losses,
+                "lines_created": new_user.lines_created,
+                "is_admin": new_user.is_admin
+            }
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -416,7 +428,19 @@ def login(user: UserCreate, db: Session = Depends(get_db)):
     u = db.query(User).filter(User.username == user.username).first()
     if not u or u.password != hash_password(user.password):
         raise HTTPException(401, "Invalid credentials")
-    return {"token": create_token(u.id), "user": {"id": u.id, "username": u.username, "balance": u.balance}}
+    return {
+        "token": create_token(u.id), 
+        "user": {
+            "id": u.id, 
+            "username": u.username, 
+            "balance": u.balance,
+            "profit": u.profit,
+            "wins": u.wins,
+            "losses": u.losses,
+            "lines_created": u.lines_created,
+            "is_admin": u.is_admin
+        }
+    }
 
 @app.get("/api/games")
 def get_games():
