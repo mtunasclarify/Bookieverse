@@ -68,6 +68,7 @@ class Line(Base):
     value = Column(Float)
     amount = Column(Float)
     status = Column(String, default="open")
+    total_action = Column(Float, default=0.0)  # Track how much has been bet
     current_bettors = Column(Integer, default=0)
     max_bettors = Column(Integer, nullable=True)
     max_bet_per_user = Column(Float, nullable=True)
@@ -176,7 +177,7 @@ def fetch_live_games():
         # Process NBA games
         if nba_response.status_code == 200:
             nba_data = nba_response.json()
-            for game in nba_data[:10]:  # Limit to 10 games
+            for game in nba_data:  # Get ALL games
                 games.append({
                     "id": game["id"],
                     "home": game["home_team"],
@@ -190,7 +191,7 @@ def fetch_live_games():
         # Process NFL games
         if nfl_response.status_code == 200:
             nfl_data = nfl_response.json()
-            for game in nfl_data[:10]:
+            for game in nfl_data:  # Get ALL games
                 games.append({
                     "id": game["id"],
                     "home": game["home_team"],
@@ -200,6 +201,9 @@ def fetch_live_games():
                     "commence_time": game["commence_time"],
                     "status": "upcoming"
                 })
+        
+        # Sort by commence_time (soonest first)
+        games.sort(key=lambda x: x["commence_time"])
         
         return games if games else GAMES
     except Exception as e:
@@ -322,6 +326,7 @@ class PropCreate(BaseModel):
 
 class TakeLine(BaseModel):
     line_id: int
+    amount: Optional[float] = None  # Bettor can specify amount
 
 class TakeProp(BaseModel):
     prop_id: int
@@ -436,7 +441,8 @@ def get_lines(db: Session = Depends(get_db)):
     lines = db.query(Line).filter(Line.status == "open").all()
     return [{"id": l.id, "bookie_id": l.bookie_id, "bookie_name": l.bookie_name, "game": l.game, "sport": l.sport,
              "type": l.type, "side": l.side, "value": l.value, "amount": l.amount, "status": l.status,
-             "current_bettors": l.current_bettors, "is_private": l.is_private} for l in lines]
+             "total_action": l.total_action, "current_bettors": l.current_bettors, "max_bet_per_user": l.max_bet_per_user,
+             "is_private": l.is_private} for l in lines]
 
 @app.post("/api/lines")
 def create_line(line: LineCreate, token: str, db: Session = Depends(get_db)):
@@ -476,15 +482,81 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
         raise HTTPException(400, "Can't bet your own line")
     
     user = db.query(User).filter(User.id == user_id).first()
-    if user.balance < line.amount:
-        raise HTTPException(400, "Insufficient balance")
     
-    bet = Bet(line_id=line.id, bookie_id=line.bookie_id, bookie_name=line.bookie_name,
-             bettor_id=user.id, bettor_name=user.username, game=line.game, type=line.type,
-             bookie_side=line.side, bettor_side="away" if line.side == "home" else "home",
-             value=line.value, amount=line.amount)
-    line.status = "matched"
-    line.current_bettors += 1
+    # Determine bet amount
+    bet_amount = take.amount if take.amount else line.amount
+    
+    # Calculate available action on this line
+    available = line.amount - line.total_action
+    
+    # Check if any action is available
+    if available <= 0:
+        raise HTTPException(400, "Line is fully filled")
+    
+    # Limit bet to available amount
+    if bet_amount > available:
+        bet_amount = available
+    
+    # Check max_bet_per_user if set
+    if line.max_bet_per_user:
+        # Check how much this user has already bet on this line
+        user_total_on_line = db.query(Bet).filter(
+            Bet.line_id == line.id,
+            Bet.bettor_id == user_id
+        ).with_entities(db.func.sum(Bet.amount)).scalar() or 0
+        
+        remaining_user_limit = line.max_bet_per_user - user_total_on_line
+        if remaining_user_limit <= 0:
+            raise HTTPException(400, f"You've reached the max bet limit of ${line.max_bet_per_user}")
+        if bet_amount > remaining_user_limit:
+            bet_amount = remaining_user_limit
+    
+    # Check max_bettors if set
+    if line.max_bettors:
+        unique_bettors = db.query(Bet.bettor_id).filter(Bet.line_id == line.id).distinct().count()
+        if unique_bettors >= line.max_bettors:
+            # Check if this user has already bet (can add more)
+            user_has_bet = db.query(Bet).filter(
+                Bet.line_id == line.id,
+                Bet.bettor_id == user_id
+            ).first()
+            if not user_has_bet:
+                raise HTTPException(400, f"Max of {line.max_bettors} bettors reached")
+    
+    # Check user balance
+    if user.balance < bet_amount:
+        raise HTTPException(400, f"Insufficient balance. Need ${bet_amount}")
+    
+    # Create bet
+    bet = Bet(
+        line_id=line.id,
+        bookie_id=line.bookie_id,
+        bookie_name=line.bookie_name,
+        bettor_id=user.id,
+        bettor_name=user.username,
+        game=line.game,
+        type=line.type,
+        bookie_side=line.side,
+        bettor_side="away" if line.side == "home" else "home",
+        value=line.value,
+        amount=bet_amount
+    )
+    
+    # Update line
+    line.total_action += bet_amount
+    line.current_bettors = db.query(Bet.bettor_id).filter(Bet.line_id == line.id).distinct().count() + 1
+    
+    # Close line if fully filled
+    if line.total_action >= line.amount:
+        line.status = "matched"
+    
+    # Deduct from user balance
+    user.balance -= bet_amount
+    
+    db.add(bet)
+    db.commit()
+    
+    return {"message": "Bet placed", "amount": bet_amount}
     user.balance -= line.amount
     db.add(bet)
     db.commit()
