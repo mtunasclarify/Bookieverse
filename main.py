@@ -138,29 +138,6 @@ class Group(Base):
 
 Base.metadata.create_all(bind=engine)
 
-@app.get("/api/reset-database-now")
-def reset_database():
-    """EMERGENCY: Wipe database clean and recreate tables"""
-    try:
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
-        return {"message": "✅ Database wiped clean - all tables recreated", "status": "success"}
-    except Exception as e:
-        return {"message": f"Error: {str(e)}", "status": "failed"}
-
-@app.get("/api/debug-users")
-def debug_users():
-    """See all usernames in database"""
-    db = next(get_db())
-    try:
-        users = db.query(User).all()
-        return {
-            "total_users": len(users),
-            "usernames": [u.username for u in users]
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
 def get_db():
     db = SessionLocal()
     try:
