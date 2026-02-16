@@ -13,7 +13,7 @@ import os
 import stripe
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import json
@@ -138,6 +138,28 @@ class Group(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
+
+# Safe migration: Add total_action column if it doesn't exist (PostgreSQL)
+try:
+    db = SessionLocal()
+    # Check if column exists and add it if not
+    db.execute(text("""
+        DO $$ 
+        BEGIN 
+            BEGIN
+                ALTER TABLE lines ADD COLUMN total_action FLOAT DEFAULT 0.0;
+            EXCEPTION
+                WHEN duplicate_column THEN 
+                    -- Column already exists, do nothing
+                    NULL;
+            END;
+        END $$;
+    """))
+    db.commit()
+    db.close()
+    print("✅ Database migration completed: total_action column ensured")
+except Exception as e:
+    print(f"Migration note: {e}")
 
 def get_db():
     db = SessionLocal()
