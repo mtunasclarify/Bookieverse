@@ -388,6 +388,14 @@
             return html;
         }
         
+        function toggleGroupSelect() {
+            const groupSelect = document.getElementById('groupId');
+            const isPrivate = document.getElementById('isPrivate');
+            if (groupSelect && isPrivate) {
+                groupSelect.style.display = isPrivate.checked ? 'block' : 'none';
+            }
+        }
+        
         async function createLine() {
             const gameId = document.getElementById('game').value;
             const type = document.getElementById('type').value;
