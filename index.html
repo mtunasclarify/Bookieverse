@@ -436,6 +436,15 @@
             }
         }
         
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('token');
+                token = null;
+                user = null;
+                location.reload();
+            }
+        }
+        
         async function createLine() {
             const gameId = document.getElementById('game').value;
             const type = document.getElementById('type').value;
@@ -868,6 +877,7 @@
                         <div class="balance-label">Balance</div>
                         <div class="balance-amount">$${user.balance.toLocaleString()}</div>
                         <div class="profit ${profitClass}">${user.profit >= 0 ? '+' : ''}$${user.profit.toLocaleString()} P/L</div>
+                        <button onclick="logout()" class="secondary small" style="margin-top: 12px;">Logout</button>
                     </div>
                 </div>
                 
