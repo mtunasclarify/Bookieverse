@@ -264,6 +264,8 @@
             
             for (const line of lines) {
                 const badgeClass = line.type === 'spread' ? 'badge-spread' : line.type === 'moneyline' ? 'badge-moneyline' : 'badge-total';
+                const available = line.amount - (line.total_action || 0);
+                const isFullyFilled = available <= 0;
                 
                 html += `<div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
@@ -275,10 +277,17 @@
                             <div style="font-size: 20px; font-weight: 700; margin-bottom: 6px;">${line.game}</div>
                             <div style="color: #94a3b8; font-size: 15px;">Taking ${line.side} ${line.value > 0 ? '+' : ''}${line.value}</div>
                             <div style="color: #64748b; font-size: 13px; margin-top: 6px;">by @${line.bookie_name}</div>
+                            ${line.max_bet_per_user ? `<div style="color: #64748b; font-size: 12px; margin-top: 4px;">Max per user: $${line.max_bet_per_user}</div>` : ''}
                         </div>
                         <div style="text-align: center;">
+                            <div style="font-size: 14px; color: #64748b; margin-bottom: 4px;">UP TO</div>
                             <div style="font-size: 36px; font-weight: 700; color: #10b981;">$${line.amount}</div>
-                            <button onclick="takeLine('${line.id}')" class="small" style="margin-top: 12px;">Take Bet</button>
+                            <div style="font-size: 16px; font-weight: 600; color: ${isFullyFilled ? '#ef4444' : '#10b981'}; margin-top: 4px;">
+                                ${isFullyFilled ? 'Filled' : `$${available.toFixed(0)} available`}
+                            </div>
+                            <button onclick="takeLine(${line.id}, ${available}, ${line.max_bet_per_user || 999999})" class="small" style="margin-top: 12px;" ${isFullyFilled ? 'disabled' : ''}>
+                                ${isFullyFilled ? 'Filled' : 'Take Bet'}
+                            </button>
                         </div>
                     </div>
                 </div>`;
@@ -286,15 +295,37 @@
             return html;
         }
         
-        async function takeLine(lineId) {
+        async function takeLine(lineId, available, maxPerUser) {
+            // Determine the maximum this user can bet
+            const maxBet = Math.min(available, maxPerUser, user.balance);
+            
+            // Prompt user for amount
+            const amountStr = prompt(`How much do you want to bet?\n\nAvailable: $${available}\nMax per user: $${maxPerUser}\nYour balance: $${user.balance}\n\nEnter amount (max $${maxBet}):`);
+            
+            if (!amountStr) return; // User cancelled
+            
+            const amount = parseFloat(amountStr);
+            
+            // Validate amount
+            if (isNaN(amount) || amount <= 0) {
+                alert('❌ Please enter a valid amount');
+                return;
+            }
+            
+            if (amount > maxBet) {
+                alert(`❌ Maximum bet is $${maxBet}`);
+                return;
+            }
+            
             try {
                 const res = await fetch(API + '/lines/take?token=' + token, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({line_id: lineId})
+                    body: JSON.stringify({line_id: lineId, amount: amount})
                 });
                 if (res.ok) {
-                    alert('✅ Bet placed!');
+                    const data = await res.json();
+                    alert(`✅ Bet placed for $${data.amount}!`);
                     await loadUser();
                     renderApp();
                 } else {
@@ -315,7 +346,16 @@
                     <label>Select Game</label>
                     <select id="game">
                         <option value="">Choose a game...</option>
-                        ${games.map(g => `<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home}</option>`).join('')}
+                        ${games.map(g => {
+                            const date = g.date || '';
+                            const time = g.commence_time ? new Date(g.commence_time).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit'
+                            }) : '';
+                            return `<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home}${time ? ' - ' + time : ''}</option>`;
+                        }).join('')}
                     </select>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
