@@ -3,933 +3,610 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookieVerse - Complete Platform</title>
+    <title>BookieVerse</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: #0f172a; min-height: 100vh; color: #e2e8f0;
+        :root {
+            --bg:#0b1120;--surface:#111927;--card:#162032;--card-hover:#1a2840;
+            --border:#1f3050;--border-hi:#2d4870;
+            --green:#00d67a;--green-dim:#00a85f;--green-glow:rgba(0,214,122,0.15);
+            --gold:#f5a623;--red:#ff4560;--blue:#4a9eff;--purple:#8b5cf6;
+            --text:#ddeeff;--text-muted:#6b90b8;--text-dim:#3d607e;
         }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        .header { 
-            background: #1e293b; padding: 24px; border-radius: 12px; margin-bottom: 24px;
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
-            gap: 20px; border: 1px solid #334155;
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
+            background-image:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(0,100,255,.07),transparent),
+            radial-gradient(ellipse 60% 40% at 90% 100%,rgba(0,214,122,.05),transparent);}
+        .app-shell{display:flex;min-height:100vh;}
+        .sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
+            display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+        .main{flex:1;min-width:0;}
+        .content-area{max-width:960px;margin:0 auto;padding:28px 24px;}
+        .sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid var(--border);}
+        .logo-text{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;
+            background:linear-gradient(135deg,var(--green),#00a8ff);-webkit-background-clip:text;
+            -webkit-text-fill-color:transparent;background-clip:text;line-height:1;}
+        .logo-sub{font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-top:4px;}
+        .sidebar-user{padding:16px 20px;border-bottom:1px solid var(--border);}
+        .sidebar-username{font-weight:700;font-size:15px;}
+        .sidebar-stats{font-size:12px;color:var(--text-muted);margin-top:4px;}
+        .sidebar-balance{margin-top:12px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);}
+        .bal-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;}
+        .bal-amount{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--green);line-height:1.1;}
+        .bal-pl{font-size:13px;font-weight:600;margin-top:2px;}
+        .bal-pl.pos{color:var(--green);}.bal-pl.neg{color:var(--red);}
+        .sidebar-nav{padding:12px 0;flex:1;}
+        .nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:14px;font-weight:500;
+            color:var(--text-muted);cursor:pointer;transition:all .15s;border-left:3px solid transparent;user-select:none;}
+        .nav-item:hover{color:var(--text);background:rgba(255,255,255,.03);}
+        .nav-item.active{color:var(--green);background:var(--green-glow);border-left-color:var(--green);}
+        .nav-icon{width:18px;text-align:center;font-size:16px;}
+        .sidebar-bottom{padding:16px 20px;border-top:1px solid var(--border);}
+        .logout-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--border);
+            color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:'Barlow',sans-serif;
+            font-size:13px;font-weight:600;transition:all .15s;}
+        .logout-btn:hover{border-color:var(--red);color:var(--red);background:rgba(255,69,96,.05);}
+        .topbar{display:none;align-items:center;justify-content:space-between;padding:12px 16px;
+            background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+        .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--green);}
+        .topbar-bal{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green);}
+        .mobile-nav{display:none;overflow-x:auto;padding:8px 12px;background:var(--surface);
+            border-bottom:1px solid var(--border);gap:6px;scrollbar-width:none;}
+        .mobile-nav::-webkit-scrollbar{display:none;}
+        .mob-tab{flex-shrink:0;padding:8px 14px;border-radius:20px;font-size:12px;font-weight:600;
+            cursor:pointer;color:var(--text-muted);border:1px solid var(--border);white-space:nowrap;transition:all .15s;}
+        .mob-tab.active{background:var(--green);color:#000;border-color:var(--green);}
+        .page-header{margin-bottom:28px;}
+        .page-title{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;letter-spacing:.5px;}
+        .page-subtitle{font-size:14px;color:var(--text-muted);margin-top:4px;}
+        .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;
+            margin-bottom:14px;transition:border-color .2s,box-shadow .2s;}
+        .card:hover{border-color:var(--border-hi);box-shadow:0 4px 24px rgba(0,0,0,.3);}
+        .card-glow{box-shadow:0 0 0 1px var(--green-glow),0 4px 24px rgba(0,214,122,.08);}
+        .badge{display:inline-block;padding:3px 10px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;}
+        .badge-spread{background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.3);}
+        .badge-moneyline{background:rgba(74,158,255,.2);color:#93c5fd;border:1px solid rgba(74,158,255,.3);}
+        .badge-total{background:rgba(245,166,35,.2);color:#fbbf24;border:1px solid rgba(245,166,35,.3);}
+        .badge-prop{background:rgba(236,72,153,.2);color:#f9a8d4;border:1px solid rgba(236,72,153,.3);}
+        .badge-private{background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.3);}
+        .badge-nba{background:rgba(0,214,122,.15);color:var(--green);border:1px solid rgba(0,214,122,.3);}
+        .badge-nfl{background:rgba(245,166,35,.15);color:var(--gold);border:1px solid rgba(245,166,35,.3);}
+        .fill-bar-wrap{margin-top:10px;}
+        .fill-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:5px;}
+        .fill-bar-track{height:5px;background:var(--border);border-radius:99px;overflow:hidden;}
+        .fill-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green-dim),var(--green));transition:width .4s ease;}
+        .fill-bar-fill.partial{background:linear-gradient(90deg,var(--gold),#ffdc70);}
+        .fill-bar-fill.full{background:var(--text-dim);}
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;
+            border:none;border-radius:9px;font-family:'Barlow',sans-serif;font-size:14px;font-weight:700;
+            cursor:pointer;transition:all .15s;letter-spacing:.3px;}
+        .btn-primary{background:var(--green);color:#000;}
+        .btn-primary:hover{background:#00f090;box-shadow:0 4px 16px rgba(0,214,122,.3);transform:translateY(-1px);}
+        .btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border);}
+        .btn-secondary:hover{border-color:var(--border-hi);background:var(--card-hover);}
+        .btn-danger{background:rgba(255,69,96,.15);color:var(--red);border:1px solid rgba(255,69,96,.3);}
+        .btn-danger:hover{background:rgba(255,69,96,.25);}
+        .btn-sm{padding:7px 14px;font-size:13px;}.btn-lg{padding:14px 28px;font-size:16px;}
+        .btn-full{width:100%;}
+        .btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
+        .form-group{margin-bottom:16px;}
+        label{display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+        input,select,textarea{width:100%;padding:12px 14px;background:var(--bg);color:var(--text);
+            border:1px solid var(--border);border-radius:8px;font-family:'Barlow',sans-serif;font-size:15px;transition:border-color .15s;}
+        input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(0,214,122,.1);}
+        select option{background:var(--surface);}
+        .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+        .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+            backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;}
+        .modal-overlay.open{display:flex;}
+        .modal-box{background:var(--surface);border:1px solid var(--border-hi);border-radius:16px;
+            padding:28px;width:90%;max-width:480px;max-height:90vh;overflow-y:auto;
+            box-shadow:0 20px 60px rgba(0,0,0,.5);}
+        .modal-title{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;margin-bottom:20px;}
+        .modal-footer{display:flex;gap:10px;margin-top:20px;}
+        .toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;}
+        .toast{padding:14px 20px;border-radius:10px;border:1px solid;font-size:14px;font-weight:600;
+            min-width:260px;max-width:380px;animation:toastIn .3s ease,toastOut .3s ease 2.7s forwards;cursor:pointer;}
+        .toast.success{background:rgba(0,214,122,.15);border-color:rgba(0,214,122,.4);color:#6fffc7;}
+        .toast.error{background:rgba(255,69,96,.15);border-color:rgba(255,69,96,.4);color:#ff8fa5;}
+        .toast.info{background:rgba(74,158,255,.15);border-color:rgba(74,158,255,.4);color:#93c5fd;}
+        @keyframes toastIn{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateX(40px)}}
+        .skeleton{background:linear-gradient(90deg,var(--card) 25%,var(--card-hover) 50%,var(--card) 75%);
+            background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px;}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .skeleton-line{height:14px;margin:8px 0;}
+        .skeleton-title{height:22px;margin:8px 0;width:60%;}
+        .skeleton-card{padding:20px 24px;border:1px solid var(--border);border-radius:14px;margin-bottom:14px;}
+        .line-card{display:flex;gap:20px;align-items:flex-start;}
+        .line-card-info{flex:1;min-width:0;}
+        .line-card-amount{flex-shrink:0;text-align:right;}
+        .line-game{font-size:18px;font-weight:700;margin:8px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .line-side{color:var(--text-muted);font-size:14px;}
+        .line-by{color:var(--text-dim);font-size:12px;margin-top:6px;}
+        .line-amount-num{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:800;color:var(--green);line-height:1;}
+        .lb-row{display:flex;align-items:center;gap:16px;}
+        .lb-rank{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;min-width:44px;text-align:center;}
+        .lb-name{font-size:17px;font-weight:700;}
+        .lb-record{font-size:13px;color:var(--text-muted);margin-top:2px;}
+        .lb-profit{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;margin-left:auto;}
+        .bet-status{padding:4px 12px;border-radius:6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+        .bet-status.pending{background:rgba(245,166,35,.15);color:var(--gold);border:1px solid rgba(245,166,35,.3);}
+        .bet-status.won{background:rgba(0,214,122,.15);color:var(--green);border:1px solid rgba(0,214,122,.3);}
+        .bet-status.lost{background:rgba(255,69,96,.15);color:var(--red);border:1px solid rgba(255,69,96,.3);}
+        .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+            background-image:radial-gradient(ellipse 100% 80% at 50% 0%,rgba(0,100,255,.08),transparent 60%),
+            radial-gradient(ellipse 60% 60% at 80% 100%,rgba(0,214,122,.07),transparent 60%);}
+        .login-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:48px 44px;
+            width:100%;max-width:420px;box-shadow:0 30px 80px rgba(0,0,0,.4);}
+        .login-logo{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:4px;
+            background:linear-gradient(135deg,var(--green),#00a8ff);-webkit-background-clip:text;
+            -webkit-text-fill-color:transparent;background-clip:text;text-align:center;line-height:1;}
+        .login-tagline{text-align:center;color:var(--text-muted);font-size:14px;margin-top:6px;margin-bottom:36px;}
+        .login-tabs{display:flex;background:var(--card);border-radius:10px;padding:4px;margin-bottom:24px;}
+        .login-tab{flex:1;text-align:center;padding:10px;border-radius:7px;font-size:14px;font-weight:600;
+            cursor:pointer;transition:all .15s;color:var(--text-muted);}
+        .login-tab.active{background:var(--green);color:#000;}
+        .empty-state{text-align:center;padding:80px 20px;}
+        .empty-icon{font-size:56px;margin-bottom:16px;}
+        .empty-title{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;color:var(--text-muted);}
+        .empty-desc{font-size:14px;color:var(--text-dim);margin-top:8px;}
+        .advanced-panel{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;margin-top:20px;}
+        .advanced-title{font-size:13px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.8px;margin-bottom:16px;}
+        .checkbox-row{display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:12px;}
+        .checkbox-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--green);}
+        .checkbox-row span{font-size:14px;font-weight:500;color:var(--text);}
+        .wr-bar{height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:6px;}
+        .wr-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green-dim),var(--green));}
+        @media(max-width:768px){
+            .sidebar{display:none!important;}.topbar{display:flex;}.mobile-nav{display:flex;}
+            .content-area{padding:20px 16px;}
+            .form-grid-2,.form-grid-3{grid-template-columns:1fr;}
+            .line-card{flex-direction:column;}.line-card-amount{text-align:left;}
         }
-        .logo { font-size: 28px; font-weight: 700; color: #10b981; letter-spacing: -0.5px; }
-        .user-info { color: #94a3b8; margin-top: 6px; font-size: 14px; }
-        .balance-widget { text-align: right; display: flex; flex-direction: column; gap: 8px; }
-        .balance-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-        .balance-amount { font-size: 32px; font-weight: 700; color: #10b981; line-height: 1; }
-        .profit { color: #10b981; font-size: 16px; font-weight: 600; }
-        .profit.negative { color: #ef4444; }
-        button { 
-            background: #10b981; color: white; border: none; padding: 12px 24px;
-            border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600;
-            transition: all 0.2s; font-family: inherit;
-        }
-        button:hover { background: #059669; transform: translateY(-1px); }
-        button:active { transform: translateY(0); }
-        button.secondary { background: #334155; color: #e2e8f0; }
-        button.secondary:hover { background: #475569; }
-        button.danger { background: #ef4444; }
-        button.danger:hover { background: #dc2626; }
-        button.small { padding: 8px 16px; font-size: 13px; }
-        button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-        .tabs { display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; }
-        .tab {
-            background: #1e293b; padding: 12px 20px; border-radius: 8px; cursor: pointer;
-            white-space: nowrap; transition: all 0.2s; font-size: 14px; font-weight: 500;
-            color: #94a3b8; border: 1px solid #334155;
-        }
-        .tab:hover { background: #334155; color: #e2e8f0; }
-        .tab.active { background: #10b981; color: white; border-color: #10b981; }
-        .card {
-            background: #1e293b; padding: 24px; border-radius: 12px; margin: 12px 0;
-            border: 1px solid #334155; transition: border-color 0.2s;
-        }
-        .card:hover { border-color: #475569; }
-        .badge {
-            display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 11px;
-            font-weight: 600; margin-right: 8px; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        .badge-spread { background: #7c3aed; color: white; }
-        .badge-moneyline { background: #3b82f6; color: white; }
-        .badge-total { background: #f59e0b; color: white; }
-        .badge-private { background: #8b5cf6; color: white; }
-        .badge-prop { background: #ec4899; color: white; }
-        .locked-badge {
-            display: inline-block; background: rgba(239, 68, 68, 0.2); color: #ef4444;
-            padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-        .empty-state { text-align: center; padding: 80px 20px; color: #64748b; }
-        .empty-state-icon { font-size: 64px; margin-bottom: 20px; }
-        .modal {
-            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center;
-        }
-        .modal.active { display: flex; }
-        .modal-content {
-            background: #1e293b; padding: 32px; border-radius: 16px; max-width: 550px;
-            width: 90%; max-height: 85vh; overflow-y: auto; border: 1px solid #334155;
-        }
-        .modal-header { font-size: 24px; font-weight: 700; margin-bottom: 24px; color: #e2e8f0; }
-        .modal-body { margin: 24px 0; }
-        .modal-footer { display: flex; gap: 12px; justify-content: center; margin-top: 24px; }
-        input, select, textarea {
-            width: 100%; padding: 14px 16px; margin: 8px 0; border-radius: 8px;
-            border: 2px solid #334155; font-size: 15px; background: #0f172a;
-            color: #e2e8f0; font-family: inherit;
-        }
-        input:focus, select:focus, textarea:focus { outline: none; border-color: #10b981; }
-        label {
-            display: block; font-size: 13px; font-weight: 600; color: #94a3b8;
-            margin-bottom: 4px; margin-top: 12px;
-        }
-        @media (max-width: 768px) {
-            .header { flex-direction: column; text-align: center; }
-            .balance-widget { text-align: center; }
-            .balance-amount { font-size: 28px; }
-        }
+        @media(max-width:440px){.login-box{padding:32px 24px;}}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="app"></div>
-    </div>
-    
-    <div id="createGroupModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">👥 Create Private Group</div>
-            <div class="modal-body">
-                <label>Group Name</label>
-                <input type="text" id="groupName" placeholder="My Betting Group">
-                <label>Description (optional)</label>
-                <textarea id="groupDesc" placeholder="Description..." rows="3"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button onclick="saveGroup()">Create Group</button>
-                <button class="secondary" onclick="closeModal('createGroupModal')">Cancel</button>
-            </div>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="modal-overlay" id="betAmountModal">
+    <div class="modal-box">
+        <div class="modal-title">Place Your Bet</div>
+        <div id="betModalInfo" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:20px;font-size:14px;color:var(--text-muted);line-height:1.8;"></div>
+        <div class="form-group">
+            <label>Bet Amount ($)</label>
+            <input type="number" id="betAmountInput" placeholder="Enter amount..." min="1" step="1">
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary btn-full" onclick="confirmBetAmount()">Place Bet</button>
+            <button class="btn btn-secondary" onclick="closeBetModal()">Cancel</button>
         </div>
     </div>
-    
-    <script>
-        const API = window.location.origin + '/api';
-        let token = localStorage.getItem('token');
-        let user = null;
-        let view = 'marketplace';
-        let propTypes = {};
-        
-        async function doLogin() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            
-            if (!username || !password || password.length < 6) {
-                alert('Username required. Password must be 6+ characters.');
-                return;
-            }
-            
-            try {
-                const res = await fetch(API + '/auth/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({username, password})
-                });
-                
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    alert('Login failed: ' + (errorData.detail || 'Invalid username or password'));
-                    return;
-                }
-                
-                const data = await res.json();
-                token = data.token;
-                localStorage.setItem('token', token);
-                user = data.user;
-                await loadPropTypes();
-                renderApp();
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        async function doRegister() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            
-            if (!username || !password || password.length < 6) {
-                alert('Username required. Password must be 6+ characters.');
-                return;
-            }
-            
-            try {
-                const res = await fetch(API + '/auth/register', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({username, password})
-                });
-                
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    alert('Registration failed: ' + (errorData.detail || 'Username may be taken'));
-                    return;
-                }
-                
-                const data = await res.json();
-                console.log('Registration successful:', data);
-                token = data.token;
-                localStorage.setItem('token', token);
-                user = data.user;
-                console.log('User set:', user);
-                await loadPropTypes();
-                console.log('Prop types loaded');
-                console.log('Calling renderApp...');
-                await renderApp();
-                console.log('renderApp completed');
-            } catch (e) {
-                console.error('Registration error:', e);
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        async function loadUser() {
-            try {
-                const res = await fetch(API + '/user?token=' + token);
-                if (!res.ok) {
-                    // Token invalid - clear and show login
-                    localStorage.removeItem('token');
-                    token = null;
-                    user = null;
-                    location.reload();
-                    return;
-                }
-                user = await res.json();
-            } catch (e) {
-                console.error('Error loading user:', e);
-                localStorage.removeItem('token');
-                token = null;
-                user = null;
-                location.reload();
-            }
-        }
-        
-        async function loadPropTypes() {
-            const res = await fetch(API + '/prop-types');
-            propTypes = await res.json();
-        }
-        
-        async function renderShop() {
-            return `<h2 style="font-size: 28px; margin-bottom: 24px;">💰 Credit Shop</h2>
-                <p style="color: #94a3b8;">Shop features coming soon! Credits available via purchase.</p>`;
-        }
-        
-        async function renderUserSearch() {
-            const res = await fetch(API + '/users/search?sort=rating');
-            const users = await res.json();
-            
-            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">🔍 Find Bookies</h2>';
-            
-            if (users.length === 0) {
-                return html + '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3>No users found</h3></div>';
-            }
-            
-            users.slice(0, 20).forEach(u => {
-                html += `<div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong style="font-size: 18px;">@${u.username}</strong>
-                            ${u.rating > 0 ? `<span style="color: #f59e0b; margin-left: 8px;">⭐${u.rating.toFixed(1)}</span>` : ''}
-                            <div style="color: #94a3b8; margin-top: 8px; font-size: 13px;">
-                                ${u.wins}W-${u.losses}L • Profit: ${u.profit >= 0 ? '+' : ''}$${u.profit}
-                            </div>
-                        </div>
-                        <button class="small">Follow</button>
+</div>
+
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal-box">
+        <div class="modal-title" id="confirmTitle">Confirm</div>
+        <div id="confirmBody" style="color:var(--text-muted);font-size:15px;margin-bottom:20px;"></div>
+        <div class="modal-footer">
+            <button class="btn btn-danger btn-full" id="confirmOkBtn">Confirm</button>
+            <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="createGroupModal">
+    <div class="modal-box">
+        <div class="modal-title">Create Group</div>
+        <div class="form-group"><label>Group Name</label><input type="text" id="groupName" placeholder="My Betting Crew"></div>
+        <div class="form-group"><label>Description (optional)</label><textarea id="groupDesc" rows="3" placeholder="What's this group about?"></textarea></div>
+        <div class="modal-footer">
+            <button class="btn btn-primary btn-full" onclick="saveGroup()">Create Group</button>
+            <button class="btn btn-secondary" onclick="closeModal('createGroupModal')">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="root"></div>
+<script>
+const API=window.location.origin+'/api';
+let token=localStorage.getItem('token');
+let user=null,view='marketplace',propTypes={},linesCache=[];
+let _betResolve=null,_confirmResolve=null;
+
+function toast(msg,type='info'){
+    const ct=document.getElementById('toastContainer');
+    const t=document.createElement('div');
+    t.className='toast '+type;t.textContent=msg;t.onclick=()=>t.remove();
+    ct.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+function promptBetAmount(info,max){
+    return new Promise(r=>{
+        _betResolve=r;
+        document.getElementById('betModalInfo').innerHTML=info;
+        const inp=document.getElementById('betAmountInput');
+        inp.value='';inp.max=max;inp.placeholder='Max $'+max;
+        document.getElementById('betAmountModal').classList.add('open');
+        setTimeout(()=>inp.focus(),100);
+    });
+}
+function confirmBetAmount(){
+    const val=parseFloat(document.getElementById('betAmountInput').value);
+    const max=parseFloat(document.getElementById('betAmountInput').max);
+    if(isNaN(val)||val<=0){toast('Enter a valid amount','error');return;}
+    if(val>max){toast('Max bet is $'+max,'error');return;}
+    closeBetModal();
+    if(_betResolve){_betResolve(val);_betResolve=null;}
+}
+function closeBetModal(){
+    document.getElementById('betAmountModal').classList.remove('open');
+    if(_betResolve){_betResolve(null);_betResolve=null;}
+}
+document.getElementById('betAmountInput').addEventListener('keydown',e=>{if(e.key==='Enter')confirmBetAmount();});
+function showConfirm(title,body){
+    return new Promise(r=>{
+        _confirmResolve=r;
+        document.getElementById('confirmTitle').textContent=title;
+        document.getElementById('confirmBody').textContent=body;
+        document.getElementById('confirmOkBtn').onclick=()=>{closeConfirmModal();if(_confirmResolve){_confirmResolve(true);_confirmResolve=null;}};
+        document.getElementById('confirmModal').classList.add('open');
+    });
+}
+function closeConfirmModal(){
+    document.getElementById('confirmModal').classList.remove('open');
+    if(_confirmResolve){_confirmResolve(false);_confirmResolve=null;}
+}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.addEventListener('click',e=>{
+    if(e.target.classList.contains('modal-overlay')){
+        e.target.classList.remove('open');
+        if(_betResolve){_betResolve(null);_betResolve=null;}
+        if(_confirmResolve){_confirmResolve(false);_confirmResolve=null;}
+    }
+});
+function skeletonCards(n=3){
+    return Array(n).fill(0).map(()=>`<div class="skeleton-card"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line" style="width:40%"></div></div>`).join('');
+}
+async function doLogin(){
+    const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value;
+    if(!u||p.length<6){toast('Username required. Password 6+ chars.','error');return;}
+    const btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='Logging in...';
+    try{
+        const res=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+        if(!res.ok){const e=await res.json();toast('Login failed: '+(e.detail||'Invalid credentials'),'error');return;}
+        const data=await res.json();token=data.token;localStorage.setItem('token',token);user=data.user;
+        await loadPropTypes();renderApp();
+    }catch(e){toast('Connection error','error');}finally{btn.disabled=false;btn.textContent='Login';}
+}
+async function doRegister(){
+    const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value;
+    if(!u||p.length<6){toast('Username required. Password 6+ chars.','error');return;}
+    const btn=document.getElementById('registerBtn');btn.disabled=true;btn.textContent='Creating...';
+    try{
+        const res=await fetch(API+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+        if(!res.ok){const e=await res.json();toast('Registration failed: '+(e.detail||'Username taken'),'error');return;}
+        const data=await res.json();token=data.token;localStorage.setItem('token',token);user=data.user;
+        await loadPropTypes();renderApp();
+    }catch(e){toast('Connection error','error');}finally{btn.disabled=false;btn.textContent='Register';}
+}
+async function loadUser(){
+    try{
+        const res=await fetch(API+'/user?token='+token);
+        if(!res.ok){localStorage.removeItem('token');token=null;user=null;location.reload();return;}
+        user=await res.json();
+    }catch(e){localStorage.removeItem('token');token=null;user=null;location.reload();}
+}
+async function loadPropTypes(){const res=await fetch(API+'/prop-types');propTypes=await res.json();}
+async function logout(){
+    const ok=await showConfirm('Log out?','You will need to log back in.');
+    if(!ok)return;
+    localStorage.removeItem('token');token=null;user=null;location.reload();
+}
+function updateSidebarBalance(){
+    if(!user)return;
+    const b=document.getElementById('sidebarBalance');
+    if(b)b.textContent='$'+user.balance.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});
+    const pl=document.getElementById('sidebarPL');
+    if(pl){pl.textContent=(user.profit>=0?'+':'')+'$'+user.profit.toLocaleString()+' P/L';pl.className='bal-pl '+(user.profit>=0?'pos':'neg');}
+    const tb=document.getElementById('topbarBalance');
+    if(tb)tb.textContent='$'+user.balance.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});
+}
+async function loadLines(){
+    document.getElementById('content').innerHTML=skeletonCards(4);
+    const res=await fetch(API+'/lines?token='+token);
+    const lines=await res.json();
+    linesCache=lines;
+    if(!lines.length)return'<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Available</div><div class="empty-desc">Be the first to set a line</div></div>';
+    let html=`<div class="page-header"><div class="page-title">Marketplace</div><div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''} available</div></div>`;
+    for(const line of lines){
+        const avail=line.amount-(line.total_action||0);
+        const pct=Math.min(100,Math.round((line.total_action||0)/line.amount*100));
+        const isFull=avail<=0;
+        const sp=line.sport||'';
+        const sBadge=sp==='NBA'?'badge-nba':sp==='NFL'?'badge-nfl':'badge-prop';
+        const tBadge=line.type==='spread'?'badge-spread':line.type==='moneyline'?'badge-moneyline':'badge-total';
+        const barCls=pct===100?'full':pct>0?'partial':'';
+        html+=`<div class="card ${isFull?'':'card-glow'}">
+            <div class="line-card">
+                <div class="line-card-info">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <span class="badge ${tBadge}">${line.type}</span>
+                        <span class="badge ${sBadge}">${sp}</span>
+                        ${line.is_private?'<span class="badge badge-private">Private</span>':''}
                     </div>
-                </div>`;
-            });
-            return html;
-        }
-        
-        async function loadLines() {
-            const res = await fetch(API + '/lines?token=' + token);
-            const lines = await res.json();
-            
-            if (lines.length === 0) {
-                return '<div class="empty-state"><div class="empty-state-icon">🎯</div><h2>No Lines Available</h2><p>Be the first to create one!</p></div>';
-            }
-            
-            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">📊 Available Lines</h2>';
-            
-            for (const line of lines) {
-                const badgeClass = line.type === 'spread' ? 'badge-spread' : line.type === 'moneyline' ? 'badge-moneyline' : 'badge-total';
-                const available = line.amount - (line.total_action || 0);
-                const isFullyFilled = available <= 0;
-                
-                html += `<div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-                        <div style="flex: 1;">
-                            <div style="margin-bottom: 8px;">
-                                <span class="badge ${badgeClass}">${line.type.toUpperCase()}</span>
-                                ${line.is_private ? '<span class="badge badge-private">PRIVATE</span>' : ''}
-                            </div>
-                            <div style="font-size: 20px; font-weight: 700; margin-bottom: 6px;">${line.game}</div>
-                            <div style="color: #94a3b8; font-size: 15px;">Taking ${line.side} ${line.value > 0 ? '+' : ''}${line.value}</div>
-                            <div style="color: #64748b; font-size: 13px; margin-top: 6px;">by @${line.bookie_name}</div>
-                            ${line.max_bet_per_user ? `<div style="color: #64748b; font-size: 12px; margin-top: 4px;">Max per user: $${line.max_bet_per_user}</div>` : ''}
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 14px; color: #64748b; margin-bottom: 4px;">UP TO</div>
-                            <div style="font-size: 36px; font-weight: 700; color: #10b981;">$${line.amount}</div>
-                            <div style="font-size: 16px; font-weight: 600; color: ${isFullyFilled ? '#ef4444' : '#10b981'}; margin-top: 4px;">
-                                ${isFullyFilled ? 'Filled' : `$${available.toFixed(0)} available`}
-                            </div>
-                            <button onclick="takeLine(${line.id}, ${available}, ${line.max_bet_per_user || 999999})" class="small" style="margin-top: 12px;" ${isFullyFilled ? 'disabled' : ''}>
-                                ${isFullyFilled ? 'Filled' : 'Take Bet'}
-                            </button>
-                        </div>
+                    <div class="line-game">${line.game}</div>
+                    <div class="line-side">${line.side==='over'||line.side==='under'?line.side.toUpperCase():line.side.charAt(0).toUpperCase()+line.side.slice(1)}
+                        ${line.type!=='moneyline'?`<strong style="color:var(--text)"> ${line.value>0?'+':''}${line.value}</strong>`:''}
                     </div>
-                </div>`;
-            }
-            return html;
-        }
-        
-        async function takeLine(lineId, available, maxPerUser) {
-            // Determine the maximum this user can bet
-            const maxBet = Math.min(available, maxPerUser, user.balance);
-            
-            // Prompt user for amount
-            const amountStr = prompt(`How much do you want to bet?\n\nAvailable: $${available}\nMax per user: $${maxPerUser}\nYour balance: $${user.balance}\n\nEnter amount (max $${maxBet}):`);
-            
-            if (!amountStr) return; // User cancelled
-            
-            const amount = parseFloat(amountStr);
-            
-            // Validate amount
-            if (isNaN(amount) || amount <= 0) {
-                alert('❌ Please enter a valid amount');
-                return;
-            }
-            
-            if (amount > maxBet) {
-                alert(`❌ Maximum bet is $${maxBet}`);
-                return;
-            }
-            
-            try {
-                const res = await fetch(API + '/lines/take?token=' + token, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({line_id: lineId, amount: amount})
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    alert(`✅ Bet placed for $${data.amount}!`);
-                    await loadUser();
-                    renderApp();
-                } else {
-                    const err = await res.json();
-                    alert('❌ ' + err.detail);
-                }
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        async function renderCreateLine() {
-            const games = await fetch(API + '/games').then(r => r.json());
-            const groups = await fetch(API + '/groups?token=' + token).then(r => r.json());
-            
-            let html = `<h2 style="font-size: 28px; margin-bottom: 24px;">⚡ Set Your Line</h2>
-                <div class="card" style="max-width: 800px;">
-                    <label>Select Game</label>
-                    <select id="game">
-                        <option value="">Choose a game...</option>
-                        ${games.map(g => {
-                            const date = g.date || '';
-                            const time = g.commence_time ? new Date(g.commence_time).toLocaleString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit'
-                            }) : '';
-                            return `<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home}${time ? ' - ' + time : ''}</option>`;
-                        }).join('')}
-                    </select>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div>
-                            <label>Bet Type</label>
-                            <select id="type">
-                                <option value="spread">Spread</option>
-                                <option value="moneyline">Moneyline</option>
-                                <option value="total">Over/Under</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Your Side</label>
-                            <select id="side">
-                                <option value="home">Home</option>
-                                <option value="away">Away</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div>
-                            <label>Line Value</label>
-                            <input id="value" type="number" step="0.5" placeholder="-5.5">
-                        </div>
-                        <div>
-                            <label>Amount</label>
-                            <input id="amount" type="number" placeholder="100">
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 24px; padding: 20px; background: #0f172a; border-radius: 8px; border: 1px solid #334155;">
-                        <h3 style="margin-bottom: 16px; font-size: 16px; color: #10b981;">⚙️ Advanced Controls (Optional)</h3>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
-                            <div>
-                                <label>Max Bettors</label>
-                                <input id="maxBettors" type="number" placeholder="Unlimited">
-                                <small style="color: #64748b; font-size: 11px;">Leave empty for unlimited</small>
-                            </div>
-                            <div>
-                                <label>Max Bet Per User ($)</label>
-                                <input id="maxBetPerUser" type="number" placeholder="Unlimited">
-                                <small style="color: #64748b; font-size: 11px;">Limit per bettor</small>
-                            </div>
-                            <div>
-                                <label>Max Total Action ($)</label>
-                                <input id="maxTotalAction" type="number" placeholder="Unlimited">
-                                <small style="color: #64748b; font-size: 11px;">Total exposure limit</small>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top: 16px;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                <input type="checkbox" id="isPrivate" style="width: auto; margin: 0;" onchange="toggleGroupSelect()">
-                                <span>Private Line (Groups Only)</span>
-                            </label>
-                            ${groups.length > 0 ? `
-                                <select id="groupId" style="margin-top: 8px; display: none;">
-                                    <option value="">Select a group...</option>
-                                    ${groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('')}
-                                </select>
-                            ` : '<small style="color: #64748b; margin-left: 28px;">Create a group first to use private lines</small>'}
-                        </div>
-                    </div>
-                    
-                    <button onclick="createLine()" style="width: 100%; margin-top: 24px; padding: 16px;">Post Line</button>
-                </div>`;
-            
-            return html;
-        }
-        
-        function toggleGroupSelect() {
-            const groupSelect = document.getElementById('groupId');
-            const isPrivate = document.getElementById('isPrivate');
-            if (groupSelect && isPrivate) {
-                groupSelect.style.display = isPrivate.checked ? 'block' : 'none';
-            }
-        }
-        
-        function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('token');
-                token = null;
-                user = null;
-                location.reload();
-            }
-        }
-        
-        async function createLine() {
-            const gameId = document.getElementById('game').value;
-            const type = document.getElementById('type').value;
-            const side = document.getElementById('side').value;
-            const value = parseFloat(document.getElementById('value').value);
-            const amount = parseFloat(document.getElementById('amount').value);
-            
-            // Advanced controls
-            const maxBettors = document.getElementById('maxBettors')?.value;
-            const maxBetPerUser = document.getElementById('maxBetPerUser')?.value;
-            const maxTotalAction = document.getElementById('maxTotalAction')?.value;
-            const isPrivate = document.getElementById('isPrivate')?.checked || false;
-            const groupId = document.getElementById('groupId')?.value;
-            
-            if (!gameId || !value || !amount) {
-                alert('Please fill in all fields');
-                return;
-            }
-            
-            const body = {
-                game_id: gameId,
-                type,
-                side,
-                value,
-                amount
-            };
-            
-            // Add optional advanced controls if set
-            if (maxBettors) body.max_bettors = parseInt(maxBettors);
-            if (maxBetPerUser) body.max_bet_per_user = parseFloat(maxBetPerUser);
-            if (maxTotalAction) body.max_total_action = parseFloat(maxTotalAction);
-            if (isPrivate) {
-                body.is_private = true;
-                if (groupId) body.group_id = parseInt(groupId);
-            }
-            
-            try {
-                const res = await fetch(API + '/lines?token=' + token, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(body)
-                });
-                if (res.ok) {
-                    alert('✅ Line created!');
-                    await loadUser();
-                    view = 'marketplace';
-                    renderApp();
-                } else {
-                    const err = await res.json();
-                    alert('❌ ' + err.detail);
-                }
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        async function renderProps() {
-            const props = await fetch(API + '/props?token=' + token).then(r => r.json());
-            
-            let html = `<h2 style="font-size: 28px; margin-bottom: 24px;">🎲 Player Props</h2>
-                <div class="card" style="max-width: 800px;">
-                    <h3 style="margin-bottom: 16px;">Create Prop</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div>
-                            <label>Sport</label>
-                            <select id="propSport" onchange="updatePropTypes()">
-                                <option value="">Choose sport...</option>
-                                ${Object.keys(propTypes).map(sport => `<option value="${sport}">${sport}</option>`).join('')}
-                            </select>
-                        </div>
-                        <div>
-                            <label>Player Name</label>
-                            <input id="propPlayer" type="text" placeholder="LeBron James">
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div>
-                            <label>Prop Type</label>
-                            <select id="propType"><option value="">Choose type...</option></select>
-                        </div>
-                        <div>
-                            <label>Line</label>
-                            <input id="propLine" type="number" step="0.5" placeholder="28.5">
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                        <div>
-                            <label>Side</label>
-                            <select id="propSide">
-                                <option value="over">Over</option>
-                                <option value="under">Under</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label>Amount</label>
-                            <input id="propAmount" type="number" placeholder="100">
-                        </div>
-                    </div>
-                    <button onclick="createProp()" style="width: 100%; margin-top: 20px;">Post Prop</button>
-                </div>`;
-            
-            if (props.length > 0) {
-                html += '<h3 style="font-size: 22px; margin-top: 40px; margin-bottom: 16px;">Available Props</h3>';
-                props.forEach(prop => {
-                    html += `<div class="card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-                            <div style="flex: 1;">
-                                <span class="badge badge-prop">${prop.sport}</span>
-                                <div style="font-size: 20px; font-weight: 700; margin-top: 8px;">${prop.player_name} - ${prop.prop_type}</div>
-                                <div style="color: #94a3b8; margin-top: 6px;">${prop.side.toUpperCase()} ${prop.line}</div>
-                                <div style="color: #64748b; font-size: 13px; margin-top: 6px;">by @${prop.bookie_name}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="font-size: 36px; font-weight: 700; color: #10b981;">$${prop.amount}</div>
-                                <button onclick="takeProp('${prop.id}')" class="small" style="margin-top: 12px;">Take Prop</button>
-                            </div>
-                        </div>
-                    </div>`;
-                });
-            }
-            
-            return html;
-        }
-        
-        function updatePropTypes() {
-            const sport = document.getElementById('propSport').value;
-            const propTypeSelect = document.getElementById('propType');
-            if (sport && propTypes[sport]) {
-                propTypeSelect.innerHTML = '<option value="">Choose type...</option>' +
-                    propTypes[sport].map(type => `<option value="${type}">${type}</option>`).join('');
-            } else {
-                propTypeSelect.innerHTML = '<option value="">Choose type...</option>';
-            }
-        }
-        
-        async function createProp() {
-            const sport = document.getElementById('propSport').value;
-            const player = document.getElementById('propPlayer').value;
-            const propType = document.getElementById('propType').value;
-            const line = parseFloat(document.getElementById('propLine').value);
-            const side = document.getElementById('propSide').value;
-            const amount = parseFloat(document.getElementById('propAmount').value);
-            
-            if (!sport || !player || !propType || !line || !amount) {
-                alert('Please fill all fields');
-                return;
-            }
-            
-            try {
-                const res = await fetch(API + '/props?token=' + token, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({sport, player_name: player, prop_type: propType, line, side, amount})
-                });
-                if (res.ok) {
-                    alert('✅ Prop created!');
-                    await loadUser();
-                    renderApp();
-                } else {
-                    const err = await res.json();
-                    alert('❌ ' + err.detail);
-                }
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        async function takeProp(propId) {
-            try {
-                const res = await fetch(API + '/props/take?token=' + token, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({prop_id: propId})
-                });
-                if (res.ok) {
-                    alert('✅ Prop bet placed!');
-                    await loadUser();
-                    renderApp();
-                } else {
-                    const err = await res.json();
-                    alert('❌ ' + err.detail);
-                }
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        async function renderFutures() {
-            const futures = await fetch(API + '/futures').then(r => r.json());
-            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">🔮 Futures Markets</h2>';
-            futures.forEach(future => {
-                html += `<div class="card">
-                    <h3 style="margin-bottom: 12px;">${future.market_name}</h3>
-                    <div style="color: #94a3b8; margin-bottom: 16px;">${future.sport} • Closes ${future.close_date}</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
-                        ${future.options.map(option => `<button class="secondary small">${option}</button>`).join('')}
-                    </div>
-                </div>`;
-            });
-            return html;
-        }
-        
-        async function renderMyBets() {
-            const res = await fetch(API + '/bets?token=' + token);
-            const data = await res.json();
-            const bets = data.single_bets || [];
-            
-            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">📊 My Bets</h2>';
-            
-            if (bets.length === 0) {
-                return html + '<div class="empty-state"><div class="empty-state-icon">📊</div><h3>No bets yet</h3></div>';
-            }
-            
-            bets.forEach(bet => {
-                const isBookie = bet.bookie_id === user.id;
-                const statusColor = bet.status === 'pending' ? '#f59e0b' : bet.winner === (isBookie ? 'bookie' : 'bettor') ? '#10b981' : '#ef4444';
-                html += `<div class="card">
-                    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
-                        <div style="flex: 1;">
-                            <div style="font-weight: 700; font-size: 18px;">${bet.game}</div>
-                            <div style="color: #94a3b8; margin-top: 6px;">
-                                ${bet.type.toUpperCase()}: ${isBookie ? bet.bookie_side : bet.bettor_side} ${bet.value > 0 ? '+' : ''}${bet.value}
-                            </div>
-                            <div style="color: #64748b; font-size: 13px; margin-top: 6px;">
-                                ${isBookie ? 'vs @' + bet.bettor_name : 'vs @' + bet.bookie_name}
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 28px; font-weight: 700; color: ${statusColor};">$${bet.amount}</div>
-                            <div style="font-size: 14px; color: #94a3b8; margin-top: 6px;">
-                                ${bet.status === 'pending' ? 'Pending ⏳' : bet.winner === (isBookie ? 'bookie' : 'bettor') ? 'Won ✅' : 'Lost ❌'}
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            
-            return html;
-        }
-        
-        async function renderLeaderboard() {
-            const res = await fetch(API + '/leaderboard');
-            const leaders = await res.json();
-            
-            let html = '<h2 style="font-size: 28px; margin-bottom: 24px;">🏆 Leaderboard</h2>';
-            
-            leaders.forEach((leader, idx) => {
-                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
-                const profitColor = leader.profit >= 0 ? '#10b981' : '#ef4444';
-                html += `<div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 20px;">
-                        <div style="font-size: 28px; min-width: 50px; text-align: center;">${medal}</div>
-                        <div>
-                            <div style="font-weight: 700; font-size: 18px;">@${leader.username}</div>
-                            <div style="color: #94a3b8; margin-top: 4px;">${leader.wins}W - ${leader.losses}L</div>
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 28px; font-weight: 700; color: ${profitColor};">${leader.profit >= 0 ? '+' : ''}$${leader.profit}</div>
-                    </div>
-                </div>`;
-            });
-            
-            return html;
-        }
-        
-        async function renderGroups() {
-            const res = await fetch(API + '/groups?token=' + token);
-            const groups = await res.json();
-            
-            let html = `<h2 style="font-size: 28px; margin-bottom: 24px;">👥 Private Groups</h2>
-                <button onclick="openModal('createGroupModal')" style="margin-bottom: 24px;">+ Create Group</button>`;
-            
-            if (groups.length === 0) {
-                return html + '<div class="empty-state"><div class="empty-state-icon">👥</div><h3>No groups yet</h3></div>';
-            }
-            
-            groups.forEach(group => {
-                html += `<div class="card">
-                    <div style="font-weight: 700; font-size: 20px;">${group.name}</div>
-                    ${group.description ? `<div style="color: #94a3b8; margin-top: 8px;">${group.description}</div>` : ''}
-                    <div style="color: #64748b; margin-top: 12px; font-size: 13px;">
-                        ${group.member_count} members • Created by @${group.creator_name}
-                    </div>
-                </div>`;
-            });
-            
-            return html;
-        }
-        
-        async function saveGroup() {
-            const name = document.getElementById('groupName').value;
-            const description = document.getElementById('groupDesc').value;
-            if (!name) {
-                alert('Please enter a group name');
-                return;
-            }
-            try {
-                const res = await fetch(API + '/groups?token=' + token, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({name, description})
-                });
-                if (res.ok) {
-                    alert('✅ Group created!');
-                    closeModal('createGroupModal');
-                    document.getElementById('groupName').value = '';
-                    document.getElementById('groupDesc').value = '';
-                    renderApp();
-                } else {
-                    const err = await res.json();
-                    alert('❌ ' + err.detail);
-                }
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        async function renderFollowing() {
-            return '<h2 style="font-size: 28px; margin-bottom: 24px;">⭐ Following</h2><p style="color: #94a3b8;">Follow your favorite bookies!</p>';
-        }
-        
-        async function renderAdmin() {
-            if (!user.is_admin) {
-                return '<div class="empty-state"><div class="empty-state-icon">🔒</div><h3>Admin access required</h3></div>';
-            }
-            
-            let html = `<h2 style="font-size: 28px; margin-bottom: 24px;">⚙️ Admin Panel</h2>
-                <div class="card" style="border: 2px solid #ef4444;">
-                    <h3 style="color: #ef4444; margin-bottom: 16px;">Enter Player Stats</h3>
-                    <label>Player Name</label>
-                    <input id="adminPlayer" type="text" placeholder="LeBron James">
-                    <label>Points</label>
-                    <input id="adminPoints" type="number" placeholder="32">
-                    <label>Rebounds</label>
-                    <input id="adminRebounds" type="number" placeholder="8">
-                    <label>Assists</label>
-                    <input id="adminAssists" type="number" placeholder="6">
-                    <button onclick="submitPlayerStats()" style="width: 100%; margin-top: 16px;">Submit Stats & Auto-Settle Props</button>
-                </div>`;
-            
-            return html;
-        }
-        
-        async function submitPlayerStats() {
-            const player = document.getElementById('adminPlayer').value;
-            const points = parseFloat(document.getElementById('adminPoints').value) || 0;
-            const rebounds = parseFloat(document.getElementById('adminRebounds').value) || 0;
-            const assists = parseFloat(document.getElementById('adminAssists').value) || 0;
-            
-            if (!player) {
-                alert('Enter player name');
-                return;
-            }
-            
-            try {
-                const res = await fetch(API + '/admin/player-stats', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        admin_password: 'admin123',
-                        game_id: 'game_1',
-                        player_name: player,
-                        stats: {points, rebounds, assists}
-                    })
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    alert(`✅ ${data.message}\n${data.props_settled} props auto-settled!`);
-                } else {
-                    const err = await res.json();
-                    alert('❌ ' + err.detail);
-                }
-            } catch (e) {
-                alert('Error: ' + e.message);
-            }
-        }
-        
-        function openModal(modalId) {
-            document.getElementById(modalId).classList.add('active');
-        }
-        
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-        }
-        
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
-                e.target.classList.remove('active');
-            }
-        });
-        
-        async function renderApp() {
-            console.log('renderApp called, user:', user);
-            if (!user) {
-                console.log('No user, calling loadUser...');
-                await loadUser();
-            }
-            
-            // If still no user after loading, don't render
-            if (!user) {
-                console.error('No user found after loadUser, redirecting to login');
-                return;
-            }
-            
-            console.log('User confirmed, loading content...');
-            let content = '';
-            if (view === 'marketplace') content = await loadLines();
-            else if (view === 'create') content = await renderCreateLine();
-            else if (view === 'props') content = await renderProps();
-            else if (view === 'futures') content = await renderFutures();
-            else if (view === 'bets') content = await renderMyBets();
-            else if (view === 'leaderboard') content = await renderLeaderboard();
-            else if (view === 'groups') content = await renderGroups();
-            else if (view === 'following') content = await renderFollowing();
-            else if (view === 'shop') content = await renderShop();
-            else if (view === 'search') content = await renderUserSearch();
-            else if (view === 'admin') content = await renderAdmin();
-            
-            console.log('Content loaded, rendering HTML...');
-            const profitClass = user.profit >= 0 ? '' : 'negative';
-            
-            document.getElementById('app').innerHTML = `
-                <div class="header">
-                    <div>
-                        <div class="logo">🎯 BookieVerse</div>
-                        <div class="user-info">@${user.username} • ${user.wins}W - ${user.losses}L${user.is_admin ? ' • 👑 ADMIN' : ''}</div>
-                    </div>
-                    <div class="balance-widget">
-                        <div class="balance-label">Balance</div>
-                        <div class="balance-amount">$${user.balance.toLocaleString()}</div>
-                        <div class="profit ${profitClass}">${user.profit >= 0 ? '+' : ''}$${user.profit.toLocaleString()} P/L</div>
-                        <button onclick="logout()" class="secondary small" style="margin-top: 12px;">Logout</button>
+                    <div class="line-by">by @${line.bookie_name}${line.max_bet_per_user?' · Max $'+line.max_bet_per_user+'/user':''}</div>
+                    <div class="fill-bar-wrap">
+                        <div class="fill-bar-label"><span>${pct}% filled</span><span>${isFull?'Fully matched':'$'+avail.toFixed(0)+' open'}</span></div>
+                        <div class="fill-bar-track"><div class="fill-bar-fill ${barCls}" style="width:${pct}%"></div></div>
                     </div>
                 </div>
-                
-                <div class="tabs">
-                    <div class="tab ${view === 'marketplace' ? 'active' : ''}" onclick="changeView('marketplace')">🛒 Marketplace</div>
-                    <div class="tab ${view === 'create' ? 'active' : ''}" onclick="changeView('create')">⚡ Set Lines</div>
-                    <div class="tab ${view === 'props' ? 'active' : ''}" onclick="changeView('props')">🎲 Props</div>
-                    <div class="tab ${view === 'futures' ? 'active' : ''}" onclick="changeView('futures')">🔮 Futures</div>
-                    <div class="tab ${view === 'bets' ? 'active' : ''}" onclick="changeView('bets')">📊 My Bets</div>
-                    <div class="tab ${view === 'leaderboard' ? 'active' : ''}" onclick="changeView('leaderboard')">🏆 Leaderboard</div>
-                    <div class="tab ${view === 'groups' ? 'active' : ''}" onclick="changeView('groups')">👥 Groups</div>
-                    <div class="tab ${view === 'following' ? 'active' : ''}" onclick="changeView('following')">⭐ Following</div>
-                    <div class="tab ${view === 'shop' ? 'active' : ''}" onclick="changeView('shop')">💰 Shop</div>
-                    <div class="tab ${view === 'search' ? 'active' : ''}" onclick="changeView('search')">🔍 Find Bookies</div>
-                    ${user.is_admin ? `<div class="tab ${view === 'admin' ? 'active' : ''}" onclick="changeView('admin')">⚙️ Admin</div>` : ''}
+                <div class="line-card-amount">
+                    <div class="line-amount-num">$${line.amount}</div>
+                    <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="takeLine(${line.id})" ${isFull?'disabled':''}>
+                        ${isFull?'Filled':'Take Bet'}
+                    </button>
                 </div>
-                
-                <div id="content">${content}</div>
-            `;
-        }
-        
-        function changeView(newView) {
-            view = newView;
-            renderApp();
-        }
-        
-        if (!token) {
-            document.getElementById('app').innerHTML = `
-                <div style="background: #1e293b; padding: 48px; border-radius: 16px; max-width: 450px; margin: 100px auto; text-align: center; border: 1px solid #334155;">
-                    <h1 style="font-size: 36px; margin-bottom: 12px; color: #10b981;">🎯 BookieVerse</h1>
-                    <p style="margin-bottom: 32px; color: #94a3b8; font-size: 15px;">Professional P2P Sportsbook</p>
-                    <input id="username" placeholder="Username" autofocus style="margin: 0;" />
-                    <input id="password" type="password" placeholder="Password (6+ chars)" style="margin: 0;" />
-                    <div style="display: flex; gap: 12px; margin-top: 16px;">
-                        <button onclick="doLogin()" style="flex: 1; padding: 16px;">Login</button>
-                        <button onclick="doRegister()" class="secondary" style="flex: 1; padding: 16px;">Register</button>
+            </div>
+        </div>`;
+    }
+    return html;
+}
+async function takeLine(lineId){
+    const line=linesCache.find(l=>l.id===lineId);
+    if(!line){toast('Line not found','error');return;}
+    const available=line.amount-(line.total_action||0);
+    const maxPerUser=line.max_bet_per_user||999999;
+    const maxBet=Math.min(available,maxPerUser,user.balance);
+    if(maxBet<=0){toast('No available action on this line','error');return;}
+    const amount=await promptBetAmount(
+        `<strong style="color:var(--text)">${line.game}</strong><br>Type: ${line.type.toUpperCase()} &middot; Side: ${line.side} ${line.value>0?'+':''}${line.value}<br>Available: <strong style="color:var(--green)">$${available.toFixed(0)}</strong> &middot; Balance: $${user.balance.toLocaleString()}`,
+        maxBet
+    );
+    if(!amount)return;
+    try{
+        const res=await fetch(API+'/lines/take?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_id:lineId,amount})});
+        if(res.ok){const data=await res.json();toast('Bet placed — $'+data.amount+'!','success');await loadUser();updateSidebarBalance();changeView('marketplace');}
+        else{const e=await res.json();toast(e.detail||'Error placing bet','error');}
+    }catch(e){toast('Connection error','error');}
+}
+async function renderCreateLine(){
+    document.getElementById('content').innerHTML=skeletonCards(1);
+    const games=await fetch(API+'/games').then(r=>r.json());
+    const groups=await fetch(API+'/groups?token='+token).then(r=>r.json());
+    return`<div class="page-header"><div class="page-title">Set a Line</div><div class="page-subtitle">Post your line to the marketplace</div></div>
+        <div class="card" style="max-width:760px;">
+            <div class="form-group"><label>Select Game</label>
+                <select id="game"><option value="">Choose a game...</option>
+                ${games.map(g=>{const time=g.commence_time?new Date(g.commence_time).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;return`<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home} — ${time}</option>`;}).join('')}
+                </select></div>
+            <div class="form-grid-2">
+                <div class="form-group"><label>Bet Type</label><select id="type"><option value="spread">Spread</option><option value="moneyline">Moneyline</option><option value="total">Over / Under</option></select></div>
+                <div class="form-group"><label>Your Side</label><select id="side"><option value="home">Home</option><option value="away">Away</option><option value="over">Over</option><option value="under">Under</option></select></div>
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group"><label>Line Value</label><input id="value" type="number" step="0.5" placeholder="-5.5"></div>
+                <div class="form-group"><label>Amount ($)</label><input id="amount" type="number" placeholder="100"></div>
+            </div>
+            <div class="advanced-panel">
+                <div class="advanced-title">Advanced Controls</div>
+                <div class="form-grid-3">
+                    <div class="form-group" style="margin:0"><label>Max Bettors</label><input id="maxBettors" type="number" placeholder="Unlimited"></div>
+                    <div class="form-group" style="margin:0"><label>Max Per User ($)</label><input id="maxBetPerUser" type="number" placeholder="Unlimited"></div>
+                    <div class="form-group" style="margin:0"><label>Max Total Action ($)</label><input id="maxTotalAction" type="number" placeholder="Unlimited"></div>
+                </div>
+                <div class="checkbox-row"><input type="checkbox" id="isPrivate" onchange="toggleGroupSelect()"><span>Private Line (Groups Only)</span></div>
+                ${groups.length>0?`<select id="groupId" style="margin-top:10px;display:none;"><option value="">Select a group...</option>${groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')}</select>`:'<small style="color:var(--text-dim);display:block;margin-top:8px;">Create a group first to use private lines</small>'}
+            </div>
+            <button class="btn btn-primary btn-lg btn-full" style="margin-top:24px;" onclick="createLine()">Post Line</button>
+        </div>`;
+}
+function toggleGroupSelect(){const gs=document.getElementById('groupId'),ip=document.getElementById('isPrivate');if(gs&&ip)gs.style.display=ip.checked?'block':'none';}
+async function createLine(){
+    const gameId=document.getElementById('game')?.value,type=document.getElementById('type')?.value,
+        side=document.getElementById('side')?.value,value=parseFloat(document.getElementById('value')?.value),
+        amount=parseFloat(document.getElementById('amount')?.value);
+    if(!gameId||isNaN(value)||isNaN(amount)||amount<=0){toast('Fill in all required fields','error');return;}
+    const body={game_id:gameId,type,side,value,amount};
+    const mb=document.getElementById('maxBettors')?.value,mbu=document.getElementById('maxBetPerUser')?.value,
+        mta=document.getElementById('maxTotalAction')?.value,ip=document.getElementById('isPrivate')?.checked,
+        gi=document.getElementById('groupId')?.value;
+    if(mb)body.max_bettors=parseInt(mb);if(mbu)body.max_bet_per_user=parseFloat(mbu);
+    if(mta)body.max_total_action=parseFloat(mta);if(ip){body.is_private=true;if(gi)body.group_id=parseInt(gi);}
+    try{
+        const res=await fetch(API+'/lines?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(res.ok){toast('Line posted!','success');await loadUser();updateSidebarBalance();changeView('marketplace');}
+        else{const e=await res.json();toast(e.detail||'Error','error');}
+    }catch(e){toast('Connection error','error');}
+}
+async function renderProps(){
+    document.getElementById('content').innerHTML=skeletonCards(2);
+    const props=await fetch(API+'/props?token='+token).then(r=>r.json());
+    let html=`<div class="page-header"><div class="page-title">Player Props</div><div class="page-subtitle">Bet on individual player stats</div></div>
+        <div class="card" style="max-width:760px;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;margin-bottom:16px;">Post a Prop</div>
+            <div class="form-grid-2">
+                <div class="form-group"><label>Sport</label><select id="propSport" onchange="updatePropTypes()"><option value="">Choose sport...</option>${Object.keys(propTypes).map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+                <div class="form-group"><label>Player Name</label><input id="propPlayer" type="text" placeholder="LeBron James"></div>
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group"><label>Prop Type</label><select id="propType"><option value="">Choose type...</option></select></div>
+                <div class="form-group"><label>Line</label><input id="propLine" type="number" step="0.5" placeholder="28.5"></div>
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group"><label>Your Side</label><select id="propSide"><option value="over">Over</option><option value="under">Under</option></select></div>
+                <div class="form-group"><label>Amount ($)</label><input id="propAmount" type="number" placeholder="50"></div>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="createProp()">Post Prop</button>
+        </div>`;
+    if(props.length>0){
+        html+=`<div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;margin:28px 0 14px;">Open Props</div>`;
+        props.forEach(p=>{html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;"><div><span class="badge badge-prop">${p.sport}</span><div style="font-size:19px;font-weight:700;margin-top:8px;">${p.player_name} — ${p.prop_type}</div><div style="color:var(--text-muted);margin-top:4px;font-size:14px;">${p.side.toUpperCase()} <strong style="color:var(--text)">${p.line}</strong></div><div style="color:var(--text-dim);font-size:12px;margin-top:4px;">by @${p.bookie_name}</div></div><div style="text-align:right;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;color:var(--green);">$${p.amount}</div><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="takeProp(${p.id})">Take Prop</button></div></div></div>`;});
+    }
+    return html;
+}
+function updatePropTypes(){const s=document.getElementById('propSport').value,sel=document.getElementById('propType');sel.innerHTML='<option value="">Choose type...</option>'+(s&&propTypes[s]?propTypes[s].map(t=>`<option value="${t}">${t}</option>`).join(''):'');}
+async function createProp(){
+    const sport=document.getElementById('propSport').value,player=document.getElementById('propPlayer').value,
+        propType=document.getElementById('propType').value,line=parseFloat(document.getElementById('propLine').value),
+        side=document.getElementById('propSide').value,amount=parseFloat(document.getElementById('propAmount').value);
+    if(!sport||!player||!propType||isNaN(line)||isNaN(amount)){toast('Fill all fields','error');return;}
+    try{
+        const res=await fetch(API+'/props?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sport,player_name:player,prop_type:propType,line,side,amount})});
+        if(res.ok){toast('Prop posted!','success');await loadUser();updateSidebarBalance();renderApp();}
+        else{const e=await res.json();toast(e.detail||'Error','error');}
+    }catch(e){toast('Connection error','error');}
+}
+async function takeProp(propId){
+    try{
+        const res=await fetch(API+'/props/take?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prop_id:propId})});
+        if(res.ok){toast('Prop bet placed!','success');await loadUser();updateSidebarBalance();renderApp();}
+        else{const e=await res.json();toast(e.detail||'Error','error');}
+    }catch(e){toast('Connection error','error');}
+}
+async function renderFutures(){
+    const futures=await fetch(API+'/futures').then(r=>r.json());
+    let html=`<div class="page-header"><div class="page-title">Futures</div><div class="page-subtitle">Season-long markets</div></div>`;
+    futures.forEach(f=>{html+=`<div class="card"><div style="font-size:19px;font-weight:700;">${f.market_name}</div><div style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">${f.sport}</div><div style="display:flex;flex-wrap:wrap;gap:10px;">${f.options.map(o=>`<button class="btn btn-secondary btn-sm">${o}</button>`).join('')}</div></div>`;});
+    return html;
+}
+async function renderMyBets(){
+    document.getElementById('content').innerHTML=skeletonCards(3);
+    const res=await fetch(API+'/bets?token='+token);const data=await res.json();
+    const bets=data.single_bets||[],props=data.prop_bets||[];
+    let html=`<div class="page-header"><div class="page-title">My Bets</div><div class="page-subtitle">${bets.length+props.length} total bets</div></div>`;
+    if(!bets.length&&!props.length)return html+`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No bets yet</div><div class="empty-desc">Head to the marketplace to place your first bet</div></div>`;
+    const all=[...bets.map(b=>({...b,_type:'line'})),...props.map(p=>({...p,_type:'prop'}))];
+    all.forEach(b=>{
+        const isBookie=b.bookie_id===user.id,isWon=b.winner===(isBookie?'bookie':'bettor'),isPush=b.winner==='push';
+        let sc='pending',sl='Pending ⏳';
+        if(b.status==='settled'){if(isPush){sc='pending';sl='Push 🤝';}else if(isWon){sc='won';sl='Won ✅';}else{sc='lost';sl='Lost ❌';}}
+        const ml=b._type==='line'?`${b.game} · ${b.type.toUpperCase()}: ${isBookie?b.bookie_side:b.bettor_side} ${b.value>0?'+':''}${b.value}`:`${b.player_name} ${b.prop_type} · ${(isBookie?b.bookie_side:b.bettor_side).toUpperCase()} ${b.line}`;
+        const vs=isBookie?'vs @'+(b.bettor_name||'—'):'vs @'+b.bookie_name;
+        html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;"><div style="flex:1;min-width:0;"><div style="font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ml}</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px;">${vs} · <span style="color:var(--text-dim)">${isBookie?'Bookie':'Bettor'}</span></div></div><div style="text-align:right;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;color:${b.status==='settled'?(isWon?'var(--green)':'var(--red)'):'var(--gold)'}">$${b.amount}</div><div style="margin-top:6px;"><span class="bet-status ${sc}">${sl}</span></div></div></div></div>`;
+    });
+    return html;
+}
+async function renderLeaderboard(){
+    document.getElementById('content').innerHTML=skeletonCards(5);
+    const res=await fetch(API+'/leaderboard');const leaders=await res.json();
+    const medals=['🥇','🥈','🥉'];
+    let html=`<div class="page-header"><div class="page-title">Leaderboard</div><div class="page-subtitle">Top bookies by P&L</div></div>`;
+    leaders.forEach((l,i)=>{
+        const pos=l.profit>=0;
+        html+=`<div class="card"><div class="lb-row"><div class="lb-rank" style="color:${i===0?'var(--gold)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text-dim)'}">${medals[i]||(i+1)}</div><div style="flex:1;"><div class="lb-name">@${l.username}${user&&l.id===user.id?' <span style="color:var(--green);font-size:12px;">(you)</span>':''}</div><div class="lb-record">${l.wins}W — ${l.losses}L</div><div class="wr-bar" style="width:120px;margin-top:6px;"><div class="wr-fill" style="width:${l.wins+l.losses>0?Math.round(l.wins/(l.wins+l.losses)*100):0}%"></div></div></div><div class="lb-profit" style="color:${pos?'var(--green)':'var(--red)'};">${pos?'+':''}$${l.profit.toLocaleString()}</div></div></div>`;
+    });
+    return html;
+}
+async function renderGroups(){
+    document.getElementById('content').innerHTML=skeletonCards(2);
+    const res=await fetch(API+'/groups?token='+token);const groups=await res.json();
+    let html=`<div class="page-header"><div class="page-title">Private Groups</div><div class="page-subtitle">Bet with your crew</div></div><button class="btn btn-primary" style="margin-bottom:20px;" onclick="openModal('createGroupModal')">+ Create Group</button>`;
+    if(!groups.length)return html+`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No groups yet</div><div class="empty-desc">Create a group to share private lines</div></div>`;
+    groups.forEach(g=>{html+=`<div class="card"><div style="font-size:19px;font-weight:700;">${g.name}</div>${g.description?`<div style="color:var(--text-muted);margin-top:6px;font-size:14px;">${g.description}</div>`:''}<div style="color:var(--text-dim);font-size:12px;margin-top:12px;">${g.member_count} member${g.member_count!==1?'s':''} · Created by @${g.creator_name}${g.is_creator?' · <span style="color:var(--green)">Owner</span>':''}</div></div>`;});
+    return html;
+}
+async function saveGroup(){
+    const name=document.getElementById('groupName').value.trim(),desc=document.getElementById('groupDesc').value;
+    if(!name){toast('Enter a group name','error');return;}
+    try{
+        const res=await fetch(API+'/groups?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,description:desc})});
+        if(res.ok){toast('Group created!','success');closeModal('createGroupModal');document.getElementById('groupName').value='';document.getElementById('groupDesc').value='';renderApp();}
+        else{const e=await res.json();toast(e.detail||'Error','error');}
+    }catch(e){toast('Connection error','error');}
+}
+async function renderUserSearch(){
+    document.getElementById('content').innerHTML=skeletonCards(5);
+    const res=await fetch(API+'/users/search');const users=await res.json();
+    let html=`<div class="page-header"><div class="page-title">Find Bookies</div><div class="page-subtitle">Discover top players</div></div>`;
+    if(!users.length)return html+`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No users found</div></div>`;
+    users.slice(0,20).forEach(u=>{
+        const wr=u.wins+u.losses>0?Math.round(u.wins/(u.wins+u.losses)*100):0;
+        html+=`<div class="card"><div style="display:flex;align-items:center;gap:16px;"><div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;font-weight:700;">${u.username.charAt(0).toUpperCase()}</div><div style="flex:1;"><div style="font-weight:700;font-size:16px;">@${u.username}</div><div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% win rate</div><div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${u.profit>=0?'var(--green)':'var(--red)'};">${u.profit>=0?'+':''}$${u.profit}</div></div></div>`;
+    });
+    return html;
+}
+async function renderShop(){return`<div class="page-header"><div class="page-title">Credit Shop</div></div><div class="card"><div style="text-align:center;padding:40px 20px;color:var(--text-muted);">💰 Credit purchases coming soon</div></div>`;}
+async function renderFollowing(){return`<div class="page-header"><div class="page-title">Following</div></div><div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No one followed yet</div><div class="empty-desc">Find bookies to follow from the search tab</div></div>`;}
+async function renderAdmin(){
+    if(!user.is_admin)return`<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Admin Access Required</div></div>`;
+    return`<div class="page-header"><div class="page-title">Admin Panel</div></div><div class="card" style="border-color:rgba(255,69,96,.3);"><div style="color:var(--red);font-weight:700;font-size:16px;margin-bottom:12px;">Bet Settlement</div><div style="color:var(--text-muted);font-size:14px;line-height:1.7;">Game scores are checked automatically every 5 minutes via the backend scheduler.<br>Scores are pulled from The Odds API and bets are settled in real-time.<br><br><span style="color:var(--text-dim);">No manual action needed.</span></div></div>`;
+}
+async function renderApp(){
+    if(!user){await loadUser();}if(!user)return;
+    const NAV=[
+        {id:'marketplace',icon:'📊',label:'Marketplace'},{id:'create',icon:'⚡',label:'Set Lines'},
+        {id:'props',icon:'🎲',label:'Props'},{id:'futures',icon:'🔮',label:'Futures'},
+        {id:'bets',icon:'📋',label:'My Bets'},{id:'leaderboard',icon:'🏆',label:'Leaderboard'},
+        {id:'groups',icon:'👥',label:'Groups'},{id:'following',icon:'⭐',label:'Following'},
+        {id:'search',icon:'🔍',label:'Find Bookies'},{id:'shop',icon:'💰',label:'Shop'},
+        ...(user.is_admin?[{id:'admin',icon:'⚙',label:'Admin'}]:[])
+    ];
+    const sidebarNav=NAV.map(n=>`<div class="nav-item ${view===n.id?'active':''}" onclick="changeView('${n.id}')"><span class="nav-icon">${n.icon}</span>${n.label}</div>`).join('');
+    const mobileNav=NAV.map(n=>`<div class="mob-tab ${view===n.id?'active':''}" onclick="changeView('${n.id}')">${n.icon} ${n.label}</div>`).join('');
+    document.getElementById('root').innerHTML=`
+        <div class="topbar"><div class="topbar-logo">BV</div><div id="topbarBalance" class="topbar-bal">$${user.balance.toLocaleString()}</div></div>
+        <div class="mobile-nav" id="mobileNav">${mobileNav}</div>
+        <div class="app-shell">
+            <div class="sidebar">
+                <div class="sidebar-logo"><div class="logo-text">BookieVerse</div><div class="logo-sub">P2P Sportsbook</div></div>
+                <div class="sidebar-user">
+                    <div class="sidebar-username">@${user.username}${user.is_admin?' 👑':''}</div>
+                    <div class="sidebar-stats">${user.wins}W — ${user.losses}L</div>
+                    <div class="sidebar-balance">
+                        <div class="bal-label">Balance</div>
+                        <div class="bal-amount" id="sidebarBalance">$${user.balance.toLocaleString()}</div>
+                        <div class="bal-pl ${user.profit>=0?'pos':'neg'}" id="sidebarPL">${user.profit>=0?'+':''}$${user.profit.toLocaleString()} P/L</div>
                     </div>
-                    <p style="margin-top: 24px; color: #64748b; font-size: 13px;">First user = admin • Play money only</p>
                 </div>
-            `;
-            document.getElementById('username')?.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') document.getElementById('password').focus();
-            });
-            document.getElementById('password')?.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') doLogin();
-            });
-        } else {
-            (async () => {
-                await loadPropTypes();
-                renderApp();
-            })();
-        }
-    </script>
+                <div class="sidebar-nav">${sidebarNav}</div>
+                <div class="sidebar-bottom"><button class="logout-btn" onclick="logout()">Log Out</button></div>
+            </div>
+            <div class="main"><div class="content-area"><div id="content">${skeletonCards(3)}</div></div></div>
+        </div>`;
+    let content='';
+    if(view==='marketplace')content=await loadLines();
+    else if(view==='create')content=await renderCreateLine();
+    else if(view==='props')content=await renderProps();
+    else if(view==='futures')content=await renderFutures();
+    else if(view==='bets')content=await renderMyBets();
+    else if(view==='leaderboard')content=await renderLeaderboard();
+    else if(view==='groups')content=await renderGroups();
+    else if(view==='following')content=await renderFollowing();
+    else if(view==='shop')content=await renderShop();
+    else if(view==='search')content=await renderUserSearch();
+    else if(view==='admin')content=await renderAdmin();
+    const ct=document.getElementById('content');if(ct)ct.innerHTML=content;
+}
+function changeView(v){view=v;renderApp();}
+function renderLogin(){
+    document.getElementById('root').innerHTML=`
+        <div class="login-screen"><div class="login-box">
+            <div class="login-logo">BookieVerse</div>
+            <div class="login-tagline">PvP Sportsbook</div>
+            <div class="form-group"><label>Username</label><input id="loginUsername" placeholder="Enter username" autofocus></div>
+            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="6+ characters"></div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px;">
+                <button id="loginBtn" class="btn btn-primary btn-lg btn-full" onclick="doLogin()">Login</button>
+                <button id="registerBtn" class="btn btn-secondary btn-lg btn-full" onclick="doRegister()">Register</button>
+            </div>
+
+        </div></div>`;
+    document.getElementById('loginUsername').addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('loginPassword').focus();});
+    document.getElementById('loginPassword').addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('loginBtn').click();});
+}
+function switchLoginTab(isLogin){
+    document.getElementById('tabLogin').classList.toggle('active',isLogin);
+    document.getElementById('tabRegister').classList.toggle('active',!isLogin);
+}
+if(!token){renderLogin();}else{(async()=>{await loadPropTypes();renderApp();})();}
+</script>
 </body>
 </html>
