@@ -13,9 +13,9 @@ import os
 import stripe
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text
+from sqlalchemy.orm import sessionmaker, Session, declarative_base
+from sqlalchemy import func
 import json
 
 app = FastAPI(title="BookieVerse Complete")
@@ -38,7 +38,16 @@ PROP_TYPES = {
 }
 
 # Database
-engine = create_engine(DATABASE_URL)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        pool_size=5,
+        max_overflow=10
+    )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -85,6 +94,7 @@ class Bet(Base):
     bookie_name = Column(String)
     bettor_id = Column(Integer)
     bettor_name = Column(String)
+    game_id = Column(String, nullable=True)
     game = Column(String)
     type = Column(String)
     bookie_side = Column(String)
@@ -139,28 +149,6 @@ class Group(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# Safe migration: Add total_action column if it doesn't exist (PostgreSQL)
-try:
-    db = SessionLocal()
-    # Check if column exists and add it if not
-    db.execute(text("""
-        DO $$ 
-        BEGIN 
-            BEGIN
-                ALTER TABLE lines ADD COLUMN total_action FLOAT DEFAULT 0.0;
-            EXCEPTION
-                WHEN duplicate_column THEN 
-                    -- Column already exists, do nothing
-                    NULL;
-            END;
-        END $$;
-    """))
-    db.commit()
-    db.close()
-    print("✅ Database migration completed: total_action column ensured")
-except Exception as e:
-    print(f"Migration note: {e}")
-
 def get_db():
     db = SessionLocal()
     try:
@@ -169,9 +157,9 @@ def get_db():
         db.close()
 
 GAMES = [
-    {"id": "demo_1", "home": "Lakers", "away": "Warriors", "sport": "NBA", "date": "2026-02-14"},
-    {"id": "demo_2", "home": "Celtics", "away": "Heat", "sport": "NBA", "date": "2026-02-14"},
-    {"id": "demo_3", "home": "Chiefs", "away": "Bills", "sport": "NFL", "date": "2026-02-15"},
+    {"id": "demo_1", "home": "Lakers", "away": "Warriors", "sport": "NBA", "date": "2026-03-01", "commence_time": "2026-03-01T20:00:00Z"},
+    {"id": "demo_2", "home": "Celtics", "away": "Heat", "sport": "NBA", "date": "2026-03-01", "commence_time": "2026-03-01T22:30:00Z"},
+    {"id": "demo_3", "home": "Chiefs", "away": "Bills", "sport": "NFL", "date": "2026-03-02", "commence_time": "2026-03-02T18:00:00Z"},
 ]
 
 FUTURES = [
@@ -237,14 +225,13 @@ def check_game_scores():
     if not ODDS_API_KEY:
         return
     
+    db = SessionLocal()
     try:
-        # Fetch scores from Odds API
         scores_url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/scores/?apiKey={ODDS_API_KEY}&daysFrom=1"
         response = requests.get(scores_url, timeout=10)
         
         if response.status_code == 200:
             scores_data = response.json()
-            db = SessionLocal()
             
             for game_data in scores_data:
                 if game_data.get("completed") and game_data.get("scores"):
@@ -255,38 +242,54 @@ def check_game_scores():
                     away_score = next((s["score"] for s in scores if s["name"] == game_data["away_team"]), None)
                     
                     if home_score and away_score:
-                        # Find all bets for this game
                         bets = db.query(Bet).filter(Bet.game_id == game_id, Bet.status == "pending").all()
                         
+                        # Collect line IDs to refund unmatched amounts
+                        line_ids = set(bet.line_id for bet in bets)
+                        
                         for bet in bets:
-                            # Auto-settle based on bet type
                             winner = determine_winner(bet, int(home_score), int(away_score))
                             if winner:
                                 settle_bet(db, bet, winner)
+                        
+                        # Refund unmatched portions to bookies
+                        for line_id in line_ids:
+                            line = db.query(Line).filter(Line.id == line_id).first()
+                            if line and line.status != "refunded":
+                                refund_unmatched_line(db, line)
+                                line.status = "settled"
             
             db.commit()
-            db.close()
     except Exception as e:
         print(f"Error checking scores: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
 def determine_winner(bet, home_score, away_score):
-    """Determine bet winner based on scores"""
+    """Determine bet winner based on scores. Returns 'bookie', 'bettor', or 'push'."""
     score_diff = home_score - away_score
     
     if bet.type == "spread":
         if bet.bookie_side == "home":
             adjusted = score_diff + bet.value
-            return "bookie" if adjusted > 0 else "bettor"
+            if adjusted > 0: return "bookie"
+            if adjusted < 0: return "bettor"
+            return "push"
         else:
             adjusted = score_diff - bet.value
-            return "bookie" if adjusted < 0 else "bettor"
+            if adjusted < 0: return "bookie"
+            if adjusted > 0: return "bettor"
+            return "push"
     elif bet.type == "moneyline":
+        if home_score == away_score: return "push"
         if bet.bookie_side == "home":
             return "bookie" if home_score > away_score else "bettor"
         else:
             return "bookie" if away_score > home_score else "bettor"
     elif bet.type == "total":
         total = home_score + away_score
+        if total == bet.value: return "push"
         if bet.bookie_side == "over":
             return "bookie" if total > bet.value else "bettor"
         else:
@@ -294,13 +297,21 @@ def determine_winner(bet, home_score, away_score):
     return None
 
 def settle_bet(db, bet, winner):
-    """Auto-settle a bet"""
-    payout = bet.amount * 2  # 0% rake
-    
+    """Auto-settle a bet. winner can be 'bookie', 'bettor', or 'push'."""
+    payout = bet.amount * 2
+
     bookie = db.query(User).filter(User.id == bet.bookie_id).first()
     bettor = db.query(User).filter(User.id == bet.bettor_id).first()
-    
-    if winner == "bookie":
+
+    if not bookie or not bettor:
+        print(f"settle_bet: could not find bookie or bettor for bet {bet.id}")
+        return
+
+    if winner == "push":
+        # Refund both sides
+        bookie.balance += bet.amount
+        bettor.balance += bet.amount
+    elif winner == "bookie":
         bookie.balance += payout
         bookie.profit += bet.amount
         bookie.wins += 1
@@ -312,14 +323,32 @@ def settle_bet(db, bet, winner):
         bettor.wins += 1
         bookie.profit -= bet.amount
         bookie.losses += 1
-    
+
     bet.status = "settled"
     bet.winner = winner
 
-# Initialize scheduler
+def refund_unmatched_line(db, line):
+    """When a line closes, refund any unmatched portion back to the bookie."""
+    unmatched = line.amount - line.total_action
+    if unmatched > 0.01:  # avoid floating point noise
+        bookie = db.query(User).filter(User.id == line.bookie_id).first()
+        if bookie:
+            bookie.balance += unmatched
+            print(f"Refunded ${unmatched:.2f} unmatched funds to bookie {bookie.username}")
+
+# Initialize scheduler - started in app lifecycle to avoid duplicate workers
 scheduler = BackgroundScheduler()
-scheduler.add_job(check_game_scores, 'interval', minutes=5)  # Check scores every 5 minutes
-scheduler.start()
+scheduler.add_job(check_game_scores, 'interval', minutes=5)
+
+@app.on_event("startup")
+def start_scheduler():
+    if not scheduler.running:
+        scheduler.start()
+
+@app.on_event("shutdown")
+def stop_scheduler():
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
 
 # Models
 class UserCreate(BaseModel):
@@ -460,7 +489,7 @@ def get_prop_types():
 
 @app.get("/api/lines")
 def get_lines(db: Session = Depends(get_db)):
-    lines = db.query(Line).filter(Line.status == "open").all()
+    lines = db.query(Line).filter(Line.status == "open", (Line.is_private == False) | (Line.is_private == None)).all()
     return [{"id": l.id, "bookie_id": l.bookie_id, "bookie_name": l.bookie_name, "game": l.game, "sport": l.sport,
              "type": l.type, "side": l.side, "value": l.value, "amount": l.amount, "status": l.status,
              "total_action": l.total_action, "current_bettors": l.current_bettors, "max_bet_per_user": l.max_bet_per_user,
@@ -472,10 +501,13 @@ def create_line(line: LineCreate, token: str, db: Session = Depends(get_db)):
     if not user_id:
         raise HTTPException(401, "Invalid token")
     user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
     if user.balance < line.amount:
         raise HTTPException(400, "Insufficient balance")
     
-    game = next((g for g in GAMES if g["id"] == line.game_id), None)
+    all_games = fetch_live_games()
+    game = next((g for g in all_games if g["id"] == line.game_id), None)
     if not game:
         raise HTTPException(404, "Game not found")
     
@@ -504,6 +536,8 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
         raise HTTPException(400, "Can't bet your own line")
     
     user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
     
     # Determine bet amount
     bet_amount = take.amount if take.amount else line.amount
@@ -522,10 +556,10 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
     # Check max_bet_per_user if set
     if line.max_bet_per_user:
         # Check how much this user has already bet on this line
-        user_total_on_line = db.query(Bet).filter(
+        user_total_on_line = db.query(func.sum(Bet.amount)).filter(
             Bet.line_id == line.id,
             Bet.bettor_id == user_id
-        ).with_entities(db.func.sum(Bet.amount)).scalar() or 0
+        ).scalar() or 0
         
         remaining_user_limit = line.max_bet_per_user - user_total_on_line
         if remaining_user_limit <= 0:
@@ -549,6 +583,10 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
     if user.balance < bet_amount:
         raise HTTPException(400, f"Insufficient balance. Need ${bet_amount}")
     
+    # Guard against float precision producing a zero or negative amount
+    if bet_amount < 0.01:
+        raise HTTPException(400, "Bet amount is too small")
+    
     # Create bet
     bet = Bet(
         line_id=line.id,
@@ -556,6 +594,7 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
         bookie_name=line.bookie_name,
         bettor_id=user.id,
         bettor_name=user.username,
+        game_id=line.game_id,
         game=line.game,
         type=line.type,
         bookie_side=line.side,
@@ -579,10 +618,6 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
     db.commit()
     
     return {"message": "Bet placed", "amount": bet_amount}
-    user.balance -= line.amount
-    db.add(bet)
-    db.commit()
-    return {"message": "Bet placed"}
 
 @app.get("/api/props")
 def get_props(db: Session = Depends(get_db)):
@@ -597,6 +632,8 @@ def create_prop(prop: PropCreate, token: str, db: Session = Depends(get_db)):
     if not user_id:
         raise HTTPException(401, "Invalid token")
     user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
     if user.balance < prop.amount:
         raise HTTPException(400, "Insufficient balance")
     
@@ -618,8 +655,12 @@ def take_prop(take: TakeProp, token: str, db: Session = Depends(get_db)):
     prop = db.query(Prop).filter(Prop.id == take.prop_id, Prop.status == "open").first()
     if not prop:
         raise HTTPException(404, "Prop not available")
+    if prop.bookie_id == user_id:
+        raise HTTPException(400, "Can't bet your own prop")
     
     user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
     if user.balance < prop.amount:
         raise HTTPException(400, "Insufficient balance")
     
@@ -681,6 +722,7 @@ def create_group(group: GroupCreate, token: str, db: Session = Depends(get_db)):
                      creator_id=user.id, creator_name=user.username, members=json.dumps([user.id]))
     db.add(new_group)
     db.commit()
+    db.refresh(new_group)
     return {"message": "Group created", "group_id": new_group.id}
 
 @app.get("/api/leaderboard")
@@ -709,7 +751,8 @@ def search_users(db: Session = Depends(get_db)):
 
 @app.get("/app", response_class=HTMLResponse)
 def serve_app():
-    with open("index.html", "r") as f:
+    index_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "FRESH_index.html")
+    with open(index_path, "r") as f:
         return f.read()
 
 if __name__ == "__main__":
