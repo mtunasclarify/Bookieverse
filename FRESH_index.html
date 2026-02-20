@@ -461,7 +461,7 @@ async function loadLines(){
                     </div>
                 </div>
                 <div class="line-card-amount">
-                    <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">Win up to</div>
+                    <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">You can win</div>
                     <div class="line-amount-num">$${avail.toFixed(0)}</div>
                     <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">risk $${availBettor.toFixed(0)}</div>
                     <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="takeLine(${line.id})" ${isFull?'disabled':''}>
@@ -491,15 +491,14 @@ async function takeLine(lineId){
         `<strong style="color:var(--text)">${line.game}</strong><br>
         ${line.type.toUpperCase()} · ${line.side} ${line.type!=='moneyline'?(line.value>0?'+':'')+line.value:''}<br>
         Odds: <strong style="color:${odds>0?'var(--green)':'var(--text-muted)'}">${oddsStr}</strong><br>
-        <span style="color:var(--text-dim);font-size:12px;">Enter how much YOU want to risk. You win $${avail.toFixed(0)} if correct.</span>`,
+        <span style="color:var(--text-dim);font-size:12px;">How much do you want to risk? You can win up to <strong style="color:var(--green)">$${avail.toFixed(0)}</strong> (bookie's max liability).</span>`,
         maxBettor
     );
     if(!amount)return;
 
     // Show what they stand to win
     let toWin;
-    if(odds<=-100) toWin=(amount*(Math.abs(odds)/100)).toFixed(2);
-    else toWin=(amount*(odds/100)).toFixed(2);
+    toWin=(amount*(Math.abs(odds)/100)).toFixed(2);  // bettor wins: stake * (abs(odds)/100)
 
     try{
         const res=await fetch(API+'/lines/take?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_id:lineId,amount})});
@@ -536,7 +535,7 @@ async function renderCreateLine(){
                     <div class="form-group" style="margin:0"><label>Your Side</label><select id="side"><option value="home">Home</option><option value="away">Away</option></select></div>
                     <div class="form-group" style="margin:0" id="valueField"><label>Line Value</label><input id="value" type="number" step="0.5" placeholder="-5.5"></div>
                 </div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);margin:24px 0 10px;">② SET YOUR ODDS</div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);margin:24px 0 10px;">② SET YOUR ODDS & MAX LIABILITY</div>
                 <div style="background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:20px;margin-bottom:4px;">
                     <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
                         <div style="flex:1;min-width:160px;">
@@ -546,31 +545,30 @@ async function renderCreateLine(){
                             <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
                                 <button type="button" onclick="setOdds(-110)" class="btn btn-secondary btn-sm">-110</button>
                                 <button type="button" onclick="setOdds(-150)" class="btn btn-secondary btn-sm">-150</button>
-                                <button type="button" onclick="setOdds(+110)" class="btn btn-secondary btn-sm">+110</button>
-                                <button type="button" onclick="setOdds(+150)" class="btn btn-secondary btn-sm">+150</button>
-                                <button type="button" onclick="setOdds(+200)" class="btn btn-secondary btn-sm">+200</button>
+                                <button type="button" onclick="setOdds(110)" class="btn btn-secondary btn-sm">+110</button>
+                                <button type="button" onclick="setOdds(150)" class="btn btn-secondary btn-sm">+150</button>
+                                <button type="button" onclick="setOdds(200)" class="btn btn-secondary btn-sm">+200</button>
                             </div>
                             <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
                                 <strong style="color:var(--text-muted)">Negative</strong> = you're the favorite · <strong style="color:var(--green)">Positive</strong> = you're the underdog
                             </div>
                         </div>
                         <div style="flex:1;min-width:180px;">
-                            <label style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">Your Stake ($)</label>
+                            <label style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">Max Liability ($)</label>
                             <input id="amount" type="number" placeholder="100" step="1"
                                 style="width:100%;padding:14px 16px;font-size:24px;font-weight:700;font-family:'Barlow Condensed',sans-serif;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;">
-                            <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">How much you're risking on this line</div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Max you'll <strong style="color:var(--red)">pay out</strong> if you lose — escrowed now, unmatched portion refunds at game time</div>
                         </div>
                     </div>
                     <div id="oddsPreview" style="margin-top:16px;padding:12px 16px;background:var(--card);border-radius:8px;font-size:14px;color:var(--text-muted);border:1px solid var(--border);min-height:42px;transition:.2s;">
-                        Enter odds and amount to see the payout breakdown
+                        Enter odds and liability to see the breakdown
                     </div>
                 </div>
                 <div class="advanced-panel" style="margin-top:16px;">
                     <div class="advanced-title">Advanced Controls</div>
-                    <div class="form-grid-3">
+                    <div class="form-grid-2">
                         <div class="form-group" style="margin:0"><label>Max Bettors</label><input id="maxBettors" type="number" placeholder="Unlimited"></div>
                         <div class="form-group" style="margin:0"><label>Max Per User ($)</label><input id="maxBetPerUser" type="number" placeholder="Unlimited"></div>
-                        <div class="form-group" style="margin:0"><label>Max Total Action ($)</label><input id="maxTotalAction" type="number" placeholder="Unlimited"></div>
                     </div>
                     <div class="checkbox-row"><input type="checkbox" id="isPrivate" onchange="toggleGroupSelect()"><span>Private Line (Groups Only)</span></div>
                     ${groups.length>0?`<select id="groupId" style="margin-top:10px;display:none;"><option value="">Select a group...</option>${groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')}</select>`:'<small style="color:var(--text-dim);display:block;margin-top:8px;">Create a group first to use private lines</small>'}
@@ -666,34 +664,33 @@ function calcOddsPreview(){
     const preview=document.getElementById('oddsPreview');
     if(!preview)return;
     if(isNaN(odds)||isNaN(amount)||amount<=0||isNaN(odds)||odds===0||(-100<odds&&odds<100)){
-        preview.innerHTML='Enter odds and amount to see the payout breakdown';
+        preview.innerHTML='Enter odds and liability to see the breakdown';
         preview.style.borderColor='var(--border)';
         return;
     }
     let bettorRisk;
-    if(odds<=-100){bettorRisk=+(amount*(100/Math.abs(odds))).toFixed(2);}
-    else{bettorRisk=+(amount*(odds/100)).toFixed(2);}
+    bettorRisk=+(amount*(100/Math.abs(odds))).toFixed(2);  // same formula for both +/- odds
     const oddsStr=odds>0?'+'+odds:odds;
-    const oddsColor=odds>0?'var(--green)':'var(--text-muted)';
+    const oddsColor=odds>0?'var(--green)':'var(--orange)';
     preview.style.borderColor=odds>0?'var(--green)':'var(--orange)';
     preview.innerHTML=`
         <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
             <div style="text-align:center;">
-                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px;">You (Bookie) risk</div>
-                <div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:var(--orange);">$${amount}</div>
-                <div style="font-size:11px;color:var(--text-dim);">at <strong style="color:${oddsColor}">${oddsStr}</strong></div>
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px;">Your max payout</div>
+                <div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:var(--red);">$${amount}</div>
+                <div style="font-size:11px;color:var(--text-dim);">if you lose at <strong style="color:${oddsColor}">${oddsStr}</strong></div>
             </div>
             <div style="font-size:24px;color:var(--text-dim);">⚔️</div>
             <div style="text-align:center;">
                 <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px;">Bettor must risk</div>
                 <div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:var(--green);">$${bettorRisk}</div>
-                <div style="font-size:11px;color:var(--text-dim);">to take your bet</div>
+                <div style="font-size:11px;color:var(--text-dim);">to take this full line</div>
             </div>
             <div style="font-size:24px;color:var(--text-dim);">→</div>
             <div style="text-align:center;">
-                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px;">Winner takes</div>
-                <div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:var(--gold);">$${(amount+bettorRisk).toFixed(2)}</div>
-                <div style="font-size:11px;color:var(--text-dim);">total pot</div>
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px;">If you win</div>
+                <div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:var(--gold);">+$${bettorRisk}</div>
+                <div style="font-size:11px;color:var(--text-dim);">you pocket bettor's stake</div>
             </div>
         </div>`;
 }
@@ -712,14 +709,14 @@ async function createLine(){
     const value=type==='moneyline'?0:parseFloat(rawValue);
     if(!gameId||!type||!side){toast('Fill in all required fields','error');return;}
     if(type!=='moneyline'&&isNaN(value)){toast('Enter a line value for spread / total','error');return;}
-    if(isNaN(amount)||amount<=0){toast('Enter your stake amount','error');return;}
+    if(isNaN(amount)||amount<=0){toast('Enter your max liability amount','error');return;}
     if(isNaN(odds)||odds===0||(odds>-100&&odds<100)){toast('Odds must be -100 or lower, or +100 or higher (e.g. -110, +150)','error');return;}
     const body={game_id:gameId,type,side,value,odds,amount};
     const mb=document.getElementById('maxBettors')?.value,mbu=document.getElementById('maxBetPerUser')?.value,
-        mta=document.getElementById('maxTotalAction')?.value,ip=document.getElementById('isPrivate')?.checked,
-        gi=document.getElementById('groupId')?.value;
-    if(mb)body.max_bettors=parseInt(mb);if(mbu)body.max_bet_per_user=parseFloat(mbu);
-    if(mta)body.max_total_action=parseFloat(mta);if(ip){body.is_private=true;if(gi)body.group_id=parseInt(gi);}
+        ip=document.getElementById('isPrivate')?.checked,gi=document.getElementById('groupId')?.value;
+    if(mb)body.max_bettors=parseInt(mb);
+    if(mbu)body.max_bet_per_user=parseFloat(mbu);
+    if(ip){body.is_private=true;if(gi)body.group_id=parseInt(gi);}
     try{
         const res=await fetch(API+'/lines?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         if(res.ok){toast('Line posted!','success');await loadUser();updateSidebarBalance();changeView('marketplace');}
@@ -769,8 +766,7 @@ async function renderProps(){
             const oddsStr=odds>0?'+'+odds:String(odds);
             const oddsColor=odds>0?'var(--green)':'var(--text-muted)';
             let bettorRisk;
-            if(odds<=-100) bettorRisk=(p.amount*(100/Math.abs(odds))).toFixed(0);
-            else bettorRisk=(p.amount*(odds/100)).toFixed(0);
+            bettorRisk=(p.amount*(100/Math.abs(odds))).toFixed(0);
             html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;"><div><span class="badge badge-prop">${p.sport}</span><span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:${oddsColor};margin-left:8px;">${oddsStr}</span><div style="font-size:19px;font-weight:700;margin-top:8px;">${p.player_name} — ${p.prop_type}</div><div style="color:var(--text-muted);margin-top:4px;font-size:14px;">${p.side.toUpperCase()} <strong style="color:var(--text)">${p.line}</strong></div>${p.game?`<div style="color:var(--text-muted);font-size:13px;margin-top:4px;">📅 ${p.game}</div>`:''}<div style="color:var(--text-dim);font-size:12px;margin-top:4px;">by @${p.bookie_name}</div></div><div style="text-align:right;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;color:var(--green);">$${p.amount}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">risk $${bettorRisk}</div><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="takeProp(${p.id})">Take Prop</button></div></div></div>`;
         });
     }
@@ -804,8 +800,7 @@ async function takeProp(propId){
     const oppSide=prop.side==='over'?'under':'over';
     // Bettor stake mirrors the bookie stake at these odds
     let bettorRisk;
-    if(odds<=-100) bettorRisk=(prop.amount*(100/Math.abs(odds))).toFixed(2);
-    else bettorRisk=(prop.amount*(odds/100)).toFixed(2);
+    bettorRisk=(prop.amount*(100/Math.abs(odds))).toFixed(2);
     const ok=await showConfirm(
         `Take this prop?`,
         `${prop.player_name} — ${prop.prop_type} ${oppSide.toUpperCase()} ${prop.line}\nOdds: ${oddsStr}\nYou risk $${bettorRisk} to win $${prop.amount}`
@@ -908,13 +903,13 @@ async function renderMyBets(){
                             <div style="color:var(--text-muted);font-size:13px;margin-top:3px;">${l.type.toUpperCase()} · ${l.side.toUpperCase()}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}</div>
                             <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;">
                                 <span>Odds: <strong style="color:${oddsColor}">${oddsStr}</strong></span>
-                                <span>Staked: <strong>$${(l.total_action||0).toFixed(0)}</strong> / $${l.amount.toFixed(0)}</span>
+                                <span>Matched: <strong>$${(l.total_action||0).toFixed(0)}</strong> / <span style="color:var(--text-dim)">$${l.amount.toFixed(0)} max liability</span></span>
                                 <span>${l.current_bettors} bettor${l.current_bettors!==1?'s':''}</span>
                             </div>
                             <div style="margin-top:8px;width:100%;max-width:240px;height:4px;background:var(--border);border-radius:4px;">
                                 <div style="height:100%;width:${pct}%;background:${pct===100?'var(--red)':'var(--orange)'};border-radius:4px;transition:.3s;"></div>
                             </div>
-                            <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">$${l.unmatched.toFixed(2)} unmatched · bettor needs $${l.available_for_bettor.toFixed(2)}</div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">$${l.unmatched.toFixed(2)} unmatched liability · bettor needs $${l.available_for_bettor.toFixed(2)} to fill</div>
                         </div>
                         <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
                             <!-- Odds adjustment -->
@@ -924,12 +919,12 @@ async function renderMyBets(){
                                     onkeydown="if(event.key==='Enter')updateLineOdds(${l.id})">
                                 <button class="btn btn-primary btn-sm" onclick="updateLineOdds(${l.id})">Update Odds</button>
                             </div>
-                            <!-- Add stake -->
+                            <!-- Add liability -->
                             <div style="display:flex;gap:6px;align-items:center;">
                                 <input type="number" id="stake-input-${l.id}" placeholder="Add $" step="1" min="1"
                                     style="width:80px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;"
                                     onkeydown="if(event.key==='Enter')addStake(${l.id})">
-                                <button class="btn btn-secondary btn-sm" onclick="addStake(${l.id})">+ Stake</button>
+                                <button class="btn btn-secondary btn-sm" onclick="addStake(${l.id})">+ Liability</button>
                             </div>
                             <!-- Pull line -->
                             <button class="btn btn-danger btn-sm" onclick="pullLine(${l.id}, '${l.game.replace(/'/g,"\\'")}')">Pull Line 🚫</button>
@@ -1425,9 +1420,7 @@ function updateChallengePreview() {
     const preview = document.getElementById('cOddsPreview');
     if (!preview) return;
     if (isNaN(odds) || isNaN(amount) || amount <= 0) { preview.innerHTML = 'Enter odds and amount to preview'; return; }
-    let oppStake;
-    if (odds <= -100) oppStake = +(amount * (100 / Math.abs(odds))).toFixed(2);
-    else oppStake = +(amount * (odds / 100)).toFixed(2);
+    const oppStake = +(amount * (100 / Math.abs(odds))).toFixed(2);
     const oddsStr = odds > 0 ? '+' + odds : odds;
     preview.innerHTML = `You risk <strong style="color:var(--orange)">$${amount}</strong> at <strong>${oddsStr}</strong> · @${_challengeTargetUsername} risks <strong style="color:var(--green)">$${oppStake}</strong> · Winner takes <strong style="color:var(--gold)">$${(amount + oppStake).toFixed(2)}</strong>`;
 }
