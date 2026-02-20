@@ -13,7 +13,7 @@ import os
 import stripe
 import requests
 from apscheduler.schedulers.background import BackgroundScheduler
-from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, DateTime, Text, text
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from sqlalchemy import func
 import json
@@ -205,6 +205,35 @@ class Notification(Base):
 
 Base.metadata.create_all(bind=engine)
 
+def run_migrations():
+    """
+    Safe migration: add any new columns that don't yet exist in the live DB.
+    Uses ADD COLUMN IF NOT EXISTS so it's a no-op once the column is there.
+    """
+    migrations = [
+        # lines table
+        "ALTER TABLE lines ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
+        # bets table
+        "ALTER TABLE bets ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
+        "ALTER TABLE bets ADD COLUMN IF NOT EXISTS bookie_amount FLOAT",
+        "ALTER TABLE bets ADD COLUMN IF NOT EXISTS bettor_amount FLOAT",
+        # props table
+        "ALTER TABLE props ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
+        # prop_bets table
+        "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
+        "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS bookie_amount FLOAT",
+        "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS bettor_amount FLOAT",
+    ]
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception as e:
+                print(f"Migration skipped ({sql[:60]}...): {e}")
+
+run_migrations()
+
 def get_db():
     db = SessionLocal()
     try:
@@ -253,7 +282,22 @@ def format_odds(odds: int) -> str:
 
 # ─── ODDS HELPERS END ─────────────────────────────────────────────────────────
 
-# Odds API Integration
+# ─── GAMES CACHE (5-minute TTL) ──────────────────────────────────────────────
+_games_cache: list = []
+_games_cache_ts: float = 0.0
+
+def get_cached_games() -> list:
+    """Return games from cache if fresh (< 5 min), else re-fetch and cache."""
+    global _games_cache, _games_cache_ts
+    import time
+    if _games_cache and (time.time() - _games_cache_ts) < 300:
+        return _games_cache
+    fresh = fetch_live_games()
+    _games_cache = fresh
+    _games_cache_ts = time.time()
+    return fresh
+
+# ─────────────────────────────────────────────────────────────────────────────
 def fetch_live_games():
     """Fetch upcoming games from Odds API using the /events endpoint (0 quota cost).
     Falls back to demo data if no API key or on any error."""
@@ -719,7 +763,7 @@ def login(user: UserCreate, db: Session = Depends(get_db)):
 
 @app.get("/api/games")
 def get_games():
-    return fetch_live_games()
+    return get_cached_games()
 
 @app.get("/api/futures")
 def get_futures():
@@ -734,17 +778,25 @@ def get_lines(db: Session = Depends(get_db)):
     lines = db.query(Line).filter(Line.status == "open", (Line.is_private == False) | (Line.is_private == None)).all()
     result = []
     for l in lines:
-        odds = l.odds if l.odds is not None else -110
-        available_bookie = l.amount - (l.total_action or 0)
-        available_for_bettor = bettor_stake_from_bookie(available_bookie, odds)
-        result.append({
-            "id": l.id, "bookie_id": l.bookie_id, "bookie_name": l.bookie_name,
-            "game": l.game, "sport": l.sport, "type": l.type, "side": l.side,
-            "value": l.value, "odds": odds, "amount": l.amount, "status": l.status,
-            "total_action": l.total_action, "current_bettors": l.current_bettors,
-            "max_bet_per_user": l.max_bet_per_user, "is_private": l.is_private,
-            "available_for_bettor": round(available_for_bettor, 2)
-        })
+        try:
+            odds = l.odds if (l.odds is not None and l.odds != 0) else -110
+            if -100 < odds < 100:
+                odds = -110  # safety: reject invalid odds
+            amount = l.amount or 0
+            total_action = l.total_action or 0
+            available_bookie = max(0, amount - total_action)
+            available_for_bettor = bettor_stake_from_bookie(available_bookie, odds)
+            result.append({
+                "id": l.id, "bookie_id": l.bookie_id, "bookie_name": l.bookie_name,
+                "game": l.game or "", "sport": l.sport or "", "type": l.type or "moneyline", "side": l.side or "",
+                "value": l.value or 0, "odds": odds, "amount": amount, "status": l.status,
+                "total_action": total_action, "current_bettors": l.current_bettors or 0,
+                "max_bet_per_user": l.max_bet_per_user, "is_private": l.is_private or False,
+                "available_for_bettor": round(available_for_bettor, 2)
+            })
+        except Exception as e:
+            print(f"get_lines: skipping line {l.id} due to error: {e}")
+            continue
     return result
 
 @app.post("/api/lines")
@@ -758,13 +810,18 @@ def create_line(line: LineCreate, token: str, db: Session = Depends(get_db)):
     if user.balance < line.amount:
         raise HTTPException(400, "Insufficient balance")
     
-    all_games = fetch_live_games()
+    all_games = get_cached_games()
     game = next((g for g in all_games if g["id"] == line.game_id), None)
     if not game:
-        raise HTTPException(404, "Game not found")
+        # Game not in current cache — could be a timing issue. Use game_id as label and continue.
+        game_label = f"Game {line.game_id}"
+        game_sport = "NBA"
+    else:
+        game_label = f"{game['away']} @ {game['home']}"
+        game_sport = game["sport"]
     
     new_line = Line(bookie_id=user.id, bookie_name=user.username, game_id=line.game_id,
-                   game=f"{game['away']} @ {game['home']}", sport=game["sport"],
+                   game=game_label, sport=game_sport,
                    type=line.type, side=line.side, value=line.value, odds=line.odds,
                    amount=line.amount, max_bettors=line.max_bettors,
                    max_bet_per_user=line.max_bet_per_user,
@@ -1002,11 +1059,12 @@ def create_prop(prop: PropCreate, token: str, db: Session = Depends(get_db)):
     if prop.game_id.startswith("future_"):
         game_name = f"Futures: {prop.player_name} ({prop.prop_type})"
     else:
-        all_games = fetch_live_games()
+        all_games = get_cached_games()
         game = next((g for g in all_games if g["id"] == prop.game_id), None)
         if not game:
-            raise HTTPException(404, "Game not found")
-        game_name = f"{game['away']} @ {game['home']}"
+            game_name = f"Game {prop.game_id}"
+        else:
+            game_name = f"{game['away']} @ {game['home']}"
 
     new_prop = Prop(bookie_id=user.id, bookie_name=user.username,
                    game_id=prop.game_id, game=game_name,
