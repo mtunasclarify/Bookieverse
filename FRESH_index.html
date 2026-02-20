@@ -421,10 +421,13 @@ function updateSidebarBalance(){
 }
 async function loadLines(){
     document.getElementById('content').innerHTML=skeletonCards(4);
-    const res=await fetch(API+'/lines?token='+token);
-    const lines=await res.json();
-    linesCache=lines;
-    if(!lines.length)return'<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Available</div><div class="empty-desc">Be the first to set a line</div></div>';
+    try{
+        const res=await fetch(API+'/lines?token='+token);
+        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.detail||'Failed to load marketplace');}
+        const lines=await res.json();
+        if(!Array.isArray(lines))throw new Error('Unexpected response from server');
+        linesCache=lines;
+        if(!lines.length)return'<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Available</div><div class="empty-desc">Be the first to set a line</div></div>';
     let html=`<div class="page-header"><div class="page-title">Marketplace</div><div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''} available</div></div>`;
     for(const line of lines){
         const avail=line.amount-(line.total_action||0);
@@ -469,6 +472,10 @@ async function loadLines(){
         </div>`;
     }
     return html;
+    }catch(e){
+        console.error('loadLines error:',e);
+        return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load marketplace</div><div class="empty-desc">${e.message||'Connection error'} — <button class="btn btn-outline btn-sm" onclick="changeView('marketplace')">Retry</button></div></div>`;
+    }
 }
 async function takeLine(lineId){
     const line=linesCache.find(l=>l.id===lineId);
@@ -505,70 +512,78 @@ async function takeLine(lineId){
 }
 async function renderCreateLine(){
     document.getElementById('content').innerHTML=skeletonCards(1);
-    const [games, groups]=await Promise.all([
-        fetch(API+'/games').then(r=>r.json()),
-        fetch(API+'/groups?token='+token).then(r=>r.json())
-    ]);
-    gamesCache=games;
-    const gameOptions=games.map(g=>{
-        const time=g.commence_time?new Date(g.commence_time).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;
-        return`<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home} — ${time}</option>`;
-    }).join('');
-    const html=`<div class="page-header"><div class="page-title">Set a Line</div><div class="page-subtitle">You're the bookie — set the game, your side, and the odds you'll offer</div></div>
-        <div class="card" style="max-width:760px;">
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:10px;">① PICK THE MATCHUP</div>
-            <div class="form-group"><label>Select Game</label>
-                <select id="game" onchange="onGameChange()"><option value="">Choose a game...</option>${gameOptions}</select>
-            </div>
-            <div class="form-grid-3">
-                <div class="form-group" style="margin:0"><label>Bet Type</label><select id="type" onchange="onBetTypeChange()"><option value="spread">Spread</option><option value="moneyline">Moneyline</option><option value="total">Over / Under</option></select></div>
-                <div class="form-group" style="margin:0"><label>Your Side</label><select id="side"><option value="home">Home</option><option value="away">Away</option></select></div>
-                <div class="form-group" style="margin:0" id="valueField"><label>Line Value</label><input id="value" type="number" step="0.5" placeholder="-5.5"></div>
-            </div>
-            <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);margin:24px 0 10px;">② SET YOUR ODDS</div>
-            <div style="background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:20px;margin-bottom:4px;">
-                <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-                    <div style="flex:1;min-width:160px;">
-                        <label style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">Your Odds (American)</label>
-                        <input id="odds" type="number" step="1" value="-110"
-                            style="width:100%;padding:14px 16px;font-size:28px;font-weight:800;font-family:'Barlow Condensed',sans-serif;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;letter-spacing:1px;">
-                        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-                            <button type="button" onclick="setOdds(-110)" class="btn btn-secondary btn-sm">-110</button>
-                            <button type="button" onclick="setOdds(-150)" class="btn btn-secondary btn-sm">-150</button>
-                            <button type="button" onclick="setOdds(+110)" class="btn btn-secondary btn-sm">+110</button>
-                            <button type="button" onclick="setOdds(+150)" class="btn btn-secondary btn-sm">+150</button>
-                            <button type="button" onclick="setOdds(+200)" class="btn btn-secondary btn-sm">+200</button>
-                        </div>
-                        <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
-                            <strong style="color:var(--text-muted)">Negative</strong> = you're the favorite · <strong style="color:var(--green)">Positive</strong> = you're the underdog
-                        </div>
-                    </div>
-                    <div style="flex:1;min-width:180px;">
-                        <label style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">Your Stake ($)</label>
-                        <input id="amount" type="number" placeholder="100" step="1"
-                            style="width:100%;padding:14px 16px;font-size:24px;font-weight:700;font-family:'Barlow Condensed',sans-serif;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;">
-                        <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">How much you're risking on this line</div>
-                    </div>
+    try{
+        const [gamesRes, groupsRes]=await Promise.all([
+            fetch(API+'/games'),
+            fetch(API+'/groups?token='+token)
+        ]);
+        const games=gamesRes.ok ? await gamesRes.json() : [];
+        const groups=groupsRes.ok ? await groupsRes.json() : [];
+        if(!Array.isArray(games)) throw new Error('Could not load games from server');
+        gamesCache=games;
+        const gameOptions=games.map(g=>{
+            const time=g.commence_time?new Date(g.commence_time).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;
+            return`<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home} — ${time}</option>`;
+        }).join('');
+        const html=`<div class="page-header"><div class="page-title">Set a Line</div><div class="page-subtitle">You're the bookie — set the game, your side, and the odds you'll offer</div></div>
+            <div class="card" style="max-width:760px;">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:10px;">① PICK THE MATCHUP</div>
+                <div class="form-group"><label>Select Game</label>
+                    <select id="game" onchange="onGameChange()"><option value="">Choose a game...</option>${gameOptions}</select>
                 </div>
-                <div id="oddsPreview" style="margin-top:16px;padding:12px 16px;background:var(--card);border-radius:8px;font-size:14px;color:var(--text-muted);border:1px solid var(--border);min-height:42px;transition:.2s;">
-                    Enter odds and amount to see the payout breakdown
-                </div>
-            </div>
-            <div class="advanced-panel" style="margin-top:16px;">
-                <div class="advanced-title">Advanced Controls</div>
                 <div class="form-grid-3">
-                    <div class="form-group" style="margin:0"><label>Max Bettors</label><input id="maxBettors" type="number" placeholder="Unlimited"></div>
-                    <div class="form-group" style="margin:0"><label>Max Per User ($)</label><input id="maxBetPerUser" type="number" placeholder="Unlimited"></div>
-                    <div class="form-group" style="margin:0"><label>Max Total Action ($)</label><input id="maxTotalAction" type="number" placeholder="Unlimited"></div>
+                    <div class="form-group" style="margin:0"><label>Bet Type</label><select id="type" onchange="onBetTypeChange()"><option value="spread">Spread</option><option value="moneyline">Moneyline</option><option value="total">Over / Under</option></select></div>
+                    <div class="form-group" style="margin:0"><label>Your Side</label><select id="side"><option value="home">Home</option><option value="away">Away</option></select></div>
+                    <div class="form-group" style="margin:0" id="valueField"><label>Line Value</label><input id="value" type="number" step="0.5" placeholder="-5.5"></div>
                 </div>
-                <div class="checkbox-row"><input type="checkbox" id="isPrivate" onchange="toggleGroupSelect()"><span>Private Line (Groups Only)</span></div>
-                ${groups.length>0?`<select id="groupId" style="margin-top:10px;display:none;"><option value="">Select a group...</option>${groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')}</select>`:'<small style="color:var(--text-dim);display:block;margin-top:8px;">Create a group first to use private lines</small>'}
-            </div>
-            <button class="btn btn-primary btn-lg btn-full" style="margin-top:24px;" onclick="createLine()">Post Line to Marketplace ⚡</button>
-        </div>`;
-    document.getElementById('content').innerHTML=html;
-    setTimeout(wireOddsPreview, 50);
-    return '';
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);margin:24px 0 10px;">② SET YOUR ODDS</div>
+                <div style="background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:20px;margin-bottom:4px;">
+                    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:160px;">
+                            <label style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">Your Odds (American)</label>
+                            <input id="odds" type="number" step="1" value="-110"
+                                style="width:100%;padding:14px 16px;font-size:28px;font-weight:800;font-family:'Barlow Condensed',sans-serif;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;letter-spacing:1px;">
+                            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                                <button type="button" onclick="setOdds(-110)" class="btn btn-secondary btn-sm">-110</button>
+                                <button type="button" onclick="setOdds(-150)" class="btn btn-secondary btn-sm">-150</button>
+                                <button type="button" onclick="setOdds(+110)" class="btn btn-secondary btn-sm">+110</button>
+                                <button type="button" onclick="setOdds(+150)" class="btn btn-secondary btn-sm">+150</button>
+                                <button type="button" onclick="setOdds(+200)" class="btn btn-secondary btn-sm">+200</button>
+                            </div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
+                                <strong style="color:var(--text-muted)">Negative</strong> = you're the favorite · <strong style="color:var(--green)">Positive</strong> = you're the underdog
+                            </div>
+                        </div>
+                        <div style="flex:1;min-width:180px;">
+                            <label style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">Your Stake ($)</label>
+                            <input id="amount" type="number" placeholder="100" step="1"
+                                style="width:100%;padding:14px 16px;font-size:24px;font-weight:700;font-family:'Barlow Condensed',sans-serif;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;">
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">How much you're risking on this line</div>
+                        </div>
+                    </div>
+                    <div id="oddsPreview" style="margin-top:16px;padding:12px 16px;background:var(--card);border-radius:8px;font-size:14px;color:var(--text-muted);border:1px solid var(--border);min-height:42px;transition:.2s;">
+                        Enter odds and amount to see the payout breakdown
+                    </div>
+                </div>
+                <div class="advanced-panel" style="margin-top:16px;">
+                    <div class="advanced-title">Advanced Controls</div>
+                    <div class="form-grid-3">
+                        <div class="form-group" style="margin:0"><label>Max Bettors</label><input id="maxBettors" type="number" placeholder="Unlimited"></div>
+                        <div class="form-group" style="margin:0"><label>Max Per User ($)</label><input id="maxBetPerUser" type="number" placeholder="Unlimited"></div>
+                        <div class="form-group" style="margin:0"><label>Max Total Action ($)</label><input id="maxTotalAction" type="number" placeholder="Unlimited"></div>
+                    </div>
+                    <div class="checkbox-row"><input type="checkbox" id="isPrivate" onchange="toggleGroupSelect()"><span>Private Line (Groups Only)</span></div>
+                    ${groups.length>0?`<select id="groupId" style="margin-top:10px;display:none;"><option value="">Select a group...</option>${groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')}</select>`:'<small style="color:var(--text-dim);display:block;margin-top:8px;">Create a group first to use private lines</small>'}
+                </div>
+                <button class="btn btn-primary btn-lg btn-full" style="margin-top:24px;" onclick="createLine()">Post Line to Marketplace ⚡</button>
+            </div>`;
+        document.getElementById('content').innerHTML=html;
+        setTimeout(wireOddsPreview, 50);
+        return '';
+    }catch(e){
+        console.error('renderCreateLine error:',e);
+        return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load Set Lines</div><div class="empty-desc">${e.message||'Connection error'} — <button class="btn btn-outline btn-sm" onclick="changeView('create')">Retry</button></div></div>`;
+    }
 }
 
 function getSelectedGame(gameSelId){
@@ -713,11 +728,15 @@ async function createLine(){
 }
 async function renderProps(){
     document.getElementById('content').innerHTML=skeletonCards(2);
-    const [props, games]=await Promise.all([
-        fetch(API+'/props?token='+token).then(r=>r.json()),
-        fetch(API+'/games').then(r=>r.json())
-    ]);
-    gamesCache=games;
+    try{
+        const [propsRes, gamesRes]=await Promise.all([
+            fetch(API+'/props?token='+token),
+            fetch(API+'/games')
+        ]);
+        const props=propsRes.ok ? await propsRes.json() : [];
+        const games=gamesRes.ok ? await gamesRes.json() : [];
+        if(!Array.isArray(props)||!Array.isArray(games))throw new Error('Unexpected server response');
+        gamesCache=games;
     let html=`<div class="page-header"><div class="page-title">Player Props</div><div class="page-subtitle">Bet on individual player stats</div></div>
         <div class="card" style="max-width:760px;">
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;margin-bottom:16px;">Post a Prop</div>
@@ -756,6 +775,10 @@ async function renderProps(){
         });
     }
     return html;
+    }catch(e){
+        console.error('renderProps error:',e);
+        return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load Props</div><div class="empty-desc">${e.message||'Connection error'} — <button class="btn btn-outline btn-sm" onclick="changeView('props')">Retry</button></div></div>`;
+    }
 }
 function updatePropTypes(){const s=document.getElementById('propSport').value,sel=document.getElementById('propType');sel.innerHTML='<option value="">Choose type...</option>'+(s&&propTypes[s]?propTypes[s].map(t=>`<option value="${t}">${t}</option>`).join(''):'');}
 async function createProp(){
