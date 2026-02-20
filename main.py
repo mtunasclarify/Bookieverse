@@ -219,6 +219,9 @@ def run_migrations():
         "ALTER TABLE bets ADD COLUMN IF NOT EXISTS bookie_amount FLOAT",
         "ALTER TABLE bets ADD COLUMN IF NOT EXISTS bettor_amount FLOAT",
         # props table
+        "ALTER TABLE props ADD COLUMN IF NOT EXISTS game_id VARCHAR",
+        "ALTER TABLE props ADD COLUMN IF NOT EXISTS game VARCHAR",
+        "ALTER TABLE props ADD COLUMN IF NOT EXISTS sport VARCHAR",
         "ALTER TABLE props ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
         # prop_bets table
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
@@ -572,7 +575,8 @@ def expire_pregame_lines():
         all_open_lines = db.query(Line).filter(Line.status == "open").all()
         all_open_props = db.query(Prop).filter(
             Prop.status == "open",
-            ~Prop.game_id.startswith("future_")
+            Prop.game_id.isnot(None),
+            ~Prop.game_id.like("future_%")
         ).all()
 
         lines_expired = 0
@@ -1071,8 +1075,8 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
 def get_props(db: Session = Depends(get_db)):
     props = db.query(Prop).filter(
         Prop.status == "open",
-        Prop.game_id != None,
-        ~Prop.game_id.startswith("future_")
+        Prop.game_id.isnot(None),
+        ~Prop.game_id.like("future_%")
     ).all()
     result = []
     for p in props:
