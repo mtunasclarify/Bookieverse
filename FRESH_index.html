@@ -555,9 +555,16 @@ async function renderCreateLine(){
                         </div>
                         <div style="flex:1;min-width:180px;">
                             <label style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">Max Liability ($)</label>
-                            <input id="amount" type="number" placeholder="100" step="1"
-                                style="width:100%;padding:14px 16px;font-size:24px;font-weight:700;font-family:'Barlow Condensed',sans-serif;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;">
-                            <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Max you'll <strong style="color:var(--red)">pay out</strong> if you lose — escrowed now, unmatched portion refunds at game time</div>
+                            <div style="display:flex;gap:8px;align-items:stretch;">
+                                <input id="amount" type="number" placeholder="100" step="1" oninput="checkLineBalance()"
+                                    style="flex:1;padding:14px 16px;font-size:24px;font-weight:700;font-family:'Barlow Condensed',sans-serif;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;transition:.2s;">
+                                <button type="button" onclick="document.getElementById('amount').value=Math.floor(user.balance);checkLineBalance();calcOddsPreview();"
+                                    style="padding:0 14px;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">MAX</button>
+                            </div>
+                            <div id="lineBalanceHint" style="font-size:12px;margin-top:8px;color:var(--text-dim);">
+                                Available: <strong style="color:var(--green)">$${user.balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
+                            </div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Escrowed now · unmatched portion refunds at game time</div>
                         </div>
                     </div>
                     <div id="oddsPreview" style="margin-top:16px;padding:12px 16px;background:var(--card);border-radius:8px;font-size:14px;color:var(--text-muted);border:1px solid var(--border);min-height:42px;transition:.2s;">
@@ -695,6 +702,49 @@ function calcOddsPreview(){
         </div>`;
 }
 
+function checkLineBalance(){
+    const inp=document.getElementById('amount');
+    const hint=document.getElementById('lineBalanceHint');
+    if(!inp||!hint||!user)return;
+    const val=parseFloat(inp.value)||0;
+    const bal=user.balance;
+    if(val<=0){
+        inp.style.borderColor='var(--border)';
+        hint.innerHTML=`Available: <strong style="color:var(--green)">$${bal.toFixed(2)}</strong>`;
+    } else if(val>bal){
+        inp.style.borderColor='var(--red)';
+        hint.innerHTML=`<strong style="color:var(--red)">⚠ Insufficient funds</strong> — you have $${bal.toFixed(2)}, need $${val.toFixed(2)}`;
+    } else {
+        const remaining=bal-val;
+        const pct=Math.round((val/bal)*100);
+        const col=pct>80?'var(--orange)':'var(--green)';
+        inp.style.borderColor=col;
+        hint.innerHTML=`Available: <strong style="color:${col}">$${bal.toFixed(2)}</strong> · After posting: <strong>$${remaining.toFixed(2)}</strong>`;
+    }
+    calcOddsPreview();
+}
+
+function checkPropBalance(){
+    const inp=document.getElementById('propAmount');
+    const hint=document.getElementById('propBalanceHint');
+    if(!inp||!hint||!user)return;
+    const val=parseFloat(inp.value)||0;
+    const bal=user.balance;
+    if(val<=0){
+        inp.style.border='';
+        hint.innerHTML=`Available: <strong style="color:var(--green)">$${bal.toFixed(2)}</strong>`;
+    } else if(val>bal){
+        inp.style.border='2px solid var(--red)';
+        hint.innerHTML=`<strong style="color:var(--red)">⚠ Insufficient funds</strong> — you have $${bal.toFixed(2)}, need $${val.toFixed(2)}`;
+    } else {
+        const remaining=bal-val;
+        const pct=Math.round((val/bal)*100);
+        const col=pct>80?'var(--orange)':'var(--green)';
+        inp.style.border=`2px solid ${col}`;
+        hint.innerHTML=`Available: <strong style="color:${col}">$${bal.toFixed(2)}</strong> · After posting: <strong>$${remaining.toFixed(2)}</strong>`;
+    }
+}
+
 function wireOddsPreview(){
     document.getElementById('odds')?.addEventListener('input',calcOddsPreview);
     document.getElementById('amount')?.addEventListener('input',calcOddsPreview);
@@ -710,6 +760,7 @@ async function createLine(){
     if(!gameId||!type||!side){toast('Fill in all required fields','error');return;}
     if(type!=='moneyline'&&isNaN(value)){toast('Enter a line value for spread / total','error');return;}
     if(isNaN(amount)||amount<=0){toast('Enter your max liability amount','error');return;}
+    if(amount>user.balance){toast(`Insufficient funds — you have $${user.balance.toFixed(2)}, need $${amount.toFixed(2)}`,'error');return;}
     if(isNaN(odds)||odds===0||(odds>-100&&odds<100)){toast('Odds must be -100 or lower, or +100 or higher (e.g. -110, +150)','error');return;}
     const body={game_id:gameId,type,side,value,odds,amount};
     const mb=document.getElementById('maxBettors')?.value,mbu=document.getElementById('maxBetPerUser')?.value,
@@ -755,7 +806,17 @@ async function renderProps(){
                 <div class="form-group"><label>Your Side</label><select id="propSide"><option value="over">Over</option><option value="under">Under</option></select></div>
                 <div class="form-group"><label>Your Odds (American)</label><input id="propOdds" type="number" step="1" value="-110" placeholder="-110"></div>
             </div>
-            <div class="form-group"><label>Amount ($)</label><input id="propAmount" type="number" placeholder="50"></div>
+            <div class="form-group">
+                <label>Amount ($)</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input id="propAmount" type="number" placeholder="50" oninput="checkPropBalance()" style="flex:1;">
+                    <button type="button" onclick="document.getElementById('propAmount').value=Math.floor(user.balance);checkPropBalance();"
+                        style="padding:8px 14px;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;">MAX</button>
+                </div>
+                <div id="propBalanceHint" style="font-size:12px;margin-top:6px;color:var(--text-dim);">
+                    Available: <strong style="color:var(--green)">$${user.balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
+                </div>
+            </div>
             <button class="btn btn-primary btn-full" onclick="createProp()">Post Prop</button>
         </div>`;
     if(props.length>0){
@@ -785,6 +846,7 @@ async function createProp(){
         odds=parseInt(document.getElementById('propOdds').value||'-110'),
         amount=parseFloat(document.getElementById('propAmount').value);
     if(!gameId||!sport||!player||!propType||isNaN(line)||isNaN(amount)){toast('Fill all fields including Game','error');return;}
+    if(amount>user.balance){toast(`Insufficient funds — you have $${user.balance.toFixed(2)}, need $${amount.toFixed(2)}`,'error');return;}
     if(isNaN(odds)||odds===0||(-100<odds&&odds<100)){toast('Odds must be ≤ -100 or ≥ +100','error');return;}
     try{
         const res=await fetch(API+'/props?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game_id:gameId,sport,player_name:player,prop_type:propType,line,side,odds,amount})});
@@ -870,11 +932,15 @@ let _myBetsTab = 'lines'; // 'lines' | 'bets'
 
 async function renderMyBets(){
     document.getElementById('content').innerHTML=skeletonCards(3);
-    const [betsData, myLines] = await Promise.all([
-        fetch(API+'/bets?token='+token).then(r=>r.json()),
-        fetch(API+'/lines/mine?token='+token).then(r=>r.json())
-    ]);
-    const bets=betsData.single_bets||[], props=betsData.prop_bets||[];
+    try{
+        const [betsRes, linesRes] = await Promise.all([
+            fetch(API+'/bets?token='+token),
+            fetch(API+'/lines/mine?token='+token)
+        ]);
+        const betsData = betsRes.ok ? await betsRes.json() : {};
+        const myLines = linesRes.ok ? await linesRes.json() : [];
+        if(!Array.isArray(myLines)) throw new Error('Could not load your lines');
+        const bets=betsData.single_bets||[], props=betsData.prop_bets||[];
 
     // Tab switcher
     let html=`<div class="page-header"><div class="page-title">My Action</div></div>
@@ -965,6 +1031,10 @@ async function renderMyBets(){
         }
     }
     return html;
+    }catch(e){
+        console.error('renderMyBets error:',e);
+        return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load My Action</div><div class="empty-desc">${e.message||'Connection error'} — <button class="btn btn-outline btn-sm" onclick="changeView('bets')">Retry</button></div></div>`;
+    }
 }
 
 function switchMyBetsTab(tab){_myBetsTab=tab;renderApp();}
