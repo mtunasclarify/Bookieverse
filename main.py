@@ -209,6 +209,7 @@ def run_migrations():
     """
     Safe migration: add any new columns that don't yet exist in the live DB.
     Uses ADD COLUMN IF NOT EXISTS so it's a no-op once the column is there.
+    Also runs expire_pregame_lines immediately to clean up stale open lines.
     """
     migrations = [
         # lines table
@@ -234,6 +235,13 @@ def run_migrations():
 
 run_migrations()
 
+# Run expiry immediately on startup to clean up any stale open lines from before deploy
+try:
+    expire_pregame_lines()
+    print("[startup] expire_pregame_lines ran successfully")
+except Exception as _e:
+    print(f"[startup] expire_pregame_lines error (non-fatal): {_e}")
+
 def get_db():
     db = SessionLocal()
     try:
@@ -258,23 +266,26 @@ FUTURES = [
 
 def bettor_stake_from_bookie(bookie_stake: float, odds: int) -> float:
     """
-    Given bookie's stake and their American odds, return what bettor must risk.
-    Bookie -110 for $110 → bettor risks $100 to win $110.
-    Bookie +150 for $100 → bettor risks $150 to win $100.
+    Given bookie's max liability (what they pay out if they lose) and their American odds,
+    return what bettor must risk to take the full line.
+
+    Bookie -110 liability=$110 → bettor risks $100 to win $110
+    Bookie +150 liability=$100 → bettor risks $66.67 to win $100
+    Formula: bettor_stake = liability * (100 / abs(odds))
+    Works for both positive and negative since:
+      -110 → 100/110 ≈ 0.909 → bettor risks less than liability ✓
+      +150 → 100/150 ≈ 0.667 → bettor risks less than liability ✓
     """
-    if odds <= -100:
-        return round(bookie_stake * (100 / abs(odds)), 2)
-    else:  # positive odds
-        return round(bookie_stake * (odds / 100), 2)
+    return round(bookie_stake * (100 / abs(odds)), 2)
 
 def bookie_portion_from_bettor(bettor_stake: float, odds: int) -> float:
     """
-    Inverse: given bettor's chosen stake, how much of the bookie's line is consumed.
+    Inverse of bettor_stake_from_bookie.
+    Given bettor's stake, return how much bookie liability is consumed.
+    bettor_stake = liability * (100/abs(odds))
+    → liability = bettor_stake * (abs(odds)/100)
     """
-    if odds <= -100:
-        return round(bettor_stake * (abs(odds) / 100), 2)
-    else:
-        return round(bettor_stake * (100 / odds), 2)
+    return round(bettor_stake * (abs(odds) / 100), 2)
 
 def format_odds(odds: int) -> str:
     """Format American odds for display: -110 → '-110', +150 → '+150'."""
@@ -537,58 +548,74 @@ def push_notification(db, user_id: int, type: str, title: str, body: str, ref_id
 
 def expire_pregame_lines():
     """
-    Cancel any open lines/props whose game has already started (commence_time passed).
-    Refund the bookie's full unmatched stake. Runs every minute so the window is tight.
+    Expire open lines/props whose game has started OR whose game_id is no longer
+    in the upcoming games list (game already happened and dropped off the API).
+    Refunds the bookie's unmatched stake. Runs every minute.
     """
     now = datetime.utcnow()
-    all_games = fetch_live_games()
+    all_games = get_cached_games()
 
-    # Build a set of game IDs that have already kicked off
-    started_ids = {g["id"] for g in all_games if g.get("commence_time") and
-                   datetime.strptime(g["commence_time"][:19], "%Y-%m-%dT%H:%M:%S") <= now}
+    # Games that have already kicked off (still in API but past commence_time)
+    started_ids = set()
+    # Games that are still upcoming (safe to keep open)
+    upcoming_ids = set()
 
-    if not started_ids:
-        return
+    for g in all_games:
+        ct = g.get("commence_time", "")
+        if not ct:
+            continue
+        try:
+            game_dt = datetime.strptime(ct[:19], "%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            continue
+        if game_dt <= now:
+            started_ids.add(g["id"])
+        else:
+            upcoming_ids.add(g["id"])
 
     db = SessionLocal()
     try:
-        # ── Lines ──────────────────────────────────────────────────────────────
-        open_lines = db.query(Line).filter(
-            Line.status == "open",
-            Line.game_id.in_(started_ids)
-        ).all()
-
-        for line in open_lines:
-            refund_unmatched_line(db, line)
-            line.status = "expired"
-            push_notification(
-                db, line.bookie_id, "bet_settled",
-                "⏰ Line expired — game started",
-                f"{line.game} · Unmatched stake refunded",
-                line.id
-            )
-
-        # ── Props (non-futures) ────────────────────────────────────────────────
-        open_props = db.query(Prop).filter(
+        all_open_lines = db.query(Line).filter(Line.status == "open").all()
+        all_open_props = db.query(Prop).filter(
             Prop.status == "open",
-            Prop.game_id.in_(started_ids)
+            ~Prop.game_id.startswith("future_")
         ).all()
 
-        for prop in open_props:
-            bookie = db.query(User).filter(User.id == prop.bookie_id).first()
-            if bookie:
-                bookie.balance += prop.amount
-            prop.status = "expired"
-            push_notification(
-                db, prop.bookie_id, "bet_settled",
-                "⏰ Prop expired — game started",
-                f"{prop.player_name} {prop.prop_type} · ${prop.amount:.2f} refunded",
-                prop.id
-            )
+        lines_expired = 0
+        props_expired = 0
 
-        if open_lines or open_props:
+        for line in all_open_lines:
+            gid = line.game_id or ""
+            # Expire if: game has started, OR game_id is unknown (not in upcoming or started)
+            if gid in started_ids or (gid not in upcoming_ids and gid not in started_ids):
+                refund_unmatched_line(db, line)
+                line.status = "expired"
+                push_notification(
+                    db, line.bookie_id, "bet_settled",
+                    "⏰ Line expired — game started",
+                    f"{line.game} · Unmatched stake refunded",
+                    line.id
+                )
+                lines_expired += 1
+
+        for prop in all_open_props:
+            gid = prop.game_id or ""
+            if gid in started_ids or (gid not in upcoming_ids and gid not in started_ids):
+                bookie = db.query(User).filter(User.id == prop.bookie_id).first()
+                if bookie:
+                    bookie.balance += prop.amount
+                prop.status = "expired"
+                push_notification(
+                    db, prop.bookie_id, "bet_settled",
+                    "⏰ Prop expired — game started",
+                    f"{prop.player_name} {prop.prop_type} · ${prop.amount:.2f} refunded",
+                    prop.id
+                )
+                props_expired += 1
+
+        if lines_expired or props_expired:
             db.commit()
-            print(f"[expire_pregame] Expired {len(open_lines)} lines, {len(open_props)} props for games: {started_ids}")
+            print(f"[expire_pregame] Expired {lines_expired} lines, {props_expired} props")
 
     except Exception as e:
         print(f"Error in expire_pregame_lines: {e}")
