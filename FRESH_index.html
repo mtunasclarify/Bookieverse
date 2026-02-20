@@ -289,7 +289,7 @@
         <div class="modal-title">🔮 Post Future Bet</div>
         <div id="futureBetLabel" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:14px;line-height:1.8;"></div>
         <div class="form-grid-2">
-            <div class="form-group"><label>Your Odds (American)</label><input type="number" id="futureOdds" step="1" value="+150"></div>
+            <div class="form-group"><label>Your Odds (American)</label><input type="number" id="futureOdds" step="1" value="150" placeholder="150"></div>
             <div class="form-group"><label>Your Stake ($)</label><input type="number" id="futureAmount" step="1" placeholder="100"></div>
         </div>
         <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">Positive odds = underdog pick (you pay more to win). Negative = heavy favorite.</div>
@@ -723,8 +723,8 @@ async function createLine(){
     try{
         const res=await fetch(API+'/lines?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
         if(res.ok){toast('Line posted!','success');await loadUser();updateSidebarBalance();changeView('marketplace');}
-        else{const e=await res.json();toast(e.detail||'Error','error');}
-    }catch(e){toast('Connection error','error');}
+        else{const e=await res.json().catch(()=>({}));toast(e.detail||`Server error (${res.status})`,'error');}
+    }catch(e){console.error('createLine:',e);toast('Connection error — check your internet and try again','error');}
 }
 async function renderProps(){
     document.getElementById('content').innerHTML=skeletonCards(2);
@@ -842,7 +842,7 @@ let _futurePick={};
 function openFutureBet(futureId, marketName, pick, sport){
     _futurePick={futureId, marketName, pick, sport};
     document.getElementById('futureBetLabel').innerHTML=`<strong style="color:var(--text)">${marketName}</strong><br><span style="color:var(--green);font-size:18px;font-weight:700;">→ ${pick}</span>`;
-    document.getElementById('futureOdds').value='+150';
+    document.getElementById('futureOdds').value='150';
     document.getElementById('futureAmount').value='';
     openModal('futureBetModal');
     setTimeout(()=>document.getElementById('futureAmount').focus(),100);
