@@ -213,9 +213,11 @@ def get_db():
         db.close()
 
 GAMES = [
-    {"id": "demo_1", "home": "Lakers", "away": "Warriors", "sport": "NBA", "date": "2026-03-01", "commence_time": "2026-03-01T20:00:00Z"},
-    {"id": "demo_2", "home": "Celtics", "away": "Heat", "sport": "NBA", "date": "2026-03-01", "commence_time": "2026-03-01T22:30:00Z"},
-    {"id": "demo_3", "home": "Chiefs", "away": "Bills", "sport": "NFL", "date": "2026-03-02", "commence_time": "2026-03-02T18:00:00Z"},
+    {"id": "demo_1", "home": "Lakers",  "away": "Warriors", "sport": "NBA", "date": "2026-03-05", "commence_time": "2026-03-05T02:00:00Z"},
+    {"id": "demo_2", "home": "Celtics", "away": "Heat",     "sport": "NBA", "date": "2026-03-05", "commence_time": "2026-03-05T00:00:00Z"},
+    {"id": "demo_3", "home": "Nuggets", "away": "Clippers", "sport": "NBA", "date": "2026-03-06", "commence_time": "2026-03-06T01:00:00Z"},
+    {"id": "demo_4", "home": "Bucks",   "away": "76ers",    "sport": "NBA", "date": "2026-03-06", "commence_time": "2026-03-06T23:00:00Z"},
+    {"id": "demo_5", "home": "Suns",    "away": "Mavs",     "sport": "NBA", "date": "2026-03-07", "commence_time": "2026-03-07T02:00:00Z"},
 ]
 
 FUTURES = [
@@ -253,53 +255,63 @@ def format_odds(odds: int) -> str:
 
 # Odds API Integration
 def fetch_live_games():
-    """Fetch real games from Odds API"""
+    """Fetch upcoming games from Odds API using the /events endpoint (0 quota cost).
+    Falls back to demo data if no API key or on any error."""
     if not ODDS_API_KEY:
         return GAMES  # Return demo games if no API key
-    
+
     try:
-        # Fetch NBA games
-        nba_url = f"https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey={ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals"
-        nba_response = requests.get(nba_url, timeout=10)
-        
-        # Fetch NFL games
-        nfl_url = f"https://api.the-odds-api.com/v4/sports/americanfootball_nfl/odds/?apiKey={ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals"
-        nfl_response = requests.get(nfl_url, timeout=10)
-        
         games = []
-        
-        # Process NBA games
-        if nba_response.status_code == 200:
-            nba_data = nba_response.json()
-            for game in nba_data:  # Get ALL games
+
+        # Determine which sports are currently in season (Feb 2026: NBA yes, NFL no, MLB no yet)
+        # Use /events endpoint — completely free (0 API quota consumed)
+        active_sports = [
+            ("basketball_nba", "NBA"),
+        ]
+
+        for sport_key, sport_label in active_sports:
+            url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/events/?apiKey={ODDS_API_KEY}"
+            try:
+                resp = requests.get(url, timeout=10)
+            except Exception as e:
+                print(f"fetch_live_games: request error for {sport_key}: {e}")
+                continue
+
+            if resp.status_code != 200:
+                print(f"fetch_live_games: {sport_key} returned {resp.status_code}: {resp.text[:200]}")
+                continue
+
+            data = resp.json()
+            if not isinstance(data, list):
+                print(f"fetch_live_games: unexpected response for {sport_key}")
+                continue
+
+            for game in data:
+                commence = game.get("commence_time", "")
+                if not commence:
+                    continue
+                # Only include games that haven't started yet
+                try:
+                    game_dt = datetime.strptime(commence[:19], "%Y-%m-%dT%H:%M:%S")
+                    if game_dt <= datetime.utcnow():
+                        continue
+                except ValueError:
+                    pass
                 games.append({
                     "id": game["id"],
                     "home": game["home_team"],
                     "away": game["away_team"],
-                    "sport": "NBA",
-                    "date": game["commence_time"][:10],
-                    "commence_time": game["commence_time"],
+                    "sport": sport_label,
+                    "date": commence[:10],
+                    "commence_time": commence,
                     "status": "upcoming"
                 })
-        
-        # Process NFL games
-        if nfl_response.status_code == 200:
-            nfl_data = nfl_response.json()
-            for game in nfl_data:  # Get ALL games
-                games.append({
-                    "id": game["id"],
-                    "home": game["home_team"],
-                    "away": game["away_team"],
-                    "sport": "NFL",
-                    "date": game["commence_time"][:10],
-                    "commence_time": game["commence_time"],
-                    "status": "upcoming"
-                })
-        
-        # Sort by commence_time (soonest first)
+
+        # Sort soonest first
         games.sort(key=lambda x: x["commence_time"])
-        
+
         return games if games else GAMES
+
     except Exception as e:
         print(f"Error fetching games: {e}")
         return GAMES
@@ -1629,9 +1641,13 @@ def get_user(token: str, db: Session = Depends(get_db)):
 
 @app.get("/app", response_class=HTMLResponse)
 def serve_app():
-    index_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "FRESH_index.html")
-    with open(index_path, "r") as f:
-        return f.read()
+    base = os.path.dirname(os.path.abspath(__file__))
+    for name in ["index.html", "FRESH_index.html"]:
+        path = os.path.join(base, name)
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return f.read()
+    return HTMLResponse("<h1>index.html not found</h1>", status_code=500)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
