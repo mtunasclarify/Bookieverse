@@ -430,6 +430,7 @@ async function loadLines(){
         if(!lines.length)return'<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Available</div><div class="empty-desc">Be the first to set a line</div></div>';
     let html=`<div class="page-header"><div class="page-title">Marketplace</div><div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''} available</div></div>`;
     for(const line of lines){
+        const isOwn = user && line.bookie_id === user.id;
         const avail=line.amount-(line.total_action||0);
         const availBettor=line.available_for_bettor||0;
         const pct=Math.min(100,Math.round((line.total_action||0)/line.amount*100));
@@ -464,8 +465,8 @@ async function loadLines(){
                     <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">You can win</div>
                     <div class="line-amount-num">$${avail.toFixed(0)}</div>
                     <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">risk $${availBettor.toFixed(0)}</div>
-                    <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="takeLine(${line.id})" ${isFull?'disabled':''}>
-                        ${isFull?'Filled':'Take Bet'}
+                    <button class="btn ${isOwn?'btn-secondary':'btn-primary'} btn-sm" style="margin-top:12px;" onclick="takeLine(${line.id})" ${(isFull||isOwn)?'disabled':''}>
+                        ${isFull?'Filled':isOwn?'Your Line':'Take Bet'}
                     </button>
                 </div>
             </div>
@@ -506,7 +507,7 @@ async function takeLine(lineId){
             const data=await res.json();
             toast(`Bet placed! Risk $${amount} → Win $${data.to_win||toWin}  (${oddsStr})`, 'success');
             await loadUser();updateSidebarBalance();refreshBadges();changeView('marketplace');
-        }else{const e=await res.json();toast(e.detail||'Error placing bet','error');}
+        }else{const e=await res.json().catch(()=>({}));toast(e.detail||`Error placing bet (${res.status})`,'error');}
     }catch(e){toast('Connection error','error');}
 }
 async function renderCreateLine(){
