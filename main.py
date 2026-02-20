@@ -235,12 +235,6 @@ def run_migrations():
 
 run_migrations()
 
-# Run expiry immediately on startup to clean up any stale open lines from before deploy
-try:
-    expire_pregame_lines()
-    print("[startup] expire_pregame_lines ran successfully")
-except Exception as _e:
-    print(f"[startup] expire_pregame_lines error (non-fatal): {_e}")
 
 def get_db():
     db = SessionLocal()
@@ -632,6 +626,12 @@ scheduler.add_job(expire_pregame_lines,  'interval', minutes=1)
 def start_scheduler():
     if not scheduler.running:
         scheduler.start()
+    # Clean up stale open lines immediately — runs after all functions are defined
+    try:
+        expire_pregame_lines()
+        print("[startup] expire_pregame_lines ran successfully")
+    except Exception as _e:
+        print(f"[startup] expire_pregame_lines error (non-fatal): {_e}")
 
 @app.on_event("shutdown")
 def stop_scheduler():
@@ -870,20 +870,28 @@ def get_my_lines(token: str, db: Session = Depends(get_db)):
     lines = db.query(Line).filter(Line.bookie_id == user_id, Line.status == "open").order_by(Line.created_at.desc()).all()
     result = []
     for l in lines:
-        odds = l.odds if l.odds is not None else -110
-        unmatched = l.amount - (l.total_action or 0)
-        available_for_bettor = bettor_stake_from_bookie(unmatched, odds)
-        result.append({
-            "id": l.id, "game": l.game, "sport": l.sport, "type": l.type,
-            "side": l.side, "value": l.value, "odds": odds,
-            "amount": l.amount, "total_action": l.total_action or 0,
-            "unmatched": round(unmatched, 2),
-            "available_for_bettor": round(available_for_bettor, 2),
-            "current_bettors": l.current_bettors or 0,
-            "max_bet_per_user": l.max_bet_per_user,
-            "max_bettors": l.max_bettors,
-            "is_private": l.is_private,
-        })
+        try:
+            odds = l.odds if (l.odds is not None and l.odds != 0) else -110
+            if -100 < odds < 100:
+                odds = -110
+            amount = l.amount or 0
+            total_action = l.total_action or 0
+            unmatched = max(0, amount - total_action)
+            available_for_bettor = bettor_stake_from_bookie(unmatched, odds)
+            result.append({
+                "id": l.id, "game": l.game or "", "sport": l.sport or "", "type": l.type or "moneyline",
+                "side": l.side or "", "value": l.value or 0, "odds": odds,
+                "amount": amount, "total_action": total_action,
+                "unmatched": round(unmatched, 2),
+                "available_for_bettor": round(available_for_bettor, 2),
+                "current_bettors": l.current_bettors or 0,
+                "max_bet_per_user": l.max_bet_per_user,
+                "max_bettors": l.max_bettors,
+                "is_private": l.is_private or False,
+            })
+        except Exception as e:
+            print(f"get_my_lines: skipping line {l.id}: {e}")
+            continue
     return result
 
 @app.patch("/api/lines/{line_id}")
@@ -1063,13 +1071,27 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
 def get_props(db: Session = Depends(get_db)):
     props = db.query(Prop).filter(
         Prop.status == "open",
+        Prop.game_id != None,
         ~Prop.game_id.startswith("future_")
     ).all()
-    return [{"id": p.id, "bookie_id": p.bookie_id, "bookie_name": p.bookie_name,
-             "game_id": p.game_id, "game": p.game, "sport": p.sport,
-             "player_name": p.player_name, "prop_type": p.prop_type, "line": p.line, "side": p.side,
-             "odds": p.odds if p.odds is not None else -110,
-             "amount": p.amount} for p in props]
+    result = []
+    for p in props:
+        try:
+            odds = p.odds if (p.odds is not None and p.odds != 0) else -110
+            if -100 < odds < 100:
+                odds = -110
+            result.append({
+                "id": p.id, "bookie_id": p.bookie_id, "bookie_name": p.bookie_name or "",
+                "game_id": p.game_id, "game": p.game or "", "sport": p.sport or "",
+                "player_name": p.player_name or "", "prop_type": p.prop_type or "",
+                "line": p.line or 0, "side": p.side or "over",
+                "odds": odds,
+                "amount": p.amount or 0
+            })
+        except Exception as e:
+            print(f"get_props: skipping prop {p.id}: {e}")
+            continue
+    return result
 
 @app.post("/api/props")
 def create_prop(prop: PropCreate, token: str, db: Session = Depends(get_db)):
@@ -1193,10 +1215,14 @@ def create_challenge(challenge: ChallengeCreate, token: str, db: Session = Depen
     if challenge.odds == 0 or (-100 < challenge.odds < 100):
         raise HTTPException(400, "Odds must be -100 or lower, or +100 or higher")
 
-    all_games = fetch_live_games()
+    all_games = get_cached_games()
     game = next((g for g in all_games if g["id"] == challenge.game_id), None)
     if not game:
-        raise HTTPException(404, "Game not found")
+        game_label = f"Game {challenge.game_id}"
+        game_sport = "NBA"
+    else:
+        game_label = f"{game['away']} @ {game['home']}"
+        game_sport = game["sport"]
 
     new_challenge = Challenge(
         challenger_id=challenger.id,
@@ -1204,8 +1230,8 @@ def create_challenge(challenge: ChallengeCreate, token: str, db: Session = Depen
         challenged_id=challenged.id,
         challenged_name=challenged.username,
         game_id=challenge.game_id,
-        game=f"{game['away']} @ {game['home']}",
-        sport=game["sport"],
+        game=game_label,
+        sport=game_sport,
         type=challenge.type,
         side=challenge.side,
         value=challenge.value,
