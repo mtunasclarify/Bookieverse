@@ -206,6 +206,34 @@ class Notification(Base):
     ref_id = Column(Integer, nullable=True)   # challenge_id or bet_id for deep-linking
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class Parlay(Base):
+    __tablename__ = "parlays"
+    id = Column(Integer, primary_key=True)
+    bookie_id = Column(Integer)
+    bookie_name = Column(String)
+    legs = Column(Text)           # JSON: [{game_id, game, sport, type, side, value, odds}, ...]
+    combined_odds = Column(Integer)  # American odds for the full parlay
+    amount = Column(Float)           # Bookie's max liability (escrowed)
+    total_action = Column(Float, default=0.0)
+    status = Column(String, default="open")   # open, settled, cancelled
+    is_private = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class ParlayBet(Base):
+    __tablename__ = "parlay_bets"
+    id = Column(Integer, primary_key=True)
+    parlay_id = Column(Integer)
+    bookie_id = Column(Integer)
+    bookie_name = Column(String)
+    bettor_id = Column(Integer)
+    bettor_name = Column(String)
+    bookie_amount = Column(Float)   # bookie's liability for this ticket
+    bettor_amount = Column(Float)   # bettor's stake
+    legs_result = Column(Text)      # JSON: {game_id: "pending"|"won"|"lost"|"push"}
+    status = Column(String, default="pending")  # pending, won, lost
+    winner = Column(String, nullable=True)       # "bookie" or "bettor"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 Base.metadata.create_all(bind=engine)
 
 def run_migrations():
@@ -315,6 +343,10 @@ ESPN_SPORTS = [
     ("football/nfl", "NFL"),
     ("baseball/mlb", "MLB"),
     ("hockey/nhl", "NHL"),
+    ("soccer/eng.1", "Premier League"),
+    ("soccer/esp.1", "La Liga"),
+    ("soccer/uefa.champions", "Champions League"),
+    ("soccer/usa.1", "MLS"),
 ]
 
 def fetch_espn_scoreboard(sport_path: str, sport_label: str) -> list:
@@ -335,11 +367,12 @@ def fetch_espn_scoreboard(sport_path: str, sport_label: str) -> list:
             away = next((c for c in competitors if c.get("homeAway") == "away"), None)
             if not home or not away:
                 continue
+            def tn(c): return c.get("team",{}).get("displayName") or c.get("team",{}).get("shortDisplayName","Unknown")
             commence = event.get("date", "")
             games.append({
                 "id": f"espn_{event['id']}",
-                "home": home["team"]["displayName"],
-                "away": away["team"]["displayName"],
+                "home": tn(home),
+                "away": tn(away),
                 "sport": sport_label,
                 "date": commence[:10] if commence else "",
                 "commence_time": commence,
@@ -391,8 +424,8 @@ def fetch_espn_completed() -> list:
                     continue
                 completed.append({
                     "id": f"espn_{event['id']}",
-                    "home_team": home["team"]["displayName"],
-                    "away_team": away["team"]["displayName"],
+                    "home_team": home.get("team",{}).get("displayName") or home.get("team",{}).get("shortDisplayName","Home"),
+                    "away_team": away.get("team",{}).get("displayName") or away.get("team",{}).get("shortDisplayName","Away"),
                     "home_score": home_score,
                     "away_score": away_score,
                 })
@@ -401,36 +434,30 @@ def fetch_espn_completed() -> list:
     return completed
 
 def check_game_scores():
-    """Check ESPN scores and auto-settle bets every 5 minutes. Free, no quota."""
+    """Check ESPN scores and auto-settle bets + parlays every 5 minutes."""
     db = SessionLocal()
     total_settled = 0
     try:
         completed = fetch_espn_completed()
         print(f"[scores] ESPN: {len(completed)} completed games")
+        completed_map = {g["id"]: g for g in completed}
 
+        # ── Regular bets ──────────────────────────────────────────────────────
         pending_bets = db.query(Bet).filter(Bet.status == "pending").all()
-        if not pending_bets:
-            return
-
         pending_ids = set(b.game_id for b in pending_bets if b.game_id)
-        print(f"[scores] pending game_ids: {pending_ids}")
 
         for game in completed:
             game_id = game["id"]
             if game_id not in pending_ids:
                 continue
-
-            home_score = game["home_score"]
-            away_score = game["away_score"]
-            print(f"[scores] Settling {game_id}: {game['home_team']} {home_score} - {game['away_team']} {away_score}")
-
+            home_score, away_score = game["home_score"], game["away_score"]
+            print(f"[scores] {game_id}: {game['home_team']} {home_score} - {game['away_team']} {away_score}")
             bets = [b for b in pending_bets if b.game_id == game_id]
             for bet in bets:
                 winner = determine_winner(bet, home_score, away_score)
                 if winner:
                     settle_bet(db, bet, winner)
                     total_settled += 1
-
             line_ids = set(b.line_id for b in bets if b.line_id)
             for line_id in line_ids:
                 line = db.query(Line).filter(Line.id == line_id).first()
@@ -438,13 +465,54 @@ def check_game_scores():
                     refund_unmatched_line(db, line)
                     line.status = "settled"
 
+        # ── Parlay bets ───────────────────────────────────────────────────────
+        pending_pbs = db.query(ParlayBet).filter(ParlayBet.status == "pending").all()
+        for pb in pending_pbs:
+            legs_result = json.loads(pb.legs_result or "{}")
+            parlay = db.query(Parlay).filter(Parlay.id == pb.parlay_id).first()
+            if not parlay:
+                continue
+            legs = json.loads(parlay.legs)
+            changed = False
+            for leg in legs:
+                gid = leg["game_id"]
+                if legs_result.get(gid) != "pending":
+                    continue  # already resolved
+                if gid not in completed_map:
+                    continue
+                game = completed_map[gid]
+                raw = determine_leg_winner(leg, game["home_score"], game["away_score"])
+                if raw:
+                    # Translate to leg outcome: "won" = bookie's pick won, "lost" = bookie lost, "push"
+                    if raw == "push":
+                        legs_result[gid] = "push"
+                    elif raw == "bookie":
+                        legs_result[gid] = "won"    # bookie's leg came through
+                    else:
+                        legs_result[gid] = "lost"   # bookie's pick failed
+                    changed = True
+            if changed:
+                pb.legs_result = json.dumps(legs_result)
+            # Check if parlay is fully resolved
+            statuses = list(legs_result.values())
+            if any(s == "lost" for s in statuses):
+                # At least one bookie leg busted → bettor wins
+                settle_parlay_bet(db, pb, "bettor")
+                total_settled += 1
+            elif all(s in ("won", "push") for s in statuses) and len(statuses) == len(legs):
+                # All bookie legs won/pushed → bookie wins
+                settle_parlay_bet(db, pb, "bookie")
+                total_settled += 1
+
         db.commit()
-        print(f"[scores] Done — settled {total_settled} bets")
+        print(f"[scores] Done — settled {total_settled} bets/parlays")
     except Exception as e:
         print(f"[scores] Error: {e}")
+        import traceback; traceback.print_exc()
         db.rollback()
     finally:
         db.close()
+
 
 def determine_winner(bet, home_score, away_score):
     """Determine bet winner based on scores. Returns 'bookie', 'bettor', or 'push'."""
@@ -584,8 +652,9 @@ def expire_pregame_lines():
 
         for line in all_open_lines:
             gid = line.game_id or ""
-            # Expire if: game has started, OR game_id is unknown (not in upcoming or started)
-            if gid in started_ids or (gid not in upcoming_ids and gid not in started_ids):
+            # Only expire if the game has DEFINITIVELY started (it's in ESPN's board past commence_time)
+            # Do NOT expire "unknown" game IDs — they may be for upcoming games ESPN hasn't published yet
+            if gid in started_ids:
                 refund_unmatched_line(db, line)
                 line.status = "expired"
                 push_notification(
@@ -598,7 +667,7 @@ def expire_pregame_lines():
 
         for prop in all_open_props:
             gid = prop.game_id or ""
-            if gid in started_ids or (gid not in upcoming_ids and gid not in started_ids):
+            if gid in started_ids:
                 bookie = db.query(User).filter(User.id == prop.bookie_id).first()
                 if bookie:
                     bookie.balance += prop.amount
@@ -838,10 +907,17 @@ def get_live_scores():
                 if not home or not away:
                     continue
                 status_detail = comp.get("status", {}).get("type", {}).get("shortDetail", "")
+                def team_abbr(c):
+                    t = c.get("team", {})
+                    result = (t.get("abbreviation") or t.get("abbrev") or
+                            t.get("shortDisplayName") or t.get("displayName", "")[:3].upper())
+                    if not result:
+                        print(f"[live-scores] ⚠ Could not extract team name. team keys: {list(t.keys())}")
+                    return result
                 scores[f"espn_{event['id']}"] = {
                     "state": state,
-                    "home_team": home["team"]["abbreviation"],
-                    "away_team": away["team"]["abbreviation"],
+                    "home_team": team_abbr(home),
+                    "away_team": team_abbr(away),
                     "home_score": home.get("score", ""),
                     "away_score": away.get("score", ""),
                     "status": status_detail,
@@ -1938,7 +2014,194 @@ def admin_pending_bets(token: str, db: Session = Depends(get_db)):
     } for b in bets]
 
 
+# ─── PARLAYS ──────────────────────────────────────────────────────────────────
+
+def american_to_decimal(odds: int) -> float:
+    if odds >= 100:
+        return odds / 100 + 1
+    return 100 / abs(odds) + 1
+
+def decimal_to_american(d: float) -> int:
+    if d >= 2.0:
+        return int((d - 1) * 100)
+    return int(-100 / (d - 1))
+
+def calc_parlay_odds(legs: list) -> int:
+    """Multiply decimal odds of each leg, return combined American odds."""
+    decimal = 1.0
+    for leg in legs:
+        decimal *= american_to_decimal(leg.get("odds", -110))
+    return decimal_to_american(decimal)
+
+def bettor_stake_for_parlay(bookie_liability: float, combined_odds: int) -> float:
+    """How much bettor risks to win bookie_liability at combined_odds."""
+    d = american_to_decimal(combined_odds)
+    return round(bookie_liability / (d - 1), 2)
+
+def determine_leg_winner(leg: dict, home_score: int, away_score: int) -> str:
+    """Returns 'bookie', 'bettor', or 'push' for a single parlay leg."""
+    t = leg.get("type", "moneyline")
+    side = leg.get("side", "home")
+    value = leg.get("value", 0) or 0
+    diff = home_score - away_score
+    if t == "moneyline":
+        if home_score == away_score: return "push"
+        if side == "home": return "bookie" if home_score > away_score else "bettor"
+        return "bookie" if away_score > home_score else "bettor"
+    elif t == "spread":
+        adj = diff + value if side == "home" else -diff + value
+        if adj == 0: return "push"
+        return "bookie" if adj > 0 else "bettor"
+    elif t == "total":
+        total = home_score + away_score
+        if total == value: return "push"
+        if side == "over": return "bookie" if total > value else "bettor"
+        return "bookie" if total < value else "bettor"
+    return None
+
+def settle_parlay_bet(db, pb: ParlayBet, winner: str):
+    """Settle a parlay bet ticket."""
+    bookie = db.query(User).filter(User.id == pb.bookie_id).first()
+    bettor = db.query(User).filter(User.id == pb.bettor_id).first()
+    if not bookie or not bettor:
+        return
+    pb.status = "won" if winner == "bettor" else "lost"
+    pb.winner = winner
+    total_pot = pb.bookie_amount + pb.bettor_amount
+    parlay = db.query(Parlay).filter(Parlay.id == pb.parlay_id).first()
+    leg_count = len(json.loads(parlay.legs)) if parlay else "?"
+    if winner == "bettor":
+        bettor.balance += total_pot
+        bettor.profit += pb.bookie_amount
+        bettor.wins += 1
+        bookie.profit -= pb.bookie_amount
+        bookie.losses += 1
+        push_notification(db, bettor.id, "bet_settled", f"🎰 Parlay hit! +${pb.bookie_amount:.2f}",
+            f"{leg_count}-leg parlay won — @{pb.bookie_name} paid you", None)
+        push_notification(db, bookie.id, "bet_settled", f"💸 Parlay lost -${pb.bookie_amount:.2f}",
+            f"{leg_count}-leg parlay — @{pb.bettor_name} hit it", None)
+    else:
+        bookie.balance += total_pot
+        bookie.profit += pb.bettor_amount
+        bookie.wins += 1
+        bettor.profit -= pb.bettor_amount
+        bettor.losses += 1
+        push_notification(db, bookie.id, "bet_settled", f"🏆 Parlay won! +${pb.bettor_amount:.2f}",
+            f"{leg_count}-leg parlay busted — @{pb.bettor_name}'s ticket lost", None)
+        push_notification(db, bettor.id, "bet_settled", f"💸 Parlay busted -${pb.bettor_amount:.2f}",
+            f"{leg_count}-leg parlay lost", None)
+
+class ParlayLeg(BaseModel):
+    game_id: str
+    game: str
+    sport: str
+    type: str
+    side: str
+    value: float = 0
+    odds: int = -110
+
+class ParlayCreate(BaseModel):
+    legs: list[ParlayLeg]
+    amount: float
+
+@app.post("/api/parlays")
+def create_parlay(body: ParlayCreate, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user: raise HTTPException(401, "Invalid token")
+    if len(body.legs) < 2: raise HTTPException(400, "Parlay needs at least 2 legs")
+    if len(body.legs) > 12: raise HTTPException(400, "Max 12 legs")
+    if body.amount <= 0 or body.amount > user.balance:
+        raise HTTPException(400, f"Invalid amount — balance: {user.balance:.2f}")
+    legs_data = [l.dict() for l in body.legs]
+    combined_odds = calc_parlay_odds(legs_data)
+    user.balance -= body.amount
+    p = Parlay(
+        bookie_id=user_id, bookie_name=user.username,
+        legs=json.dumps(legs_data), combined_odds=combined_odds,
+        amount=body.amount, total_action=0.0
+    )
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    return {"id": p.id, "combined_odds": combined_odds,
+            "bettor_stake": bettor_stake_for_parlay(body.amount, combined_odds)}
+
+@app.get("/api/parlays")
+def get_parlays(token: str, db: Session = Depends(get_db)):
+    verify_token(token)
+    parlays = db.query(Parlay).filter(Parlay.status == "open").all()
+    result = []
+    for p in parlays:
+        legs = json.loads(p.legs)
+        avail = p.amount - (p.total_action or 0)
+        bettor_stake = bettor_stake_for_parlay(avail, p.combined_odds)
+        result.append({
+            "id": p.id, "bookie_id": p.bookie_id, "bookie_name": p.bookie_name,
+            "legs": legs, "combined_odds": p.combined_odds,
+            "amount": p.amount, "total_action": p.total_action or 0,
+            "available": round(avail, 2), "bettor_stake": round(bettor_stake, 2),
+            "leg_count": len(legs),
+        })
+    return result
+
+@app.post("/api/parlays/take")
+def take_parlay(parlay_id: int, amount: float, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user: raise HTTPException(401, "Invalid token")
+    p = db.query(Parlay).filter(Parlay.id == parlay_id, Parlay.status == "open").first()
+    if not p: raise HTTPException(404, "Parlay not found or closed")
+    if p.bookie_id == user_id: raise HTTPException(400, "Can't take your own parlay")
+    avail = p.amount - (p.total_action or 0)
+    if amount > avail + 0.01: raise HTTPException(400, f"Max available to win: ${avail:.2f}")
+    if amount <= 0 or amount > user.balance:
+        raise HTTPException(400, f"Invalid amount — balance: {user.balance:.2f}")
+    bettor_stake = bettor_stake_for_parlay(amount, p.combined_odds)
+    if user.balance < bettor_stake:
+        raise HTTPException(400, f"Need ${bettor_stake:.2f} to wager — balance: {user.balance:.2f}")
+    user.balance -= bettor_stake
+    p.total_action = (p.total_action or 0) + amount
+    if p.total_action >= p.amount - 0.01:
+        p.status = "open"  # stays open until game starts
+    legs = json.loads(p.legs)
+    legs_result = {leg["game_id"]: "pending" for leg in legs}
+    pb = ParlayBet(
+        parlay_id=p.id, bookie_id=p.bookie_id, bookie_name=p.bookie_name,
+        bettor_id=user_id, bettor_name=user.username,
+        bookie_amount=round(amount, 2), bettor_amount=round(bettor_stake, 2),
+        legs_result=json.dumps(legs_result)
+    )
+    db.add(pb)
+    db.commit()
+    push_notification(db, p.bookie_id, "parlay_taken", f"🎰 Parlay taken by @{user.username}",
+        f"{len(legs)}-leg parlay · they risk ${bettor_stake:.2f} to win ${amount:.2f}", None)
+    db.commit()
+    return {"message": "Parlay taken!", "bettor_stake": bettor_stake, "to_win": amount}
+
+@app.get("/api/parlays/mine")
+def my_parlays(token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    posted = db.query(Parlay).filter(Parlay.bookie_id == user_id).order_by(Parlay.created_at.desc()).limit(20).all()
+    taken = db.query(ParlayBet).filter(ParlayBet.bettor_id == user_id).order_by(ParlayBet.created_at.desc()).limit(20).all()
+    def fmt_parlay(p):
+        legs = json.loads(p.legs)
+        return {"id": p.id, "bookie_name": p.bookie_name, "legs": legs,
+                "combined_odds": p.combined_odds, "amount": p.amount,
+                "total_action": p.total_action or 0, "status": p.status, "role": "bookie"}
+    def fmt_pb(pb):
+        p = db.query(Parlay).filter(Parlay.id == pb.parlay_id).first()
+        legs = json.loads(p.legs) if p else []
+        legs_result = json.loads(pb.legs_result) if pb.legs_result else {}
+        combined_odds = p.combined_odds if p else 0
+        return {"id": pb.id, "parlay_id": pb.parlay_id, "bookie_name": pb.bookie_name,
+                "legs": legs, "legs_result": legs_result, "combined_odds": combined_odds,
+                "bookie_amount": pb.bookie_amount, "bettor_amount": pb.bettor_amount,
+                "status": pb.status, "winner": pb.winner, "role": "bettor"}
+    return {"posted": [fmt_parlay(p) for p in posted], "taken": [fmt_pb(pb) for pb in taken]}
+
 # ─── COIN SHOP ────────────────────────────────────────────────────────────────
+
 
 COIN_PACKAGES = [
     {"id": "coins_100",  "coins": 100,  "price": 100,  "label": "Starter",  "bonus": ""},
