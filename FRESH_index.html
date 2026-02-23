@@ -1419,10 +1419,12 @@ async function renderAdmin(){
                     <div style="font-weight:700;">Bet #${b.id} — ${b.game}</div>
                     <div style="color:var(--text-muted);margin-top:2px;">${b.type.toUpperCase()} · Bookie: ${b.bookie} (${b.bookie_side}) · Bettor: ${b.bettor} (${b.bettor_side})</div>
                     <div style="color:var(--text-dim);font-size:12px;">game_id: ${b.game_id} · bookie $${(b.bookie_amount||0).toFixed(2)} vs bettor $${(b.bettor_amount||0).toFixed(2)}</div>
-                    <div style="display:flex;gap:6px;margin-top:8px;">
+                    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
                         <button class="btn btn-sm" style="background:var(--green);color:#000;" onclick="adminSettle(${b.id},'bookie')">Bookie Wins</button>
                         <button class="btn btn-sm" style="background:var(--orange);color:#000;" onclick="adminSettle(${b.id},'bettor')">Bettor Wins</button>
                         <button class="btn btn-secondary btn-sm" onclick="adminSettle(${b.id},'push')">Push</button>
+                        <button class="btn btn-sm" style="background:var(--border);color:var(--text-dim);font-size:11px;" onclick="adminMarkOnly(${b.id},'bookie')" title="Mark settled without touching balances">Mark Bookie ✓</button>
+                        <button class="btn btn-sm" style="background:var(--border);color:var(--text-dim);font-size:11px;" onclick="adminMarkOnly(${b.id},'bettor')" title="Mark settled without touching balances">Mark Bettor ✓</button>
                     </div>
                 </div>`;
             });
@@ -1442,6 +1444,16 @@ async function adminRunScores(){
         if(msg)msg.textContent=d.message||d.detail||'Done';
         setTimeout(()=>changeView('admin'),1500);
     }catch(e){if(msg)msg.textContent='Error: '+e.message;}
+}
+async function adminMarkOnly(betId, winner){
+    const ok=await showConfirm('Mark Bet #'+betId+' Settled',`Mark winner as: ${winner}\n\nBalances will NOT be touched — use this for bets already paid out.`);
+    if(!ok)return;
+    try{
+        const res=await fetch(`${API}/admin/mark-settled?bet_id=${betId}&winner=${winner}&token=${token}`,{method:'POST'});
+        const d=await res.json();
+        toast(d.message||d.detail,'success');
+        changeView('admin');
+    }catch(e){toast('Error: '+e.message,'error');}
 }
 async function adminSettle(betId, winner){
     const ok=await showConfirm('Settle Bet #'+betId,`Mark winner as: ${winner}?`);
