@@ -134,6 +134,7 @@ class PropBet(Base):
     bookie_name = Column(String)
     bettor_id = Column(Integer)
     bettor_name = Column(String)
+    game_id = Column(String, nullable=True)
     player_name = Column(String)
     prop_type = Column(String)
     line = Column(Float)
@@ -224,6 +225,7 @@ def run_migrations():
         "ALTER TABLE props ADD COLUMN IF NOT EXISTS sport VARCHAR",
         "ALTER TABLE props ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
         # prop_bets table
+        "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS game_id VARCHAR",
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS bookie_amount FLOAT",
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS bettor_amount FLOAT",
@@ -369,39 +371,38 @@ def fetch_live_games():
         return GAMES
 
 def check_game_scores():
-    """Check scores and auto-settle bets — covers NBA and NFL."""
+    """Check scores and auto-settle bets every 5 minutes."""
     if not ODDS_API_KEY:
+        print("[scores] No ODDS_API_KEY — skipping score check")
         return
 
-    SPORT_ENDPOINTS = [
-        "basketball_nba",
-        "americanfootball_nfl",
-    ]
-
+    SPORT_ENDPOINTS = ["basketball_nba", "americanfootball_nfl"]
     db = SessionLocal()
+    total_settled = 0
+
     try:
         for sport_key in SPORT_ENDPOINTS:
-            scores_url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/scores/?apiKey={ODDS_API_KEY}&daysFrom=2"
+            scores_url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/scores/?apiKey={ODDS_API_KEY}&daysFrom=3"
             try:
                 response = requests.get(scores_url, timeout=10)
             except Exception as e:
-                print(f"Score fetch error for {sport_key}: {e}")
+                print(f"[scores] Request error for {sport_key}: {e}")
                 continue
 
             if response.status_code != 200:
-                print(f"Score API {sport_key} returned {response.status_code}")
+                print(f"[scores] {sport_key} returned {response.status_code}: {response.text[:200]}")
                 continue
 
-            for game_data in response.json():
-                if not (game_data.get("completed") and game_data.get("scores")):
-                    continue
+            games = response.json()
+            completed = [g for g in games if g.get("completed") and g.get("scores")]
+            print(f"[scores] {sport_key}: {len(games)} games, {len(completed)} completed")
 
+            for game_data in completed:
                 game_id = game_data["id"]
                 scores = game_data["scores"]
 
                 home_raw = next((s["score"] for s in scores if s["name"] == game_data["home_team"]), None)
                 away_raw = next((s["score"] for s in scores if s["name"] == game_data["away_team"]), None)
-
                 if home_raw is None or away_raw is None:
                     continue
 
@@ -409,28 +410,38 @@ def check_game_scores():
                     home_score = int(float(home_raw))
                     away_score = int(float(away_raw))
                 except (ValueError, TypeError) as e:
-                    print(f"Score parse error for game {game_id}: {e}")
+                    print(f"[scores] Score parse error for {game_id}: {e}")
                     continue
 
+                # Settle regular bets
                 bets = db.query(Bet).filter(Bet.game_id == game_id, Bet.status == "pending").all()
-                if not bets:
-                    continue
-
-                line_ids = set(bet.line_id for bet in bets if bet.line_id)
                 for bet in bets:
                     winner = determine_winner(bet, home_score, away_score)
                     if winner:
                         settle_bet(db, bet, winner)
+                        total_settled += 1
 
-                for line_id in line_ids:
-                    line = db.query(Line).filter(Line.id == line_id).first()
-                    if line and line.status not in ("settled", "refunded", "cancelled"):
-                        refund_unmatched_line(db, line)
-                        line.status = "settled"
+                # Settle prop bets linked to this game
+                prop_bets = db.query(PropBet).filter(PropBet.game_id == game_id, PropBet.status == "pending").all()
+                for pb in prop_bets:
+                    # Prop bets can't be auto-settled from scores (need player stats)
+                    # Mark for manual review instead
+                    pass
+
+                # Mark line as settled and refund unmatched
+                if bets:
+                    line_ids = set(b.line_id for b in bets if b.line_id)
+                    for line_id in line_ids:
+                        line = db.query(Line).filter(Line.id == line_id).first()
+                        if line and line.status not in ("settled", "refunded", "cancelled", "expired"):
+                            refund_unmatched_line(db, line)
+                            line.status = "settled"
 
         db.commit()
+        print(f"[scores] Done — settled {total_settled} bets")
+
     except Exception as e:
-        print(f"Error in check_game_scores: {e}")
+        print(f"[scores] Error: {e}")
         db.rollback()
     finally:
         db.close()
@@ -482,44 +493,30 @@ def settle_bet(db, bet, winner):
     if winner == "push":
         bookie.balance += b_amt
         bettor.balance += t_amt
+        push_notification(db, bookie.id, "bet_settled", "🤝 Push — stake returned",
+            f"{bet.game} · ${b_amt:.2f} returned to you", bet.id)
+        push_notification(db, bettor.id, "bet_settled", "🤝 Push — stake returned",
+            f"{bet.game} · ${t_amt:.2f} returned to you", bet.id)
     elif winner == "bookie":
         bookie.balance += total_pot
-        bookie.profit += t_amt          # profit = what opponent risked
+        bookie.profit += t_amt
         bookie.wins += 1
         bettor.profit -= t_amt
         bettor.losses += 1
+        push_notification(db, bookie.id, "bet_settled", f"🏆 You won! +${t_amt:.2f}",
+            f"{bet.game} · {bet.type.upper()} · @{bet.bettor_name} paid you", bet.id)
+        push_notification(db, bettor.id, "bet_settled", f"💸 You lost -${t_amt:.2f}",
+            f"{bet.game} · {bet.type.upper()} · paid @{bet.bookie_name}", bet.id)
     else:  # bettor wins
         bettor.balance += total_pot
-        bettor.profit += b_amt          # profit = what bookie risked
+        bettor.profit += b_amt
         bettor.wins += 1
         bookie.profit -= b_amt
         bookie.losses += 1
-
-    bet.status = "settled"
-    bet.winner = winner
-
-    # Notify both parties
-    if winner == "push":
-        if bookie:
-            push_notification(db, bookie.id, "bet_settled", "🤝 Bet pushed — refunded",
-                f"{bet.game} · ${b_amt:.2f} returned", bet.id)
-        if bettor:
-            push_notification(db, bettor.id, "bet_settled", "🤝 Bet pushed — refunded",
-                f"{bet.game} · ${t_amt:.2f} returned", bet.id)
-    elif winner == "bookie":
-        if bookie:
-            push_notification(db, bookie.id, "bet_settled", f"🏆 You won! +${t_amt:.2f}",
-                f"{bet.game} · {bet.type.upper()}", bet.id)
-        if bettor:
-            push_notification(db, bettor.id, "bet_settled", f"💸 You lost -${t_amt:.2f}",
-                f"{bet.game} · {bet.type.upper()}", bet.id)
-    else:
-        if bettor:
-            push_notification(db, bettor.id, "bet_settled", f"🏆 You won! +${b_amt:.2f}",
-                f"{bet.game} · {bet.type.upper()}", bet.id)
-        if bookie:
-            push_notification(db, bookie.id, "bet_settled", f"💸 You lost -${b_amt:.2f}",
-                f"{bet.game} · {bet.type.upper()}", bet.id)
+        push_notification(db, bettor.id, "bet_settled", f"🏆 You won! +${b_amt:.2f}",
+            f"{bet.game} · {bet.type.upper()} · @{bet.bookie_name} paid you", bet.id)
+        push_notification(db, bookie.id, "bet_settled", f"💸 You lost -${b_amt:.2f}",
+            f"{bet.game} · {bet.type.upper()} · paid @{bet.bettor_name}", bet.id)
 
 def refund_unmatched_line(db, line):
     """When a line closes, refund any unmatched portion back to the bookie."""
@@ -1157,7 +1154,9 @@ def take_prop(take: TakeProp, token: str, db: Session = Depends(get_db)):
         raise HTTPException(400, f"Insufficient balance. Need ${bettor_stake:.2f}")
 
     prop_bet = PropBet(prop_id=prop.id, bookie_id=prop.bookie_id, bookie_name=prop.bookie_name,
-                      bettor_id=user.id, bettor_name=user.username, player_name=prop.player_name,
+                      bettor_id=user.id, bettor_name=user.username,
+                      game_id=prop.game_id,
+                      player_name=prop.player_name,
                       prop_type=prop.prop_type, line=prop.line, bookie_side=prop.side,
                       bettor_side="under" if prop.side == "over" else "over",
                       odds=odds,
@@ -1753,6 +1752,53 @@ def get_user(token: str, db: Session = Depends(get_db)):
         raise HTTPException(404, "User not found")
     return {"id": user.id, "username": user.username, "balance": user.balance, "profit": user.profit,
             "wins": user.wins, "losses": user.losses, "lines_created": user.lines_created, "is_admin": user.is_admin}
+
+
+@app.post("/api/admin/settle-bet")
+def admin_settle_bet(bet_id: int, winner: str, token: str, db: Session = Depends(get_db)):
+    """Admin: manually settle a specific bet. winner = 'bookie', 'bettor', or 'push'"""
+    user_id = verify_token(token)
+    user = db.query(User).filter(User.id == user_id, User.is_admin == True).first()
+    if not user:
+        raise HTTPException(403, "Admin only")
+    if winner not in ("bookie", "bettor", "push"):
+        raise HTTPException(400, "winner must be 'bookie', 'bettor', or 'push'")
+    bet = db.query(Bet).filter(Bet.id == bet_id).first()
+    if not bet:
+        raise HTTPException(404, "Bet not found")
+    if bet.status != "pending":
+        raise HTTPException(400, f"Bet already {bet.status}")
+    settle_bet(db, bet, winner)
+    db.commit()
+    return {"message": f"Bet {bet_id} settled — winner: {winner}"}
+
+@app.post("/api/admin/run-scores")
+def admin_run_scores(token: str, db: Session = Depends(get_db)):
+    """Admin: trigger score check immediately instead of waiting for scheduler"""
+    user_id = verify_token(token)
+    user = db.query(User).filter(User.id == user_id, User.is_admin == True).first()
+    if not user:
+        raise HTTPException(403, "Admin only")
+    try:
+        check_game_scores()
+        return {"message": "Score check complete — check server logs for details"}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@app.get("/api/admin/pending-bets")
+def admin_pending_bets(token: str, db: Session = Depends(get_db)):
+    """Admin: view all pending bets with their game IDs for debugging"""
+    user_id = verify_token(token)
+    user = db.query(User).filter(User.id == user_id, User.is_admin == True).first()
+    if not user:
+        raise HTTPException(403, "Admin only")
+    bets = db.query(Bet).filter(Bet.status == "pending").all()
+    return [{
+        "id": b.id, "game": b.game, "game_id": b.game_id,
+        "type": b.type, "bookie_side": b.bookie_side, "bettor_side": b.bettor_side,
+        "value": b.value, "bookie": b.bookie_name, "bettor": b.bettor_name,
+        "bookie_amount": b.bookie_amount, "bettor_amount": b.bettor_amount
+    } for b in bets]
 
 @app.get("/app", response_class=HTMLResponse)
 def serve_app():
