@@ -319,6 +319,31 @@
 const API=window.location.origin+'/api';
 let token=localStorage.getItem('token');
 let user=null,view='marketplace',propTypes={},linesCache=[],propsCache=[],gamesCache=[];
+let _liveScores={};
+let _liveScoreInterval=null;
+
+async function refreshLiveScores(){
+    try{
+        _liveScores=await fetch(API+'/live-scores').then(r=>r.json());
+        Object.entries(_liveScores).forEach(([gameId,s])=>{
+            const el=document.querySelector(`[data-game-id="${gameId}"]`);
+            if(!el)return;
+            if(s.state==='in'){
+                el.innerHTML=`<span style="color:var(--green);font-weight:700;font-size:11px;">🔴 LIVE</span> <span style="font-weight:800;">${s.away_score} - ${s.home_score}</span> <span style="color:var(--text-dim);font-size:11px;">${s.status}</span>`;
+            } else if(s.state==='post'){
+                el.innerHTML=`<span style="color:var(--text-dim);font-size:11px;">Final: ${s.away_score} - ${s.home_score}</span>`;
+            }
+        });
+    }catch(e){}
+}
+function startLiveScores(){
+    refreshLiveScores();
+    if(_liveScoreInterval)clearInterval(_liveScoreInterval);
+    _liveScoreInterval=setInterval(refreshLiveScores,30000);
+}
+function stopLiveScores(){
+    if(_liveScoreInterval){clearInterval(_liveScoreInterval);_liveScoreInterval=null;}
+}
 let _betResolve=null,_confirmResolve=null;
 
 function toast(msg,type='info'){
@@ -460,6 +485,9 @@ async function loadLines(){
                         ${line.is_private?'<span class="badge badge-private">Private</span>':''}
                     </div>
                     <div class="line-game">${line.game}</div>
+                    <div data-game-id="${line.game_id||''}" style="font-size:12px;margin-top:2px;min-height:16px;">
+                        ${(()=>{const s=_liveScores[line.game_id];if(!s)return'';if(s.state==='in')return`<span style="color:var(--green);font-weight:700;">🔴 LIVE</span> <span style="font-weight:800;">${s.away_score} - ${s.home_score}</span> <span style="color:var(--text-dim);font-size:11px;">${s.status}</span>`;if(s.state==='post')return`<span style="color:var(--text-dim);">Final: ${s.away_score} - ${s.home_score}</span>`;return'';})()}
+                    </div>
                     <div class="line-side">${line.side==='over'||line.side==='under'?line.side.toUpperCase():line.side.charAt(0).toUpperCase()+line.side.slice(1)}
                         ${line.type!=='moneyline'?`<strong style="color:var(--text)"> ${line.value>0?'+':''}${line.value}</strong>`:''}
                     </div>
@@ -1394,7 +1422,49 @@ async function renderFollowing(){
     });
     return html;
 }
-async function renderShop(){return`<div class="page-header"><div class="page-title">Credit Shop</div></div><div class="card"><div style="text-align:center;padding:40px 20px;color:var(--text-muted);">💰 Credit purchases coming soon</div></div>`;}
+async function renderShop(){
+    document.getElementById('content').innerHTML=skeletonCards(4);
+    try{
+        const pkgs=await fetch(API+'/shop/packages').then(r=>r.json());
+        const ICONS=['🎯','🔥','💎','👑'];
+        const COLORS=['var(--text-muted)','var(--orange)','var(--green)','var(--gold)'];
+        let html=`<div class="page-header"><div class="page-title">💰 Coin Shop</div><div class="page-subtitle">Your balance: <strong style="color:var(--gold)">${(user?.balance||0).toLocaleString()} coins</strong></div></div>
+        <div class="card" style="margin-bottom:16px;background:rgba(245,166,35,.07);border-color:rgba(245,166,35,.2);">
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">
+                💡 Coins are used to place bets on BookieVerse. New accounts start with 1,000 free coins.
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">`;
+        pkgs.forEach((pkg,i)=>{
+            const dollars=(pkg.price/100).toFixed(2);
+            const popular=i===1;
+            html+=`<div class="card" style="border-color:${popular?'var(--orange)':'var(--border)'};position:relative;${popular?'box-shadow:0 0 20px rgba(255,140,0,.2);':''}">
+                ${popular?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--orange);color:#000;font-size:11px;font-weight:800;padding:2px 12px;border-radius:20px;">POPULAR</div>':''}
+                <div style="text-align:center;padding:8px 0 16px;">
+                    <div style="font-size:32px;margin-bottom:6px;">${ICONS[i]}</div>
+                    <div style="font-weight:800;font-size:18px;">${pkg.label}</div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;color:${COLORS[i]};margin:8px 0;">${pkg.coins.toLocaleString()}</div>
+                    <div style="font-size:13px;color:var(--text-muted);">coins${pkg.bonus?` <span style="color:var(--green);font-weight:700;">${pkg.bonus}</span>`:''}</div>
+                    <div style="font-size:24px;font-weight:800;margin:12px 0;">$${dollars}</div>
+                    <button class="btn btn-primary btn-full" onclick="buyCoins('${pkg.id}')">Buy Now</button>
+                </div>
+            </div>`;
+        });
+        html+=`</div>`;
+        return html;
+    }catch(e){
+        return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Shop unavailable</div><div class="empty-desc">${e.message}</div></div>`;
+    }
+}
+async function buyCoins(packageId){
+    try{
+        toast('Redirecting to checkout...','success');
+        const res=await fetch(`${API}/shop/create-checkout?package_id=${packageId}&token=${token}`,{method:'POST'});
+        const d=await res.json();
+        if(d.url){window.open(d.url,'_blank');}
+        else{toast(d.detail||'Checkout error','error');}
+    }catch(e){toast('Error: '+e.message,'error');}
+}
 async function renderAdmin(){
     if(!user.is_admin)return`<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Admin Access Required</div></div>`;
     document.getElementById('content').innerHTML=skeletonCards(2);
@@ -1437,12 +1507,16 @@ async function renderAdmin(){
 }
 async function adminRunScores(){
     const msg=document.getElementById('adminMsg');
-    if(msg)msg.textContent='Running...';
+    if(msg)msg.innerHTML='<span style="color:var(--gold)">Running...</span>';
     try{
         const res=await fetch(API+'/admin/run-scores?token='+token,{method:'POST'});
         const d=await res.json();
-        if(msg)msg.textContent=d.message||d.detail||'Done';
-        setTimeout(()=>changeView('admin'),1500);
+        const txt=d.message||d.detail||'Done';
+        if(msg)msg.innerHTML=`<span style="color:${d.pending_count>0?'var(--orange)':'var(--green)'}">${txt}</span>`;
+        if(d.pending_count>0){
+            if(msg)msg.innerHTML+=`<br><span style="color:var(--red);font-size:12px;">⚠ ODDS_API_KEY may not be set in Render environment variables — use Mark buttons below to manually settle.</span>`;
+        }
+        setTimeout(()=>changeView('admin'),2000);
     }catch(e){if(msg)msg.textContent='Error: '+e.message;}
 }
 async function adminMarkOnly(betId, winner){
@@ -1835,7 +1909,12 @@ function startNotifPolling() {
 }
 // ─── NOTIFICATIONS END ────────────────────────────────────────────────────────
 
-function changeView(v){view=v;renderApp();}
+function changeView(v){
+    if(v!=='marketplace')stopLiveScores();
+    view=v;
+    renderApp();
+    if(v==='marketplace')startLiveScores();
+}
 function renderLogin(){
     document.getElementById('root').innerHTML=`
         <div class="login-screen"><div class="login-box">
