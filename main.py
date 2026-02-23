@@ -33,8 +33,10 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
 PROP_TYPES = {
-    "NBA": ["Points", "Rebounds", "Assists", "3-Pointers Made"],
-    "NFL": ["Passing Yards", "Rushing Yards", "Touchdowns"]
+    "NBA": ["Points", "Rebounds", "Assists", "3-Pointers Made", "Steals", "Blocks", "Points+Rebounds+Assists"],
+    "NFL": ["Passing Yards", "Rushing Yards", "Receiving Yards", "Touchdowns", "Receptions", "Interceptions"],
+    "MLB": ["Strikeouts", "Hits", "Home Runs", "RBIs", "Earned Runs", "Walks", "Total Bases"],
+    "NHL": ["Goals", "Assists", "Points", "Shots on Goal", "Saves", "Power Play Points"],
 }
 
 # Database
@@ -819,7 +821,7 @@ def get_games():
 
 @app.get("/api/live-scores")
 def get_live_scores():
-    """Lightweight endpoint returning only live/recent scores for score display."""
+    """Lightweight endpoint returning live/recent scores with team names."""
     scores = {}
     for sport_path, _ in ESPN_SPORTS:
         url = f"https://site.api.espn.com/apis/site/v2/sports/{sport_path}/scoreboard"
@@ -838,6 +840,8 @@ def get_live_scores():
                 status_detail = comp.get("status", {}).get("type", {}).get("shortDetail", "")
                 scores[f"espn_{event['id']}"] = {
                     "state": state,
+                    "home_team": home["team"]["abbreviation"],
+                    "away_team": away["team"]["abbreviation"],
                     "home_score": home.get("score", ""),
                     "away_score": away.get("score", ""),
                     "status": status_detail,
@@ -845,6 +849,54 @@ def get_live_scores():
         except Exception:
             continue
     return scores
+
+@app.get("/api/roster")
+def get_roster(game_id: str, sport: str):
+    """Fetch players for both teams in a game from ESPN roster API."""
+    SPORT_MAP = {"NBA": "basketball/nba", "NFL": "football/nfl", "MLB": "baseball/mlb", "NHL": "hockey/nhl"}
+    sport_path = SPORT_MAP.get(sport.upper())
+    if not sport_path or not game_id.startswith("espn_"):
+        return []
+    espn_id = game_id.replace("espn_", "")
+    try:
+        url = f"https://site.api.espn.com/apis/site/v2/sports/{sport_path}/scoreboard"
+        resp = requests.get(url, timeout=8)
+        if resp.status_code != 200:
+            return []
+        event = next((e for e in resp.json().get("events", []) if e["id"] == espn_id), None)
+        if not event:
+            return []
+        comp = event.get("competitions", [{}])[0]
+        players = []
+        for competitor in comp.get("competitors", []):
+            team_id = competitor.get("team", {}).get("id")
+            team_abbr = competitor.get("team", {}).get("abbreviation", "")
+            if not team_id:
+                continue
+            roster_url = f"https://site.api.espn.com/apis/site/v2/sports/{sport_path}/teams/{team_id}/roster"
+            try:
+                r = requests.get(roster_url, timeout=8)
+                if r.status_code != 200:
+                    continue
+                for athlete in r.json().get("athletes", []):
+                    if isinstance(athlete, dict) and "items" in athlete:
+                        for item in athlete["items"]:
+                            fn = item.get("fullName") or item.get("displayName", "")
+                            pos = item.get("position", {}).get("abbreviation", "")
+                            if fn:
+                                players.append({"name": fn, "team": team_abbr, "position": pos})
+                    else:
+                        fn = athlete.get("fullName") or athlete.get("displayName", "")
+                        pos = athlete.get("position", {}).get("abbreviation", "")
+                        if fn:
+                            players.append({"name": fn, "team": team_abbr, "position": pos})
+            except Exception:
+                continue
+        return players
+    except Exception as e:
+        print(f"[roster] Error: {e}")
+        return []
+
 
 @app.get("/api/futures")
 def get_futures():
