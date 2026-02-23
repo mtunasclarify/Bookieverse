@@ -1024,13 +1024,19 @@ async function renderMyBets(){
                 const isBookie=b.bookie_id===user.id,isWon=b.winner===(isBookie?'bookie':'bettor'),isPush=b.winner==='push';
                 let sc='pending',sl='Pending ⏳';
                 if(b.status==='settled'){if(isPush){sc='pending';sl='Push 🤝';}else if(isWon){sc='won';sl='Won ✅';}else{sc='lost';sl='Lost ❌';}}
-                const ml=b._type==='line'?`${b.game} · ${b.type.toUpperCase()}: ${isBookie?b.bookie_side:b.bettor_side} ${b.value>0?'+':''}${b.value}`:`${b.player_name} ${b.prop_type} · ${(isBookie?b.bookie_side:b.bettor_side).toUpperCase()} ${b.line}`;
+                const ml=b._type==='line'?`${b.game} · ${b.type.toUpperCase()}: ${isBookie?b.bookie_side:b.bettor_side} ${b.value>0?'+':''}${b.value!==0?b.value:''}`:`${b.player_name} ${b.prop_type} · ${(isBookie?b.bookie_side:b.bettor_side).toUpperCase()} ${b.line}`;
                 const vs=isBookie?'vs @'+(b.bettor_name||'Open'):'vs @'+b.bookie_name;
                 const myStake=isBookie?(b.bookie_amount||b.amount):(b.bettor_amount||b.amount);
                 const oppStake=isBookie?(b.bettor_amount||b.amount):(b.bookie_amount||b.amount);
                 const odds=b.odds||-110;
                 const oddsStr=odds>0?'+'+odds:String(odds);
                 const oddsColor=odds>0?'var(--green)':'var(--text-muted)';
+                let displayAmt,displayColor;
+                if(b.status==='settled'){
+                    if(isPush){displayAmt='$'+myStake.toFixed(2);displayColor='var(--gold)';}
+                    else if(isWon){displayAmt='+$'+oppStake.toFixed(2);displayColor='var(--green)';}
+                    else{displayAmt='-$'+myStake.toFixed(2);displayColor='var(--red)';}
+                }else{displayAmt='$'+myStake.toFixed(2);displayColor='var(--gold)';}
                 html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ml}</div>
@@ -1038,7 +1044,7 @@ async function renderMyBets(){
                         <div style="color:var(--text-dim);font-size:12px;margin-top:4px;">Risk <strong style="color:var(--text)">$${myStake.toFixed(2)}</strong> · Win <strong style="color:var(--green)">$${oppStake.toFixed(2)}</strong></div>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;color:${b.status==='settled'?(isWon?'var(--green)':'var(--red)'):'var(--gold)'}">$${myStake.toFixed(2)}</div>
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;color:${displayColor}">${displayAmt}</div>
                         <div style="margin-top:6px;"><span class="bet-status ${sc}">${sl}</span></div>
                     </div>
                 </div></div>`;
