@@ -470,10 +470,14 @@ async function loadLines(){
         let scoreTicker='';
         if(liveGames.length){
             const chips=liveGames.map(([id,s])=>`
-                <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(0,214,122,.08);border:1px solid rgba(0,214,122,.2);border-radius:8px;padding:6px 12px;white-space:nowrap;">
-                    <span style="color:var(--green);font-size:10px;font-weight:800;letter-spacing:1px;">🔴 LIVE</span>
-                    <span style="font-size:13px;font-weight:700;">${s.away_score} - ${s.home_score}</span>
-                    <span style="font-size:11px;color:var(--text-muted);">${s.status}</span>
+                <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(0,214,122,.08);border:1px solid rgba(0,214,122,.2);border-radius:8px;padding:6px 14px;white-space:nowrap;">
+                    <span style="color:var(--green);font-size:10px;font-weight:800;letter-spacing:1px;">🔴</span>
+                    <span style="font-size:12px;font-weight:700;color:var(--text-muted);">${s.away_team||'AWAY'}</span>
+                    <span style="font-size:14px;font-weight:800;">${s.away_score}</span>
+                    <span style="color:var(--text-dim);font-size:11px;">–</span>
+                    <span style="font-size:14px;font-weight:800;">${s.home_score}</span>
+                    <span style="font-size:12px;font-weight:700;color:var(--text-muted);">${s.home_team||'HOME'}</span>
+                    <span style="font-size:10px;color:var(--text-dim);border-left:1px solid var(--border);padding-left:8px;">${s.status}</span>
                 </div>`).join('');
             scoreTicker=`<div style="overflow-x:auto;padding:0 0 12px;margin-bottom:4px;">
                 <div style="display:flex;gap:8px;min-width:max-content;">${chips}</div>
@@ -522,9 +526,9 @@ async function loadLines(){
                 const oddsColor=odds>0?'var(--green)':'var(--text-muted)';
                 const sc=_liveScores[line.game_id]||null;
                 const scoreBadge=sc&&sc.state==='in'
-                    ?`<span style="color:var(--green);font-size:10px;font-weight:800;">🔴 ${sc.away_score}-${sc.home_score}</span>`
+                    ?`<span style="color:var(--green);font-size:10px;font-weight:700;">🔴 ${sc.away_team||''} ${sc.away_score}-${sc.home_score} ${sc.home_team||''} <span style="color:var(--text-dim)">${sc.status}</span></span>`
                     :sc&&sc.state==='post'
-                    ?`<span style="color:var(--text-dim);font-size:10px;">Final ${sc.away_score}-${sc.home_score}</span>`:'';
+                    ?`<span style="color:var(--text-dim);font-size:10px;">Final: ${sc.away_team||''} ${sc.away_score}-${sc.home_score} ${sc.home_team||''}</span>`:'';
                 const sideLabel=line.side==='over'||line.side==='under'?line.side.toUpperCase():line.side.charAt(0).toUpperCase()+line.side.slice(1);
                 const valueLabel=line.type!=='moneyline'?` ${line.value>0?'+':''}${line.value}`:'';
 
@@ -608,69 +612,115 @@ async function renderCreateLine(){
         const groups=groupsRes.ok ? await groupsRes.json() : [];
         if(!Array.isArray(games)) throw new Error('Could not load games from server');
         gamesCache=games;
-        const gameOptions=games.map(g=>{
-            const time=g.commence_time?new Date(g.commence_time).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;
-            return`<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home} — ${time}</option>`;
-        }).join('');
-        const html=`<div class="page-header"><div class="page-title">Set a Line</div><div class="page-subtitle">You're the bookie — set the game, your side, and the odds you'll offer</div></div>
-            <div class="card" style="max-width:760px;">
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:10px;">① PICK THE MATCHUP</div>
-                <div class="form-group"><label>Select Game</label>
-                    <select id="game" onchange="onGameChange()"><option value="">Choose a game...</option>${gameOptions}</select>
+
+        // Group games by sport
+        const bySport={};
+        for(const g of games){
+            const sp=g.sport||'Other';
+            if(!bySport[sp])bySport[sp]=[];
+            bySport[sp].push(g);
+        }
+        const sports=Object.keys(bySport);
+        const SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒',Other:'🎯'};
+
+        const sportTabs=sports.map((sp,i)=>`
+            <div class="sport-tab ${i===0?'active':''}" onclick="selectLeague('${sp}')" id="tab-${sp}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;border-radius:10px;cursor:pointer;border:2px solid ${i===0?'var(--orange)':'var(--border)'};background:${i===0?'rgba(255,140,0,.1)':'var(--bg)'};transition:.2s;min-width:70px;">
+                <span style="font-size:22px;">${SPORT_EMOJI[sp]||'🎯'}</span>
+                <span style="font-size:11px;font-weight:800;letter-spacing:1px;">${sp}</span>
+                <span style="font-size:10px;color:var(--text-dim);">${bySport[sp].length} game${bySport[sp].length!==1?'s':''}</span>
+            </div>`).join('');
+
+        // Build game options per sport as hidden selects
+        const gameSelects=sports.map(sp=>`
+            <select id="games-${sp}" style="display:${sp===sports[0]?'block':'none'};" onchange="onGameChange()" class="game-sport-select">
+                <option value="">Choose a ${sp} game...</option>
+                ${bySport[sp].map(g=>{
+                    const time=g.commence_time?new Date(g.commence_time).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;
+                    const scoreStr=(g.status==='live'&&(g.home_score||g.away_score))?` · ${g.away_score}-${g.home_score} 🔴`:'';
+                    return`<option value="${g.id}">${g.away} @ ${g.home} — ${time}${scoreStr}</option>`;
+                }).join('')}
+            </select>`).join('');
+
+        const html=`
+        <div class="page-header"><div class="page-title">⚡ Set a Line</div><div class="page-subtitle">You're the bookie — pick a game, set your terms</div></div>
+        <div class="card" style="max-width:680px;">
+
+            <!-- Step 1: League -->
+            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">① PICK A LEAGUE</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;" id="sportTabs">
+                ${sportTabs}
+            </div>
+
+            <!-- Step 2: Game -->
+            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">② SELECT GAME</div>
+            <div class="form-group" style="margin-bottom:20px;" id="gameSelectWrap">
+                ${gameSelects}
+            </div>
+
+            <!-- Step 3: Bet Type -->
+            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">③ BET DETAILS</div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;" id="betTypeTabs">
+                <button type="button" class="bet-type-btn active" onclick="selectBetType('spread')" id="btnSpread" style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--orange);background:rgba(255,140,0,.1);font-weight:800;font-size:13px;cursor:pointer;color:var(--text);">📊 Spread</button>
+                <button type="button" class="bet-type-btn" onclick="selectBetType('moneyline')" id="btnMoneyline" style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--bg);font-weight:800;font-size:13px;cursor:pointer;color:var(--text);">🏆 Moneyline</button>
+                <button type="button" class="bet-type-btn" onclick="selectBetType('total')" id="btnTotal" style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--bg);font-weight:800;font-size:13px;cursor:pointer;color:var(--text);">🎯 Total</button>
+            </div>
+            <input type="hidden" id="type" value="spread">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                <div class="form-group" style="margin:0;">
+                    <label>Your Side</label>
+                    <select id="side" style="font-weight:700;font-size:15px;"><option value="home">Home</option><option value="away">Away</option></select>
                 </div>
-                <div class="form-grid-3">
-                    <div class="form-group" style="margin:0"><label>Bet Type</label><select id="type" onchange="onBetTypeChange()"><option value="spread">Spread</option><option value="moneyline">Moneyline</option><option value="total">Over / Under</option></select></div>
-                    <div class="form-group" style="margin:0"><label>Your Side</label><select id="side"><option value="home">Home</option><option value="away">Away</option></select></div>
-                    <div class="form-group" style="margin:0" id="valueField"><label>Line Value</label><input id="value" type="number" step="0.5" placeholder="-5.5"></div>
+                <div class="form-group" style="margin:0;" id="valueField">
+                    <label>Line Value</label>
+                    <input id="value" type="number" step="0.5" placeholder="-5.5" style="font-size:18px;font-weight:700;text-align:center;">
                 </div>
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);margin:24px 0 10px;">② SET YOUR ODDS & MAX LIABILITY</div>
-                <div style="background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:20px;margin-bottom:4px;">
-                    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-                        <div style="flex:1;min-width:160px;">
-                            <label style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">Your Odds (American)</label>
-                            <input id="odds" type="number" step="1" value="-110"
-                                style="width:100%;padding:14px 16px;font-size:28px;font-weight:800;font-family:'Barlow Condensed',sans-serif;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;letter-spacing:1px;">
-                            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-                                <button type="button" onclick="setOdds(-110)" class="btn btn-secondary btn-sm">-110</button>
-                                <button type="button" onclick="setOdds(-150)" class="btn btn-secondary btn-sm">-150</button>
-                                <button type="button" onclick="setOdds(110)" class="btn btn-secondary btn-sm">+110</button>
-                                <button type="button" onclick="setOdds(150)" class="btn btn-secondary btn-sm">+150</button>
-                                <button type="button" onclick="setOdds(200)" class="btn btn-secondary btn-sm">+200</button>
-                            </div>
-                            <div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.5;">
-                                <strong style="color:var(--text-muted)">Negative</strong> = you're the favorite · <strong style="color:var(--green)">Positive</strong> = you're the underdog
-                            </div>
-                        </div>
-                        <div style="flex:1;min-width:180px;">
-                            <label style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);display:block;margin-bottom:8px;">Max Liability ($)</label>
-                            <div style="display:flex;gap:8px;align-items:stretch;">
-                                <input id="amount" type="number" placeholder="100" step="1" oninput="checkLineBalance()"
-                                    style="flex:1;padding:14px 16px;font-size:24px;font-weight:700;font-family:'Barlow Condensed',sans-serif;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;transition:.2s;">
-                                <button type="button" onclick="document.getElementById('amount').value=Math.floor(user.balance);checkLineBalance();calcOddsPreview();"
-                                    style="padding:0 14px;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">MAX</button>
-                            </div>
-                            <div id="lineBalanceHint" style="font-size:12px;margin-top:8px;color:var(--text-dim);">
-                                Available: <strong style="color:var(--green)">$${user.balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
-                            </div>
-                            <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Escrowed now · unmatched portion refunds at game time</div>
-                        </div>
+            </div>
+
+            <!-- Step 4: Odds & Amount -->
+            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">④ ODDS & LIABILITY</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div>
+                    <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;">Your Odds</label>
+                    <input id="odds" type="number" step="1" value="-110" style="width:100%;padding:12px;font-size:26px;font-weight:800;font-family:'Barlow Condensed',sans-serif;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;">
+                    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+                        ${[-110,-150,-200,110,150,200].map(o=>`<button type="button" onclick="setOdds(${o})" style="flex:1;padding:5px 2px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;color:${o>0?'var(--green)':'var(--text-muted)'};">${o>0?'+'+o:o}</button>`).join('')}
                     </div>
-                    <div id="oddsPreview" style="margin-top:16px;padding:12px 16px;background:var(--card);border-radius:8px;font-size:14px;color:var(--text-muted);border:1px solid var(--border);min-height:42px;transition:.2s;">
-                        Enter odds and liability to see the breakdown
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;">Max Liability</label>
+                    <div style="display:flex;gap:6px;">
+                        <input id="amount" type="number" placeholder="100" step="1" oninput="checkLineBalance()" style="flex:1;padding:12px;font-size:26px;font-weight:800;font-family:'Barlow Condensed',sans-serif;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;">
+                        <button type="button" onclick="document.getElementById('amount').value=Math.floor(user.balance);checkLineBalance();calcOddsPreview();" style="padding:0 12px;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;">MAX</button>
+                    </div>
+                    <div id="lineBalanceHint" style="font-size:11px;margin-top:6px;color:var(--text-dim);">
+                        Available: <strong style="color:var(--green)">$${user.balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
                     </div>
                 </div>
-                <div class="advanced-panel" style="margin-top:16px;">
-                    <div class="advanced-title">Advanced Controls</div>
-                    <div class="form-grid-2">
-                        <div class="form-group" style="margin:0"><label>Max Bettors</label><input id="maxBettors" type="number" placeholder="Unlimited"></div>
-                        <div class="form-group" style="margin:0"><label>Max Per User ($)</label><input id="maxBetPerUser" type="number" placeholder="Unlimited"></div>
-                    </div>
-                    <div class="checkbox-row"><input type="checkbox" id="isPrivate" onchange="toggleGroupSelect()"><span>Private Line (Groups Only)</span></div>
-                    ${groups.length>0?`<select id="groupId" style="margin-top:10px;display:none;"><option value="">Select a group...</option>${groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')}</select>`:'<small style="color:var(--text-dim);display:block;margin-top:8px;">Create a group first to use private lines</small>'}
+            </div>
+
+            <!-- Odds Preview -->
+            <div id="oddsPreview" style="margin-bottom:20px;padding:12px 16px;background:var(--bg);border-radius:8px;font-size:13px;color:var(--text-muted);border:1px solid var(--border);min-height:42px;">
+                Enter odds and liability to see the breakdown
+            </div>
+
+            <!-- Advanced (collapsed) -->
+            <div class="advanced-panel">
+                <div class="advanced-title">Advanced Options</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group" style="margin:0"><label>Max Bettors</label><input id="maxBettors" type="number" placeholder="Unlimited"></div>
+                    <div class="form-group" style="margin:0"><label>Max Per User ($)</label><input id="maxBetPerUser" type="number" placeholder="Unlimited"></div>
                 </div>
-                <button class="btn btn-primary btn-lg btn-full" style="margin-top:24px;" onclick="createLine()">Post Line to Marketplace ⚡</button>
-            </div>`;
+                <div class="checkbox-row" style="margin-top:12px;"><input type="checkbox" id="isPrivate" onchange="toggleGroupSelect()"><span>Private Line (Groups Only)</span></div>
+                ${groups.length>0?`<select id="groupId" style="margin-top:10px;display:none;"><option value="">Select a group...</option>${groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join('')}</select>`:'<small style="color:var(--text-dim);display:block;margin-top:8px;">Create a group to use private lines</small>'}
+            </div>
+
+            <button class="btn btn-primary btn-lg btn-full" style="margin-top:20px;" onclick="createLine()">Post Line ⚡</button>
+        </div>`;
+
         document.getElementById('content').innerHTML=html;
+        // Select first sport by default
+        if(sports.length>0) window._selectedLeague=sports[0];
         setTimeout(wireOddsPreview, 50);
         return '';
     }catch(e){
@@ -679,10 +729,70 @@ async function renderCreateLine(){
     }
 }
 
+function selectLeague(sp){
+    window._selectedLeague=sp;
+    // Update tab styles
+    document.querySelectorAll('[id^="tab-"]').forEach(t=>{
+        const active=t.id===`tab-${sp}`;
+        t.style.borderColor=active?'var(--orange)':'var(--border)';
+        t.style.background=active?'rgba(255,140,0,.1)':'var(--bg)';
+    });
+    // Show/hide game selects
+    document.querySelectorAll('.game-sport-select').forEach(s=>s.style.display='none');
+    const sel=document.getElementById(`games-${sp}`);
+    if(sel){sel.style.display='block';sel.value='';}
+    // Reset side
+    const side=document.getElementById('side');
+    if(side){side.innerHTML='<option value="home">Home</option><option value="away">Away</option>';}
+}
+
+function selectBetType(t){
+    document.getElementById('type').value=t;
+    ['spread','moneyline','total'].forEach(bt=>{
+        const btn=document.getElementById('btn'+bt.charAt(0).toUpperCase()+bt.slice(1));
+        if(btn){
+            btn.style.borderColor=bt===t?'var(--orange)':'var(--border)';
+            btn.style.background=bt===t?'rgba(255,140,0,.1)':'var(--bg)';
+        }
+    });
+    const vf=document.getElementById('valueField');
+    if(vf){
+        vf.style.display=t==='moneyline'?'none':'';
+        const vi=document.getElementById('value');
+        if(vi)vi.placeholder=t==='total'?'224.5':'-5.5';
+    }
+    const sp=window._selectedLeague||'';
+    const sel=document.getElementById(`games-${sp}`);
+    const gameId=sel?sel.value:'';
+    const g=gamesCache.find(g=>g.id===gameId);
+    const side=document.getElementById('side');
+    if(side){
+        if(t==='total'){
+            side.innerHTML='<option value="over">Over</option><option value="under">Under</option>';
+        } else if(g){
+            side.innerHTML=`<option value="home">${g.home}</option><option value="away">${g.away}</option>`;
+        } else {
+            side.innerHTML='<option value="home">Home</option><option value="away">Away</option>';
+        }
+    }
+}
+
+
 function getSelectedGame(gameSelId){
+    // Support both old single select and new per-sport selects
     const sel=document.getElementById(gameSelId);
-    if(!sel||!sel.value)return null;
-    return gamesCache.find(g=>g.id===sel.value)||null;
+    if(sel&&sel.value) return gamesCache.find(g=>g.id===sel.value)||null;
+    // Try active sport select
+    const sp=window._selectedLeague||'';
+    const sportSel=document.getElementById(`games-${sp}`);
+    if(sportSel&&sportSel.value) return gamesCache.find(g=>g.id===sportSel.value)||null;
+    return null;
+}
+
+function getActiveGameId(){
+    const sp=window._selectedLeague||'';
+    const sel=document.getElementById(`games-${sp}`);
+    return sel?sel.value:'';
 }
 
 function updateSideForGame(gameSelId, sideSelId, betType){
@@ -718,7 +828,15 @@ function onBetTypeChange(){
 
 function onGameChange(){
     const type=document.getElementById('type')?.value||'spread';
-    updateSideForGame('game','side',type);
+    if(type==='total')return;
+    const sp=window._selectedLeague||'';
+    const sel=document.getElementById(`games-${sp}`);
+    const gameId=sel?sel.value:'';
+    const g=gamesCache.find(g=>g.id===gameId);
+    const side=document.getElementById('side');
+    if(side&&g){
+        side.innerHTML=`<option value="home">${g.home}</option><option value="away">${g.away}</option>`;
+    }
 }
 
 function onChallengeTypeChange(){
@@ -839,7 +957,7 @@ function wireOddsPreview(){
     onBetTypeChange(); // set correct initial state for type
 }
 async function createLine(){
-    const gameId=document.getElementById('game')?.value,type=document.getElementById('type')?.value,
+    const gameId=getActiveGameId()||document.getElementById('game')?.value,type=document.getElementById('type')?.value,
         side=document.getElementById('side')?.value,
         odds=parseInt(document.getElementById('odds')?.value||'-110'),
         amount=parseFloat(document.getElementById('amount')?.value);
@@ -877,14 +995,18 @@ async function renderProps(){
         <div class="card" style="max-width:760px;">
             <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;margin-bottom:16px;">Post a Prop</div>
             <div class="form-group"><label>Game</label>
-                <select id="propGame">
+                <select id="propGame" onchange="onPropGameChange()">
                     <option value="">Choose a game...</option>
-                    ${games.map(g=>{const time=g.commence_time?new Date(g.commence_time).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;return`<option value="${g.id}">[${g.sport}] ${g.away} @ ${g.home} — ${time}</option>`;}).join('')}
+                    ${games.map(g=>{const time=g.commence_time?new Date(g.commence_time).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;return`<option value="${g.id}" data-sport="${g.sport}">[${g.sport}] ${g.away} @ ${g.home} — ${time}</option>`;}).join('')}
                 </select>
             </div>
             <div class="form-grid-2">
-                <div class="form-group"><label>Sport</label><select id="propSport" onchange="updatePropTypes()"><option value="">Choose sport...</option>${Object.keys(propTypes).map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
-                <div class="form-group"><label>Player Name</label><input id="propPlayer" type="text" placeholder="LeBron James"></div>
+                <div class="form-group"><label>Sport</label><select id="propSport" onchange="updatePropTypes()" disabled><option value="">Auto-detected from game</option>${Object.keys(propTypes).map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+                <div class="form-group">
+                    <label>Player <span id="rosterLoading" style="color:var(--text-dim);font-size:11px;"></span></label>
+                    <input id="propPlayer" type="text" placeholder="Select a game first..." list="rosterList" autocomplete="off">
+                    <datalist id="rosterList"></datalist>
+                </div>
             </div>
             <div class="form-grid-2">
                 <div class="form-group"><label>Prop Type</label><select id="propType"><option value="">Choose type...</option></select></div>
@@ -926,6 +1048,36 @@ async function renderProps(){
     }
 }
 function updatePropTypes(){const s=document.getElementById('propSport').value,sel=document.getElementById('propType');sel.innerHTML='<option value="">Choose type...</option>'+(s&&propTypes[s]?propTypes[s].map(t=>`<option value="${t}">${t}</option>`).join(''):'');}
+async function onPropGameChange(){
+    const sel=document.getElementById('propGame');
+    const opt=sel.options[sel.selectedIndex];
+    const gameId=sel.value;
+    const sport=(opt&&opt.dataset.sport)||'';
+    // Auto-set sport
+    const sportSel=document.getElementById('propSport');
+    if(sport&&propTypes[sport]){
+        sportSel.value=sport;
+        updatePropTypes();
+    }
+    // Load roster
+    const playerInput=document.getElementById('propPlayer');
+    const rosterList=document.getElementById('rosterList');
+    const loadingEl=document.getElementById('rosterLoading');
+    playerInput.placeholder='Loading players...';
+    playerInput.value='';
+    rosterList.innerHTML='';
+    if(loadingEl)loadingEl.textContent='loading...';
+    if(!gameId||!sport){playerInput.placeholder='Select a game first...';if(loadingEl)loadingEl.textContent='';return;}
+    try{
+        const players=await fetch(`${API}/roster?game_id=${encodeURIComponent(gameId)}&sport=${encodeURIComponent(sport)}`).then(r=>r.json());
+        rosterList.innerHTML=players.map(p=>`<option value="${p.name}" label="${p.name} (${p.team}${p.position?' · '+p.position:''})">`).join('');
+        playerInput.placeholder=players.length?`Type player name (${players.length} available)`:'Enter player name';
+        if(loadingEl)loadingEl.textContent=players.length?`(${players.length} players)`:'';
+    }catch(e){
+        playerInput.placeholder='Enter player name';
+        if(loadingEl)loadingEl.textContent='';
+    }
+}
 async function createProp(){
     const gameId=document.getElementById('propGame').value;
     const sport=document.getElementById('propSport').value,player=document.getElementById('propPlayer').value,
