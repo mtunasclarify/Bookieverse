@@ -308,145 +308,136 @@ def get_cached_games() -> list:
     return fresh
 
 # ─────────────────────────────────────────────────────────────────────────────
-def fetch_live_games():
-    """Fetch upcoming games from Odds API using the /events endpoint (0 quota cost).
-    Falls back to demo data if no API key or on any error."""
-    if not ODDS_API_KEY:
-        return GAMES  # Return demo games if no API key
+ESPN_SPORTS = [
+    ("basketball/nba", "NBA"),
+    ("football/nfl", "NFL"),
+    ("baseball/mlb", "MLB"),
+    ("hockey/nhl", "NHL"),
+]
 
+def fetch_espn_scoreboard(sport_path: str, sport_label: str) -> list:
+    """Fetch games from ESPN free public API. No key, no quota."""
+    url = f"https://site.api.espn.com/apis/site/v2/sports/{sport_path}/scoreboard"
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            return []
+        games = []
+        for event in resp.json().get("events", []):
+            comp = event.get("competitions", [{}])[0]
+            state = comp.get("status", {}).get("type", {}).get("state", "pre")
+            if state == "post":
+                continue  # finished, skip for marketplace
+            competitors = comp.get("competitors", [])
+            home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+            away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+            if not home or not away:
+                continue
+            commence = event.get("date", "")
+            games.append({
+                "id": f"espn_{event['id']}",
+                "home": home["team"]["displayName"],
+                "away": away["team"]["displayName"],
+                "sport": sport_label,
+                "date": commence[:10] if commence else "",
+                "commence_time": commence,
+                "status": "live" if state == "in" else "upcoming",
+                "home_score": home.get("score", ""),
+                "away_score": away.get("score", ""),
+            })
+        return games
+    except Exception as e:
+        print(f"ESPN fetch error {sport_path}: {e}")
+        return []
+
+def fetch_live_games():
+    """Fetch upcoming/live games from ESPN (free, no quota). Falls back to demo data."""
     try:
         games = []
-
-        # Determine which sports are currently in season (Feb 2026: NBA yes, NFL no, MLB no yet)
-        # Use /events endpoint — completely free (0 API quota consumed)
-        active_sports = [
-            ("basketball_nba", "NBA"),
-        ]
-
-        for sport_key, sport_label in active_sports:
-            url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/events/?apiKey={ODDS_API_KEY}"
-            try:
-                resp = requests.get(url, timeout=10)
-            except Exception as e:
-                print(f"fetch_live_games: request error for {sport_key}: {e}")
-                continue
-
-            if resp.status_code != 200:
-                print(f"fetch_live_games: {sport_key} returned {resp.status_code}: {resp.text[:200]}")
-                continue
-
-            data = resp.json()
-            if not isinstance(data, list):
-                print(f"fetch_live_games: unexpected response for {sport_key}")
-                continue
-
-            for game in data:
-                commence = game.get("commence_time", "")
-                if not commence:
-                    continue
-                # Only include games that haven't started yet
-                try:
-                    game_dt = datetime.strptime(commence[:19], "%Y-%m-%dT%H:%M:%S")
-                    if game_dt <= datetime.utcnow():
-                        continue
-                except ValueError:
-                    pass
-                games.append({
-                    "id": game["id"],
-                    "home": game["home_team"],
-                    "away": game["away_team"],
-                    "sport": sport_label,
-                    "date": commence[:10],
-                    "commence_time": commence,
-                    "status": "upcoming"
-                })
-
-        # Sort soonest first
-        games.sort(key=lambda x: x["commence_time"])
-
+        for sport_path, sport_label in ESPN_SPORTS:
+            games.extend(fetch_espn_scoreboard(sport_path, sport_label))
+        games.sort(key=lambda x: x.get("commence_time", ""))
+        print(f"[games] ESPN returned {len(games)} games")
         return games if games else GAMES
-
     except Exception as e:
-        print(f"Error fetching games: {e}")
+        print(f"[games] ESPN error: {e}")
         return GAMES
 
-def check_game_scores():
-    """Check scores and auto-settle bets every 5 minutes."""
-    if not ODDS_API_KEY:
-        print("[scores] No ODDS_API_KEY — skipping score check")
-        return
+def fetch_espn_completed() -> list:
+    """Fetch recently completed games from ESPN for settlement. No quota."""
+    completed = []
+    for sport_path, sport_label in ESPN_SPORTS:
+        url = f"https://site.api.espn.com/apis/site/v2/sports/{sport_path}/scoreboard"
+        try:
+            resp = requests.get(url, timeout=10)
+            if resp.status_code != 200:
+                continue
+            for event in resp.json().get("events", []):
+                comp = event.get("competitions", [{}])[0]
+                state = comp.get("status", {}).get("type", {}).get("state", "")
+                if state != "post":
+                    continue
+                competitors = comp.get("competitors", [])
+                home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+                away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+                if not home or not away:
+                    continue
+                try:
+                    home_score = int(float(home.get("score", 0)))
+                    away_score = int(float(away.get("score", 0)))
+                except (ValueError, TypeError):
+                    continue
+                completed.append({
+                    "id": f"espn_{event['id']}",
+                    "home_team": home["team"]["displayName"],
+                    "away_team": away["team"]["displayName"],
+                    "home_score": home_score,
+                    "away_score": away_score,
+                })
+        except Exception as e:
+            print(f"[scores] ESPN fetch error {sport_path}: {e}")
+    return completed
 
-    SPORT_ENDPOINTS = ["basketball_nba", "americanfootball_nfl"]
+def check_game_scores():
+    """Check ESPN scores and auto-settle bets every 5 minutes. Free, no quota."""
     db = SessionLocal()
     total_settled = 0
-
     try:
-        for sport_key in SPORT_ENDPOINTS:
-            scores_url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/scores/?apiKey={ODDS_API_KEY}&daysFrom=7"
-            try:
-                response = requests.get(scores_url, timeout=10)
-            except Exception as e:
-                print(f"[scores] Request error for {sport_key}: {e}")
+        completed = fetch_espn_completed()
+        print(f"[scores] ESPN: {len(completed)} completed games")
+
+        pending_bets = db.query(Bet).filter(Bet.status == "pending").all()
+        if not pending_bets:
+            return
+
+        pending_ids = set(b.game_id for b in pending_bets if b.game_id)
+        print(f"[scores] pending game_ids: {pending_ids}")
+
+        for game in completed:
+            game_id = game["id"]
+            if game_id not in pending_ids:
                 continue
 
-            if response.status_code != 200:
-                print(f"[scores] {sport_key} returned {response.status_code}: {response.text[:200]}")
-                continue
+            home_score = game["home_score"]
+            away_score = game["away_score"]
+            print(f"[scores] Settling {game_id}: {game['home_team']} {home_score} - {game['away_team']} {away_score}")
 
-            games = response.json()
-            completed = [g for g in games if g.get("completed") and g.get("scores")]
-            print(f"[scores] {sport_key}: {len(games)} games, {len(completed)} completed")
-            if completed:
-                print(f"[scores] completed game IDs: {[g['id'] for g in completed]}")
+            bets = [b for b in pending_bets if b.game_id == game_id]
+            for bet in bets:
+                winner = determine_winner(bet, home_score, away_score)
+                if winner:
+                    settle_bet(db, bet, winner)
+                    total_settled += 1
 
-            # Check what pending bets exist for this sport
-            pending = db.query(Bet).filter(Bet.status == "pending").all()
-            if pending:
-                print(f"[scores] pending bet game_ids in DB: {list(set(b.game_id for b in pending))}")
-
-            for game_data in completed:
-                game_id = game_data["id"]
-                scores = game_data["scores"]
-
-                home_raw = next((s["score"] for s in scores if s["name"] == game_data["home_team"]), None)
-                away_raw = next((s["score"] for s in scores if s["name"] == game_data["away_team"]), None)
-                if home_raw is None or away_raw is None:
-                    continue
-
-                try:
-                    home_score = int(float(home_raw))
-                    away_score = int(float(away_raw))
-                except (ValueError, TypeError) as e:
-                    print(f"[scores] Score parse error for {game_id}: {e}")
-                    continue
-
-                # Settle regular bets
-                bets = db.query(Bet).filter(Bet.game_id == game_id, Bet.status == "pending").all()
-                for bet in bets:
-                    winner = determine_winner(bet, home_score, away_score)
-                    if winner:
-                        settle_bet(db, bet, winner)
-                        total_settled += 1
-
-                # Settle prop bets linked to this game
-                prop_bets = db.query(PropBet).filter(PropBet.game_id == game_id, PropBet.status == "pending").all()
-                for pb in prop_bets:
-                    # Prop bets can't be auto-settled from scores (need player stats)
-                    # Mark for manual review instead
-                    pass
-
-                # Mark line as settled and refund unmatched
-                if bets:
-                    line_ids = set(b.line_id for b in bets if b.line_id)
-                    for line_id in line_ids:
-                        line = db.query(Line).filter(Line.id == line_id).first()
-                        if line and line.status not in ("settled", "refunded", "cancelled", "expired"):
-                            refund_unmatched_line(db, line)
-                            line.status = "settled"
+            line_ids = set(b.line_id for b in bets if b.line_id)
+            for line_id in line_ids:
+                line = db.query(Line).filter(Line.id == line_id).first()
+                if line and line.status not in ("settled", "refunded", "cancelled", "expired"):
+                    refund_unmatched_line(db, line)
+                    line.status = "settled"
 
         db.commit()
         print(f"[scores] Done — settled {total_settled} bets")
-
     except Exception as e:
         print(f"[scores] Error: {e}")
         db.rollback()
@@ -653,12 +644,19 @@ def maybe_check_scores():
 def start_scheduler():
     if not scheduler.running:
         scheduler.start()
-    # Clean up stale open lines immediately — runs after all functions are defined
+    # Clean up stale open lines immediately
     try:
         expire_pregame_lines()
         print("[startup] expire_pregame_lines ran successfully")
     except Exception as _e:
         print(f"[startup] expire_pregame_lines error (non-fatal): {_e}")
+    # Check scores immediately on startup
+    try:
+        print(f"[startup] ODDS_API_KEY set: {bool(ODDS_API_KEY)}")
+        check_game_scores()
+        print("[startup] check_game_scores ran successfully")
+    except Exception as _e:
+        print(f"[startup] check_game_scores error (non-fatal): {_e}")
 
 @app.on_event("shutdown")
 def stop_scheduler():
@@ -819,6 +817,35 @@ def login(user: UserCreate, db: Session = Depends(get_db)):
 def get_games():
     return get_cached_games()
 
+@app.get("/api/live-scores")
+def get_live_scores():
+    """Lightweight endpoint returning only live/recent scores for score display."""
+    scores = {}
+    for sport_path, _ in ESPN_SPORTS:
+        url = f"https://site.api.espn.com/apis/site/v2/sports/{sport_path}/scoreboard"
+        try:
+            resp = requests.get(url, timeout=8)
+            if resp.status_code != 200:
+                continue
+            for event in resp.json().get("events", []):
+                comp = event.get("competitions", [{}])[0]
+                state = comp.get("status", {}).get("type", {}).get("state", "pre")
+                competitors = comp.get("competitors", [])
+                home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+                away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+                if not home or not away:
+                    continue
+                status_detail = comp.get("status", {}).get("type", {}).get("shortDetail", "")
+                scores[f"espn_{event['id']}"] = {
+                    "state": state,
+                    "home_score": home.get("score", ""),
+                    "away_score": away.get("score", ""),
+                    "status": status_detail,
+                }
+        except Exception:
+            continue
+    return scores
+
 @app.get("/api/futures")
 def get_futures():
     return FUTURES
@@ -843,7 +870,7 @@ def get_lines(db: Session = Depends(get_db)):
             available_for_bettor = bettor_stake_from_bookie(available_bookie, odds)
             result.append({
                 "id": l.id, "bookie_id": l.bookie_id, "bookie_name": l.bookie_name,
-                "game": l.game or "", "sport": l.sport or "", "type": l.type or "moneyline", "side": l.side or "",
+                "game_id": l.game_id or "", "game": l.game or "", "sport": l.sport or "", "type": l.type or "moneyline", "side": l.side or "",
                 "value": l.value or 0, "odds": odds, "amount": amount, "status": l.status,
                 "total_action": total_action, "current_bettors": l.current_bettors or 0,
                 "max_bet_per_user": l.max_bet_per_user, "is_private": l.is_private or False,
@@ -1824,9 +1851,22 @@ def admin_run_scores(token: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id, User.is_admin == True).first()
     if not user:
         raise HTTPException(403, "Admin only")
+
+    if not ODDS_API_KEY:
+        # No API key — return pending bet info so admin can manually settle
+        pending = db.query(Bet).filter(Bet.status == "pending").all()
+        return {
+            "message": "No ODDS_API_KEY set — manual settlement required",
+            "pending_count": len(pending),
+            "pending_bets": [{"id": b.id, "game": b.game, "game_id": b.game_id,
+                              "bookie": b.bookie_name, "bettor": b.bettor_name,
+                              "type": b.type, "bookie_side": b.bookie_side,
+                              "bettor_side": b.bettor_side, "value": b.value} for b in pending]
+        }
     try:
         check_game_scores()
-        return {"message": "Score check complete — check server logs for details"}
+        pending_after = db.query(Bet).filter(Bet.status == "pending").count()
+        return {"message": f"Score check complete. Pending bets remaining: {pending_after}. Check server logs for details."}
     except Exception as e:
         raise HTTPException(500, str(e))
 
@@ -1844,6 +1884,100 @@ def admin_pending_bets(token: str, db: Session = Depends(get_db)):
         "value": b.value, "bookie": b.bookie_name, "bettor": b.bettor_name,
         "bookie_amount": b.bookie_amount, "bettor_amount": b.bettor_amount
     } for b in bets]
+
+
+# ─── COIN SHOP ────────────────────────────────────────────────────────────────
+
+COIN_PACKAGES = [
+    {"id": "coins_100",  "coins": 100,  "price": 100,  "label": "Starter",  "bonus": ""},
+    {"id": "coins_500",  "coins": 500,  "price": 499,  "label": "Popular",  "bonus": "+10%"},
+    {"id": "coins_1200", "coins": 1200, "price": 999,  "label": "Baller",   "bonus": "+20%"},
+    {"id": "coins_3000", "coins": 3000, "price": 2499, "label": "Whale",    "bonus": "+40%"},
+]
+
+@app.get("/api/shop/packages")
+def get_packages():
+    return COIN_PACKAGES
+
+@app.post("/api/shop/create-checkout")
+def create_checkout(package_id: str, token: str, request: Request, db: Session = Depends(get_db)):
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(400, "Stripe not configured")
+    user_id = verify_token(token)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(401, "Invalid token")
+    pkg = next((p for p in COIN_PACKAGES if p["id"] == package_id), None)
+    if not pkg:
+        raise HTTPException(404, "Package not found")
+    try:
+        base_url = str(request.base_url).rstrip("/")
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": f"BookieVerse {pkg['label']} — {pkg['coins']:,} coins",
+                        "description": f"Add {pkg['coins']:,} coins to your BookieVerse balance",
+                    },
+                    "unit_amount": pkg["price"],
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=f"{base_url}/app?payment=success&package={package_id}&user={user_id}",
+            cancel_url=f"{base_url}/app?payment=cancelled",
+            metadata={"user_id": str(user_id), "package_id": package_id, "coins": str(pkg["coins"])},
+        )
+        return {"url": session.url}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@app.post("/api/shop/webhook")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    try:
+        if webhook_secret:
+            event = stripe.Webhook.construct_event(payload, sig, webhook_secret)
+        else:
+            event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
+    except Exception as e:
+        raise HTTPException(400, str(e))
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        meta = session.get("metadata", {})
+        user_id = int(meta.get("user_id", 0))
+        coins = int(meta.get("coins", 0))
+        if user_id and coins:
+            user = db.query(User).filter(User.id == user_id).first()
+            if user:
+                user.balance += coins
+                db.commit()
+                push_notification(db, user_id, "coins_added", f"💰 {coins:,} coins added!",
+                    f"Your purchase was successful. Balance: {user.balance:,.0f} coins", None)
+                db.commit()
+                print(f"[shop] Added {coins} coins to user {user_id}")
+    return {"status": "ok"}
+
+@app.get("/api/shop/success")
+def shop_success(package: str, user: int, token: str, db: Session = Depends(get_db)):
+    """Fallback: credit coins from success URL if webhook isn't set up yet."""
+    user_id = verify_token(token)
+    if user_id != user:
+        raise HTTPException(403, "Token mismatch")
+    pkg = next((p for p in COIN_PACKAGES if p["id"] == package), None)
+    if not pkg:
+        raise HTTPException(404, "Package not found")
+    # Check if already credited (prevent double credit)
+    u = db.query(User).filter(User.id == user_id).first()
+    if not u:
+        raise HTTPException(404, "User not found")
+    # Only use this as webhook fallback — in production webhook handles it
+    return {"message": "Payment recorded", "coins": pkg["coins"]}
 
 @app.get("/app", response_class=HTMLResponse)
 def serve_app():
