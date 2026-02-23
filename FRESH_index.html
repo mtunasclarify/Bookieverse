@@ -455,60 +455,105 @@ function updateSidebarBalance(){
 async function loadLines(){
     document.getElementById('content').innerHTML=skeletonCards(4);
     try{
-        const res=await fetch(API+'/lines?token='+token);
-        if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.detail||'Failed to load marketplace');}
-        const lines=await res.json();
+        const [linesRes, scoresRes] = await Promise.all([
+            fetch(API+'/lines?token='+token),
+            fetch(API+'/live-scores').catch(()=>({ok:false}))
+        ]);
+        if(!linesRes.ok){const e=await linesRes.json().catch(()=>({}));throw new Error(e.detail||'Failed to load marketplace');}
+        const lines=await linesRes.json();
+        if(scoresRes.ok) _liveScores=await scoresRes.json();
         if(!Array.isArray(lines))throw new Error('Unexpected response from server');
         linesCache=lines;
-        if(!lines.length)return'<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Available</div><div class="empty-desc">Be the first to set a line</div></div>';
-    let html=`<div class="page-header"><div class="page-title">Marketplace</div><div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''} available</div></div>`;
-    for(const line of lines){
-        const isOwn = user && line.bookie_id === user.id;
-        const avail=line.amount-(line.total_action||0);
-        const availBettor=line.available_for_bettor||0;
-        const pct=Math.min(100,Math.round((line.total_action||0)/line.amount*100));
-        const isFull=avail<=0.01;
-        const sp=line.sport||'';
-        const sBadge=sp==='NBA'?'badge-nba':sp==='NFL'?'badge-nfl':'badge-prop';
-        const tBadge=line.type==='spread'?'badge-spread':line.type==='moneyline'?'badge-moneyline':'badge-total';
-        const barCls=pct===100?'full':pct>0?'partial':'';
-        const odds=line.odds||-110;
-        const oddsStr=odds>0?'+'+odds:odds;
-        const oddsColor=odds>0?'var(--green)':'var(--text-muted)';
-        html+=`<div class="card ${isFull?'':'card-glow'}">
-            <div class="line-card">
-                <div class="line-card-info">
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                        <span class="badge ${tBadge}">${line.type}</span>
-                        <span class="badge ${sBadge}">${sp}</span>
-                        <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:${oddsColor};letter-spacing:.5px;">${oddsStr}</span>
-                        ${line.is_private?'<span class="badge badge-private">Private</span>':''}
+
+        // Build live scores ticker
+        const liveGames=Object.entries(_liveScores).filter(([,s])=>s.state==='in');
+        let scoreTicker='';
+        if(liveGames.length){
+            const chips=liveGames.map(([id,s])=>`
+                <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(0,214,122,.08);border:1px solid rgba(0,214,122,.2);border-radius:8px;padding:6px 12px;white-space:nowrap;">
+                    <span style="color:var(--green);font-size:10px;font-weight:800;letter-spacing:1px;">🔴 LIVE</span>
+                    <span style="font-size:13px;font-weight:700;">${s.away_score} - ${s.home_score}</span>
+                    <span style="font-size:11px;color:var(--text-muted);">${s.status}</span>
+                </div>`).join('');
+            scoreTicker=`<div style="overflow-x:auto;padding:0 0 12px;margin-bottom:4px;">
+                <div style="display:flex;gap:8px;min-width:max-content;">${chips}</div>
+            </div>`;
+        }
+
+        if(!lines.length)return`
+            <div class="page-header"><div class="page-title">Marketplace</div></div>
+            ${scoreTicker}
+            <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Available</div><div class="empty-desc">Be the first to set a line</div></div>`;
+
+        // Group by sport
+        const SPORT_ORDER=['NBA','NFL','MLB','NHL'];
+        const bySport={};
+        for(const line of lines){
+            const sp=line.sport||'Other';
+            if(!bySport[sp])bySport[sp]=[];
+            bySport[sp].push(line);
+        }
+        const sports=Object.keys(bySport).sort((a,b)=>{
+            const ai=SPORT_ORDER.indexOf(a),bi=SPORT_ORDER.indexOf(b);
+            return (ai===-1?99:ai)-(bi===-1?99:bi);
+        });
+
+        const SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒',Other:'🎯'};
+        let html=`<div class="page-header"><div class="page-title">Marketplace</div><div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''}</div></div>${scoreTicker}`;
+
+        for(const sp of sports){
+            const sportLines=bySport[sp];
+            html+=`<div style="display:flex;align-items:center;gap:8px;margin:16px 0 8px;">
+                <span style="font-size:18px;">${SPORT_EMOJI[sp]||'🎯'}</span>
+                <span style="font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:1px;">${sp}</span>
+                <span style="font-size:12px;color:var(--text-dim);background:var(--bg-secondary);padding:2px 8px;border-radius:20px;">${sportLines.length}</span>
+            </div>`;
+
+            for(const line of sportLines){
+                const isOwn=user&&line.bookie_id===user.id;
+                const avail=line.amount-(line.total_action||0);
+                const availBettor=line.available_for_bettor||0;
+                const pct=Math.min(100,Math.round((line.total_action||0)/line.amount*100));
+                const isFull=avail<=0.01;
+                const tBadge=line.type==='spread'?'badge-spread':line.type==='moneyline'?'badge-moneyline':'badge-total';
+                const barCls=pct===100?'full':pct>0?'partial':'';
+                const odds=line.odds||-110;
+                const oddsStr=odds>0?'+'+odds:String(odds);
+                const oddsColor=odds>0?'var(--green)':'var(--text-muted)';
+                const sc=_liveScores[line.game_id]||null;
+                const scoreBadge=sc&&sc.state==='in'
+                    ?`<span style="color:var(--green);font-size:10px;font-weight:800;">🔴 ${sc.away_score}-${sc.home_score}</span>`
+                    :sc&&sc.state==='post'
+                    ?`<span style="color:var(--text-dim);font-size:10px;">Final ${sc.away_score}-${sc.home_score}</span>`:'';
+                const sideLabel=line.side==='over'||line.side==='under'?line.side.toUpperCase():line.side.charAt(0).toUpperCase()+line.side.slice(1);
+                const valueLabel=line.type!=='moneyline'?` ${line.value>0?'+':''}${line.value}`:'';
+
+                html+=`<div class="card" style="padding:12px 16px;margin-bottom:8px;${isFull?'opacity:.7':''}${!isFull&&!isOwn?';border-color:rgba(255,255,255,.08)':''}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+                                <span class="badge ${tBadge}" style="font-size:10px;">${line.type}</span>
+                                <span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:${oddsColor}">${oddsStr}</span>
+                                ${scoreBadge}
+                                ${line.is_private?'<span class="badge badge-private" style="font-size:10px;">Private</span>':''}
+                            </div>
+                            <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${line.game}</div>
+                            <div style="font-size:12px;color:var(--orange);font-weight:700;margin-top:2px;" data-game-id="${line.game_id||''}">${sideLabel}${valueLabel}</div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">@${line.bookie_name} · ${pct}% filled · ${isFull?'Full':'$'+availBettor.toFixed(0)+' avail'}</div>
+                        </div>
+                        <div style="text-align:right;flex-shrink:0;">
+                            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green);">+$${avail.toFixed(0)}</div>
+                            <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">risk $${availBettor.toFixed(0)}</div>
+                            <button class="btn ${isOwn?'btn-secondary':'btn-primary'} btn-sm" onclick="takeLine(${line.id})" ${(isFull||isOwn)?'disabled':''} style="font-size:12px;padding:5px 12px;">
+                                ${isFull?'Full ✓':isOwn?'Yours':'Take Bet'}
+                            </button>
+                        </div>
                     </div>
-                    <div class="line-game">${line.game}</div>
-                    <div data-game-id="${line.game_id||''}" style="font-size:12px;margin-top:2px;min-height:16px;">
-                        ${(()=>{const s=_liveScores[line.game_id];if(!s)return'';if(s.state==='in')return`<span style="color:var(--green);font-weight:700;">🔴 LIVE</span> <span style="font-weight:800;">${s.away_score} - ${s.home_score}</span> <span style="color:var(--text-dim);font-size:11px;">${s.status}</span>`;if(s.state==='post')return`<span style="color:var(--text-dim);">Final: ${s.away_score} - ${s.home_score}</span>`;return'';})()}
-                    </div>
-                    <div class="line-side">${line.side==='over'||line.side==='under'?line.side.toUpperCase():line.side.charAt(0).toUpperCase()+line.side.slice(1)}
-                        ${line.type!=='moneyline'?`<strong style="color:var(--text)"> ${line.value>0?'+':''}${line.value}</strong>`:''}
-                    </div>
-                    <div class="line-by">by @${line.bookie_name}${line.max_bet_per_user?' · Max $'+line.max_bet_per_user+'/user':''}</div>
-                    <div class="fill-bar-wrap">
-                        <div class="fill-bar-label"><span>${pct}% filled</span><span>${isFull?'Fully matched':'$'+availBettor.toFixed(0)+' to wager'}</span></div>
-                        <div class="fill-bar-track"><div class="fill-bar-fill ${barCls}" style="width:${pct}%"></div></div>
-                    </div>
-                </div>
-                <div class="line-card-amount">
-                    <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;">You can win</div>
-                    <div class="line-amount-num">$${avail.toFixed(0)}</div>
-                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">risk $${availBettor.toFixed(0)}</div>
-                    <button class="btn ${isOwn?'btn-secondary':'btn-primary'} btn-sm" style="margin-top:12px;" onclick="takeLine(${line.id})" ${(isFull||isOwn)?'disabled':''}>
-                        ${isFull?'Filled':isOwn?'Your Line':'Take Bet'}
-                    </button>
-                </div>
-            </div>
-        </div>`;
-    }
-    return html;
+                    <div class="fill-bar-track" style="margin-top:8px;height:3px;"><div class="fill-bar-fill ${barCls}" style="width:${pct}%"></div></div>
+                </div>`;
+            }
+        }
+        return html;
     }catch(e){
         console.error('loadLines error:',e);
         return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load marketplace</div><div class="empty-desc">${e.message||'Connection error'} — <button class="btn btn-outline btn-sm" onclick="changeView('marketplace')">Retry</button></div></div>`;
