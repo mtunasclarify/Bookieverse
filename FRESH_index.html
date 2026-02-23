@@ -490,7 +490,7 @@ async function loadLines(){
             <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Available</div><div class="empty-desc">Be the first to set a line</div></div>`;
 
         // Group by sport
-        const SPORT_ORDER=['NBA','NFL','MLB','NHL'];
+        const SPORT_ORDER=['NBA','NFL','MLB','NHL','Premier League','La Liga','Champions League','MLS'];
         const bySport={};
         for(const line of lines){
             const sp=line.sport||'Other';
@@ -502,7 +502,7 @@ async function loadLines(){
             return (ai===-1?99:ai)-(bi===-1?99:bi);
         });
 
-        const SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒',Other:'🎯'};
+        const SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒','Premier League':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','La Liga':'🇪🇸','Champions League':'🏆',MLS:'🇺🇸',Other:'🎯'};
         let html=`<div class="page-header"><div class="page-title">Marketplace</div><div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''}</div></div>${scoreTicker}`;
 
         for(const sp of sports){
@@ -613,6 +613,20 @@ async function renderCreateLine(){
         if(!Array.isArray(games)) throw new Error('Could not load games from server');
         gamesCache=games;
 
+        if(!games.length){
+            document.getElementById('content').innerHTML=`
+                <div class="page-header"><div class="page-title">⚡ Set a Line</div></div>
+                <div class="card" style="max-width:680px;">
+                    <div style="text-align:center;padding:32px 20px;">
+                        <div style="font-size:40px;margin-bottom:12px;">📡</div>
+                        <div style="font-size:18px;font-weight:700;margin-bottom:8px;">No games available right now</div>
+                        <div style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">ESPN hasn't published today's schedule yet, or all games have started. Check back soon or try the Marketplace to take existing lines.</div>
+                        <button class="btn btn-primary" onclick="renderApp()">Refresh</button>
+                    </div>
+                </div>`;
+            return '';
+        }
+
         // Group games by sport
         const bySport={};
         for(const g of games){
@@ -621,7 +635,7 @@ async function renderCreateLine(){
             bySport[sp].push(g);
         }
         const sports=Object.keys(bySport);
-        const SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒',Other:'🎯'};
+        const SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒','Premier League':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','La Liga':'🇪🇸','Champions League':'🏆',MLS:'🇺🇸',Other:'🎯'};
 
         const sportTabs=sports.map((sp,i)=>`
             <div class="sport-tab ${i===0?'active':''}" onclick="selectLeague('${sp}')" id="tab-${sp}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;border-radius:10px;cursor:pointer;border:2px solid ${i===0?'var(--orange)':'var(--border)'};background:${i===0?'rgba(255,140,0,.1)':'var(--bg)'};transition:.2s;min-width:70px;">
@@ -1168,7 +1182,7 @@ async function submitFutureBet(){
         } else {const e=await res.json();toast(e.detail||'Error','error');}
     }catch(e){toast('Connection error','error');}
 }
-let _myBetsTab = 'lines'; // 'lines' | 'bets'
+let _myBetsTab = 'lines'; // 'lines' | 'bets' | 'parlays'
 
 async function renderMyBets(){
     document.getElementById('content').innerHTML=skeletonCards(3);
@@ -1190,6 +1204,9 @@ async function renderMyBets(){
         </button>
         <button class="tab-btn ${_myBetsTab==='bets'?'active':''}" onclick="switchMyBetsTab('bets')" style="flex:1;padding:12px 0;font-size:14px;font-weight:700;background:${_myBetsTab==='bets'?'var(--green)':'transparent'};color:${_myBetsTab==='bets'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;">
             🎲 Bet History <span style="background:${_myBetsTab==='bets'?'rgba(0,0,0,.2)':'var(--border)'};padding:1px 8px;border-radius:20px;font-size:11px;margin-left:4px;">${bets.length+props.length}</span>
+        </button>
+        <button class="tab-btn ${_myBetsTab==='parlays'?'active':''}" onclick="switchMyBetsTab('parlays')" style="flex:1;padding:12px 0;font-size:14px;font-weight:700;background:${_myBetsTab==='parlays'?'var(--green)':'transparent'};color:${_myBetsTab==='parlays'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;">
+            🎰 Parlays
         </button>
     </div>`;
 
@@ -1237,6 +1254,59 @@ async function renderMyBets(){
                         </div>
                     </div>
                 </div>`;
+            });
+        }
+    } else if(_myBetsTab==='parlays'){
+        // ── PARLAY HISTORY ────────────────────────────────────────────────────
+        let parlayData={posted:[],taken:[]};
+        try{const r=await fetch(API+'/parlays/mine?token='+token);if(r.ok)parlayData=await r.json();}catch(e){}
+        const allParlays=[
+            ...parlayData.posted.map(p=>({...p,role:'bookie'})),
+            ...parlayData.taken.map(p=>({...p,role:'bettor'}))
+        ].sort((a,b)=>0);
+        if(!allParlays.length){
+            html+=`<div class="empty-state"><div class="empty-icon">🎰</div><div class="empty-title">No parlay history</div><div class="empty-desc">Post or take a parlay to get started</div></div>`;
+        } else {
+            allParlays.forEach(p=>{
+                const isBookie=p.role==='bookie';
+                const legs=p.legs||[];
+                const coStr=fmtOdds(p.combined_odds||0);
+                const coColor=(p.combined_odds||0)>0?'var(--green)':'var(--orange)';
+                let statusLabel,statusClass,displayAmt,displayColor;
+                if(isBookie){
+                    const taken=p.total_action||0;
+                    statusLabel=p.status==='open'?`Open · $${taken.toFixed(0)} taken`:'Closed';
+                    statusClass='pending';
+                    displayAmt=`$${(p.amount||0).toFixed(0)}`;
+                    displayColor='var(--gold)';
+                } else {
+                    const won=p.winner==='bettor',lost=p.winner==='bookie';
+                    statusLabel=p.status==='pending'?'Pending ⏳':won?'Won ✅':'Lost ❌';
+                    statusClass=p.status==='pending'?'pending':won?'won':'lost';
+                    displayAmt=p.status==='pending'?`$${(p.bettor_amount||0).toFixed(0)}`:won?`+$${(p.bookie_amount||0).toFixed(0)}`:`-$${(p.bettor_amount||0).toFixed(0)}`;
+                    displayColor=p.status==='pending'?'var(--gold)':won?'var(--green)':'var(--red)';
+                }
+                const legsResult=p.legs_result||{};
+                html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                            <span style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:${coColor};">${coStr}</span>
+                            <div><div style="font-size:11px;font-weight:800;color:var(--text-dim);">${legs.length}-LEG · ${isBookie?'📚 POSTED':'🎯 TAKEN'}</div>
+                            <div style="font-size:11px;color:var(--text-dim);">@${p.bookie_name}</div></div>
+                        </div>
+                        ${legs.map(l=>{
+                            const lr=legsResult[l.game_id]||'pending';
+                            const lIcon=lr==='won'?'✅':lr==='lost'?'❌':lr==='push'?'🤝':'⏳';
+                            return`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;">
+                                <span>${lIcon}</span>
+                                <span style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game} · ${l.type.toUpperCase()} ${l.side}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}</span>
+                            </div>`;}).join('')}
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:${displayColor};">${displayAmt}</div>
+                        <div style="margin-top:4px;"><span class="bet-status ${statusClass}">${statusLabel}</span></div>
+                    </div>
+                </div></div>`;
             });
         }
     } else {
@@ -1619,6 +1689,322 @@ async function renderFollowing(){
     });
     return html;
 }
+// ─── PARLAY HELPERS ──────────────────────────────────────────────────────────
+const PARLAY_SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒','Premier League':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','La Liga':'🇪🇸','Champions League':'🏆',MLS:'🇺🇸',Other:'⚽'};
+let _parlayLegs=[];
+let _parlaySelectedLeague='';
+
+function parlayAmericanToDecimal(o){return o>=100?o/100+1:100/Math.abs(o)+1;}
+function parlayDecimalToAmerican(d){return d>=2?Math.round((d-1)*100):Math.round(-100/(d-1));}
+function calcCombinedOdds(legs){
+    if(!legs.length)return null;
+    const d=legs.reduce((acc,l)=>acc*parlayAmericanToDecimal(l.odds||(-110)),1);
+    return parlayDecimalToAmerican(d);
+}
+function bettorStakeForParlay(liability, combinedOdds){
+    const d=parlayAmericanToDecimal(combinedOdds);
+    return +(liability/(d-1)).toFixed(2);
+}
+function fmtOdds(o){return o>0?'+'+o:String(o);}
+
+function renderParlayLegsBuilder(){
+    const co=calcCombinedOdds(_parlayLegs);
+    const coStr=co!=null?fmtOdds(co):'—';
+    const coColor=co!=null&&co>0?'var(--green)':'var(--orange)';
+    const legsHtml=_parlayLegs.length?_parlayLegs.map((l,i)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:8px;border:1px solid var(--border);margin-bottom:6px;">
+            <span style="font-size:16px;">${PARLAY_SPORT_EMOJI[l.sport]||'🎯'}</span>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game}</div>
+                <div style="font-size:11px;color:var(--text-muted);">${l.type.toUpperCase()} · ${l.side}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''} · <span style="color:${l.odds>0?'var(--green)':'var(--text-muted)'};">${fmtOdds(l.odds)}</span></div>
+            </div>
+            <button onclick="removeParlayLeg(${i})" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:2px 6px;">✕</button>
+        </div>`).join('')
+    :`<div style="color:var(--text-dim);font-size:13px;text-align:center;padding:12px;">No legs added yet</div>`;
+
+    document.getElementById('parlayLegsDisplay').innerHTML=`
+        <div style="margin-bottom:8px;">${legsHtml}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-secondary);border-radius:8px;">
+            <span style="font-size:12px;color:var(--text-dim);">${_parlayLegs.length} leg${_parlayLegs.length!==1?'s':''} · Combined Odds</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:${coColor};">${coStr}</span>
+        </div>`;
+
+    // Update stake preview
+    const liab=parseFloat(document.getElementById('parlayAmount')?.value||0);
+    const preview=document.getElementById('parlayPreview');
+    if(preview){
+        if(co&&liab>0){
+            const stake=bettorStakeForParlay(liab,co);
+            preview.innerHTML=`Bettor risks <strong style="color:var(--orange);">$${stake.toFixed(2)}</strong> to win <strong style="color:var(--green);">$${liab.toFixed(2)}</strong> · Combined odds <strong style="color:${coColor};">${coStr}</strong>`;
+        } else {
+            preview.innerHTML='Add legs and set your liability to see the breakdown';
+        }
+    }
+}
+
+function addParlayLeg(){
+    const sp=_parlaySelectedLeague;
+    const sel=document.getElementById(`pgames-${sp}`);
+    const gameId=sel?sel.value:'';
+    const g=gamesCache.find(g=>g.id===gameId);
+    if(!g){toast('Select a game first','error');return;}
+    const type=document.getElementById('plegType').value;
+    const rawSide=document.getElementById('plegSide').value;
+    const rawValue=document.getElementById('plegValue').value;
+    const value=type==='moneyline'?0:parseFloat(rawValue)||0;
+    const odds=parseInt(document.getElementById('plegOdds').value||'-110');
+    if(type!=='moneyline'&&!rawValue){toast('Enter a line value','error');return;}
+    if(isNaN(odds)||odds===0||(odds>-100&&odds<100)){toast('Enter valid odds','error');return;}
+    // Check dupe game
+    if(_parlayLegs.find(l=>l.game_id===gameId)){toast('Game already added as a leg','error');return;}
+    _parlayLegs.push({game_id:gameId,game:`${g.away} @ ${g.home}`,sport:g.sport,type,side:rawSide,value,odds});
+    // Reset leg fields
+    if(sel)sel.value='';
+    document.getElementById('plegOdds').value='-110';
+    document.getElementById('plegValue').value='';
+    renderParlayLegsBuilder();
+    toast(`Leg ${_parlayLegs.length} added!`,'success');
+}
+
+function removeParlayLeg(i){
+    _parlayLegs.splice(i,1);
+    renderParlayLegsBuilder();
+}
+
+function onParlayLegTypeChange(){
+    const t=document.getElementById('plegType').value;
+    const vf=document.getElementById('plegValueField');
+    if(vf)vf.style.display=t==='moneyline'?'none':'';
+    const side=document.getElementById('plegSide');
+    if(!side)return;
+    const sp=_parlaySelectedLeague;
+    const sel=document.getElementById(`pgames-${sp}`);
+    const g=gamesCache.find(g=>g.id===(sel?sel.value:''));
+    if(t==='total'){
+        side.innerHTML='<option value="over">Over</option><option value="under">Under</option>';
+    } else if(g){
+        side.innerHTML=`<option value="home">${g.home}</option><option value="away">${g.away}</option>`;
+    } else {
+        side.innerHTML='<option value="home">Home</option><option value="away">Away</option>';
+    }
+}
+
+function onParlayGameChange(){
+    const sp=_parlaySelectedLeague;
+    const sel=document.getElementById(`pgames-${sp}`);
+    const g=gamesCache.find(g=>g.id===(sel?sel.value:''));
+    const type=document.getElementById('plegType')?.value||'spread';
+    const side=document.getElementById('plegSide');
+    if(side&&g&&type!=='total'){
+        side.innerHTML=`<option value="home">${g.home}</option><option value="away">${g.away}</option>`;
+    }
+}
+
+function selectParlayLeague(sp){
+    _parlaySelectedLeague=sp;
+    document.querySelectorAll('[id^="ptab-"]').forEach(t=>{
+        const active=t.id===`ptab-${sp}`;
+        t.style.borderColor=active?'var(--orange)':'var(--border)';
+        t.style.background=active?'rgba(255,140,0,.1)':'var(--bg)';
+    });
+    document.querySelectorAll('.pleg-game-select').forEach(s=>s.style.display='none');
+    const sel=document.getElementById(`pgames-${sp}`);
+    if(sel){sel.style.display='block';sel.value='';}
+    const side=document.getElementById('plegSide');
+    if(side){side.innerHTML='<option value="home">Home</option><option value="away">Away</option>';}
+}
+
+async function postParlay(){
+    if(_parlayLegs.length<2){toast('Add at least 2 legs','error');return;}
+    const amount=parseFloat(document.getElementById('parlayAmount').value);
+    if(isNaN(amount)||amount<=0){toast('Enter your max liability','error');return;}
+    if(amount>user.balance){toast(`Insufficient funds — balance: $${user.balance.toFixed(2)}`,'error');return;}
+    try{
+        const res=await fetch(API+'/parlays?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({legs:_parlayLegs,amount})});
+        const d=await res.json();
+        if(!res.ok){toast(d.detail||'Error posting parlay','error');return;}
+        _parlayLegs=[];
+        toast(`Parlay posted! Bettor stakes $${d.bettor_stake}. Combined odds: ${fmtOdds(d.combined_odds)}`,'success');
+        await loadUser();updateSidebarBalance();changeView('parlays');
+    }catch(e){toast('Connection error','error');}
+}
+
+async function takeParlayAction(parlayId, available, combinedOdds){
+    const d=parlayAmericanToDecimal(combinedOdds);
+    const maxStake=Math.min(bettorStakeForParlay(available,combinedOdds), user.balance);
+    // Use promptBetAmount but show stake amount
+    const stake=await promptBetAmount(
+        `<strong style="color:var(--text)">Take This Parlay</strong><br>
+        Combined Odds: <strong style="color:var(--orange);font-size:18px;">${fmtOdds(combinedOdds)}</strong><br>
+        <span style="color:var(--text-dim);font-size:12px;">Enter your stake below. If ALL legs win you get your stake back plus the payout.<br>
+        Max stake: <strong>$${maxStake.toFixed(2)}</strong></span>`,
+        maxStake
+    );
+    if(!stake||stake<=0)return;
+    const toWin=(stake*(d-1)).toFixed(2);
+    const ok=await showConfirm('Confirm Parlay Ticket',
+        `Risk $${stake.toFixed(2)} → Win $${toWin} if all legs hit. Combined odds: ${fmtOdds(combinedOdds)}`);
+    if(!ok)return;
+    try{
+        const res=await fetch(`${API}/parlays/take?parlay_id=${parlayId}&amount=${toWin}&token=${token}`,{method:'POST'});
+        const data=await res.json();
+        if(!res.ok){toast(data.detail||'Error','error');return;}
+        toast(`🎰 Parlay locked in! Risk $${stake.toFixed(2)} → Win $${toWin}`,'success');
+        await loadUser();updateSidebarBalance();renderApp();
+    }catch(e){toast('Connection error','error');}
+}
+
+async function renderParlays(){
+    document.getElementById('content').innerHTML=skeletonCards(3);
+    _parlayLegs=_parlayLegs||[];
+    try{
+        const [parlaysRes, gamesRes]=await Promise.all([
+            fetch(API+'/parlays?token='+token),
+            fetch(API+'/games')
+        ]);
+        const parlays=parlaysRes.ok?await parlaysRes.json():[];
+        const games=gamesRes.ok?await gamesRes.json():[];
+        gamesCache=games;
+
+        if(!games.length){
+            document.getElementById('content').innerHTML=`
+                <div class="page-header"><div class="page-title">⚡ Set a Line</div></div>
+                <div class="card" style="max-width:680px;">
+                    <div style="text-align:center;padding:32px 20px;">
+                        <div style="font-size:40px;margin-bottom:12px;">📡</div>
+                        <div style="font-size:18px;font-weight:700;margin-bottom:8px;">No games available right now</div>
+                        <div style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">ESPN hasn't published today's schedule yet, or all games have started. Check back soon.</div>
+                        <button class="btn btn-primary" onclick="changeView('create')">Refresh</button>
+                    </div>
+                </div>`;
+            return '';
+        }
+
+        // Group games by sport for league tabs
+        const bySport={};
+        for(const g of games){const sp=g.sport||'Other';if(!bySport[sp])bySport[sp]=[];bySport[sp].push(g);}
+        const sports=Object.keys(bySport);
+        if(!_parlaySelectedLeague&&sports.length)_parlaySelectedLeague=sports[0];
+
+        const sportTabs=sports.map(sp=>`
+            <div id="ptab-${sp}" onclick="selectParlayLeague('${sp}')" style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 14px;border-radius:10px;cursor:pointer;border:2px solid ${sp===_parlaySelectedLeague?'var(--orange)':'var(--border)'};background:${sp===_parlaySelectedLeague?'rgba(255,140,0,.1)':'var(--bg)'};transition:.2s;min-width:64px;">
+                <span style="font-size:20px;">${PARLAY_SPORT_EMOJI[sp]||'🎯'}</span>
+                <span style="font-size:10px;font-weight:800;letter-spacing:1px;">${sp}</span>
+            </div>`).join('');
+
+        const gameSelects=sports.map(sp=>`
+            <select id="pgames-${sp}" class="pleg-game-select" style="display:${sp===_parlaySelectedLeague?'block':'none'};" onchange="onParlayGameChange()">
+                <option value="">Choose ${sp} game...</option>
+                ${bySport[sp].map(g=>{
+                    const time=g.commence_time?new Date(g.commence_time).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;
+                    return`<option value="${g.id}">${g.away} @ ${g.home} — ${time}</option>`;
+                }).join('')}
+            </select>`).join('');
+
+        document.getElementById('content').innerHTML=`
+        <div class="page-header"><div class="page-title">🎰 Parlays</div><div class="page-subtitle">All legs must win · Bookie posts · Bettor takes</div></div>
+
+        <!-- Builder -->
+        <div class="card" style="max-width:680px;margin-bottom:24px;">
+            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:12px;">① PICK LEAGUE & GAME</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">${sportTabs}</div>
+            <div class="form-group" style="margin-bottom:0;">${gameSelects}</div>
+
+            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin:16px 0 10px;">② LEG DETAILS</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                <div class="form-group" style="margin:0;">
+                    <label>Bet Type</label>
+                    <select id="plegType" onchange="onParlayLegTypeChange()">
+                        <option value="spread">Spread</option>
+                        <option value="moneyline">Moneyline</option>
+                        <option value="total">Total</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Side</label>
+                    <select id="plegSide"><option value="home">Home</option><option value="away">Away</option></select>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                <div class="form-group" style="margin:0;" id="plegValueField">
+                    <label>Line Value</label>
+                    <input id="plegValue" type="number" step="0.5" placeholder="-3.5" style="text-align:center;font-weight:700;font-size:16px;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Leg Odds</label>
+                    <input id="plegOdds" type="number" step="1" value="-110" style="text-align:center;font-weight:700;font-size:16px;">
+                </div>
+            </div>
+            <button class="btn btn-secondary btn-full" onclick="addParlayLeg()" style="margin-bottom:16px;">+ Add Leg</button>
+
+            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">③ YOUR LEGS <span style="color:var(--text-dim);font-weight:400;">(min 2, max 12)</span></div>
+            <div id="parlayLegsDisplay" style="margin-bottom:16px;">
+                <div style="color:var(--text-dim);font-size:13px;text-align:center;padding:12px;">No legs added yet</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-secondary);border-radius:8px;">
+                    <span style="font-size:12px;color:var(--text-dim);">0 legs · Combined Odds</span>
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:var(--text-dim);">—</span>
+                </div>
+            </div>
+
+            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">④ YOUR MAX LIABILITY</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <input id="parlayAmount" type="number" placeholder="100" oninput="renderParlayLegsBuilder()" style="flex:1;padding:12px;font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;">
+                <button type="button" onclick="document.getElementById('parlayAmount').value=Math.floor(user.balance);renderParlayLegsBuilder();" style="padding:0 14px;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;">MAX</button>
+            </div>
+            <div id="parlayPreview" style="padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+                Add legs and set your liability to see the breakdown
+            </div>
+            <button class="btn btn-primary btn-lg btn-full" onclick="postParlay()">Post Parlay ⚡</button>
+        </div>
+
+        <!-- Open Parlays -->
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;margin:0 0 14px;">Open Parlays ${parlays.length?`<span style="font-size:14px;font-weight:600;color:var(--text-dim);">(${parlays.length})</span>`:''}
+        </div>
+        ${parlays.length?parlays.map(p=>{
+            const coStr=fmtOdds(p.combined_odds);
+            const coColor=p.combined_odds>0?'var(--green)':'var(--orange)';
+            const isOwn=user&&p.bookie_id===user.id;
+            const pct=p.amount>0?Math.min(100,Math.round(p.total_action/p.amount*100)):0;
+            return`<div class="card" style="max-width:680px;margin-bottom:12px;${isOwn?'border-color:rgba(255,255,255,.15)':''}">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+                    <div style="flex:1;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                            <span style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:800;color:${coColor};">${coStr}</span>
+                            <div>
+                                <div style="font-size:12px;font-weight:800;color:var(--text-muted);">${p.leg_count}-LEG PARLAY</div>
+                                <div style="font-size:11px;color:var(--text-dim);">by @${p.bookie_name}</div>
+                            </div>
+                        </div>
+                        ${p.legs.map((l,i)=>`
+                            <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border-subtle);">
+                                <span style="font-size:13px;">${PARLAY_SPORT_EMOJI[l.sport]||'🎯'}</span>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game}</div>
+                                    <div style="font-size:11px;color:var(--text-muted);">${l.type.toUpperCase()} · <strong>${l.side}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}</strong> · <span style="color:${l.odds>0?'var(--green)':'var(--text-muted)'};">${fmtOdds(l.odds)}</span></div>
+                                </div>
+                            </div>`).join('')}
+                        <div class="fill-bar-track" style="margin-top:10px;height:3px;"><div class="fill-bar-fill ${pct===100?'full':pct>0?'partial':''}" style="width:${pct}%"></div></div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">${pct}% filled · $${p.available.toFixed(0)} available to win</div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;">You can win</div>
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--green);">+$${p.available.toFixed(0)}</div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">risk ~$${p.bettor_stake.toFixed(0)}</div>
+                        <button class="btn ${isOwn?'btn-secondary':'btn-primary'} btn-sm" onclick="takeParlayAction(${p.id},${p.available},${p.combined_odds})" ${isOwn?'disabled':''}>
+                            ${isOwn?'Your Parlay':'Take Parlay'}
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        }).join(''):`<div class="empty-state"><div class="empty-icon">🎰</div><div class="empty-title">No open parlays</div><div class="empty-desc">Be the first to post one above</div></div>`}
+        `;
+        return '';
+    }catch(e){
+        return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load parlays</div><div class="empty-desc">${e.message} — <button class="btn btn-outline btn-sm" onclick="changeView('parlays')">Retry</button></div></div>`;
+    }
+}
+
 async function renderShop(){
     document.getElementById('content').innerHTML=skeletonCards(4);
     try{
@@ -1746,7 +2132,7 @@ async function renderApp(){
         {id:'friends',icon:'🤝',label:'Friends',badgeKey:'friendRequestCount'},
         {id:'leaderboard',icon:'🏆',label:'Leaderboard'},
         {id:'groups',icon:'👥',label:'Groups'},{id:'following',icon:'⭐',label:'Following'},
-        {id:'search',icon:'🔍',label:'Find Bookies'},{id:'shop',icon:'💰',label:'Shop'},
+        {id:'search',icon:'🔍',label:'Find Bookies'},{id:'parlays',icon:'🎰',label:'Parlays'},{id:'shop',icon:'💰',label:'Shop'},
         ...(user.is_admin?[{id:'admin',icon:'⚙',label:'Admin'}]:[])
     ];
     const sidebarNav=NAV.map(n=>{
@@ -1796,6 +2182,7 @@ async function renderApp(){
     else if(view==='groups')content=await renderGroups();
     else if(view==='friends')content=await renderFriends();
     else if(view==='following')content=await renderFollowing();
+    else if(view==='parlays')content=await renderParlays();
     else if(view==='shop')content=await renderShop();
     else if(view==='search')content=await renderUserSearch();
     else if(view==='admin')content=await renderAdmin();
