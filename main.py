@@ -382,7 +382,7 @@ def check_game_scores():
 
     try:
         for sport_key in SPORT_ENDPOINTS:
-            scores_url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/scores/?apiKey={ODDS_API_KEY}&daysFrom=3"
+            scores_url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/scores/?apiKey={ODDS_API_KEY}&daysFrom=7"
             try:
                 response = requests.get(scores_url, timeout=10)
             except Exception as e:
@@ -396,6 +396,13 @@ def check_game_scores():
             games = response.json()
             completed = [g for g in games if g.get("completed") and g.get("scores")]
             print(f"[scores] {sport_key}: {len(games)} games, {len(completed)} completed")
+            if completed:
+                print(f"[scores] completed game IDs: {[g['id'] for g in completed]}")
+
+            # Check what pending bets exist for this sport
+            pending = db.query(Bet).filter(Bet.status == "pending").all()
+            if pending:
+                print(f"[scores] pending bet game_ids in DB: {list(set(b.game_id for b in pending))}")
 
             for game_data in completed:
                 game_id = game_data["id"]
@@ -489,6 +496,9 @@ def settle_bet(db, bet, winner):
     if not bookie or not bettor:
         print(f"settle_bet: could not find bookie or bettor for bet {bet.id}")
         return
+
+    bet.status = "settled"
+    bet.winner = winner
 
     if winner == "push":
         bookie.balance += b_amt
@@ -620,8 +630,24 @@ def expire_pregame_lines():
 
 # Initialize scheduler - started in app lifecycle to avoid duplicate workers
 scheduler = BackgroundScheduler()
-scheduler.add_job(check_game_scores,     'interval', minutes=5)
-scheduler.add_job(expire_pregame_lines,  'interval', minutes=1)
+scheduler.add_job(check_game_scores,    'interval', minutes=5,
+                  misfire_grace_time=300, coalesce=True, max_instances=1)
+scheduler.add_job(expire_pregame_lines, 'interval', minutes=1,
+                  misfire_grace_time=60,  coalesce=True, max_instances=1)
+
+# Track last score check so we can trigger on requests when scheduler has been asleep
+_last_score_check: float = 0.0
+
+def maybe_check_scores():
+    """Run score check if scheduler hasn't fired in >6 minutes (Render sleep recovery)."""
+    global _last_score_check
+    import time
+    if time.time() - _last_score_check > 360:
+        _last_score_check = time.time()
+        try:
+            check_game_scores()
+        except Exception as e:
+            print(f"[scores] background check error: {e}")
 
 @app.on_event("startup")
 def start_scheduler():
@@ -803,6 +829,7 @@ def get_prop_types():
 
 @app.get("/api/lines")
 def get_lines(db: Session = Depends(get_db)):
+    maybe_check_scores()  # recover from Render sleep — runs at most once per 6 min
     lines = db.query(Line).filter(Line.status == "open", (Line.is_private == False) | (Line.is_private == None)).all()
     result = []
     for l in lines:
@@ -1171,6 +1198,7 @@ def take_prop(take: TakeProp, token: str, db: Session = Depends(get_db)):
 
 @app.get("/api/bets")
 def get_bets(token: str, db: Session = Depends(get_db)):
+    maybe_check_scores()  # recover from Render sleep
     user_id = verify_token(token)
     if not user_id:
         raise HTTPException(401, "Invalid token")
@@ -1754,6 +1782,23 @@ def get_user(token: str, db: Session = Depends(get_db)):
             "wins": user.wins, "losses": user.losses, "lines_created": user.lines_created, "is_admin": user.is_admin}
 
 
+@app.post("/api/admin/mark-settled")
+def admin_mark_settled(bet_id: int, winner: str, token: str, db: Session = Depends(get_db)):
+    """Admin: mark a bet as settled WITHOUT touching balances (for bets already paid out)."""
+    user_id = verify_token(token)
+    user = db.query(User).filter(User.id == user_id, User.is_admin == True).first()
+    if not user:
+        raise HTTPException(403, "Admin only")
+    if winner not in ("bookie", "bettor", "push"):
+        raise HTTPException(400, "winner must be 'bookie', 'bettor', or 'push'")
+    bet = db.query(Bet).filter(Bet.id == bet_id).first()
+    if not bet:
+        raise HTTPException(404, "Bet not found")
+    bet.status = "settled"
+    bet.winner = winner
+    db.commit()
+    return {"message": f"Bet {bet_id} marked settled — winner: {winner} (balances unchanged)"}
+
 @app.post("/api/admin/settle-bet")
 def admin_settle_bet(bet_id: int, winner: str, token: str, db: Session = Depends(get_db)):
     """Admin: manually settle a specific bet. winner = 'bookie', 'bettor', or 'push'"""
@@ -1792,7 +1837,7 @@ def admin_pending_bets(token: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id, User.is_admin == True).first()
     if not user:
         raise HTTPException(403, "Admin only")
-    bets = db.query(Bet).filter(Bet.status == "pending").all()
+    bets = db.query(Bet).filter(Bet.status == "pending").order_by(Bet.created_at.desc()).all()
     return [{
         "id": b.id, "game": b.game, "game_id": b.game_id,
         "type": b.type, "bookie_side": b.bookie_side, "bettor_side": b.bettor_side,
