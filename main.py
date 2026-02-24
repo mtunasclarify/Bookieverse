@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import hashlib
@@ -65,6 +65,13 @@ class User(Base):
     lines_created = Column(Integer, default=0)
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # Profile fields
+    avatar = Column(Text, nullable=True)           # base64 data URI
+    bio = Column(String(300), nullable=True)
+    favorite_team = Column(String(60), nullable=True)
+    favorite_sport = Column(String(40), nullable=True)
+    location = Column(String(60), nullable=True)
+    banner_color = Column(String(20), nullable=True)  # hex color for profile banner
 
 class Line(Base):
     __tablename__ = "lines"
@@ -206,6 +213,16 @@ class Notification(Base):
     ref_id = Column(Integer, nullable=True)   # challenge_id or bet_id for deep-linking
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, index=True)
+    username = Column(String)
+    message = Column(Text)
+    room = Column(String, default="global")   # future: per-game rooms
+    reply_to_id = Column(Integer, nullable=True)  # future: threading
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class Parlay(Base):
     __tablename__ = "parlays"
     id = Column(Integer, primary_key=True)
@@ -259,6 +276,26 @@ def run_migrations():
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS bookie_amount FLOAT",
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS bettor_amount FLOAT",
+        # users table — profile fields (added for profile/settings feature)
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(300)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS favorite_team VARCHAR(60)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS favorite_sport VARCHAR(40)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS location VARCHAR(60)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS banner_color VARCHAR(20)",
+        # chat_messages table (new — global chat)
+        """CREATE TABLE IF NOT EXISTS chat_messages (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER,
+            username VARCHAR,
+            message TEXT,
+            room VARCHAR DEFAULT 'global',
+            reply_to_id INTEGER,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        # bets table — game_id and created_at for live tracking
+        "ALTER TABLE bets ADD COLUMN IF NOT EXISTS game_id VARCHAR",
+        "ALTER TABLE bets ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
     ]
     with engine.connect() as conn:
         for sql in migrations:
@@ -884,6 +921,359 @@ def login(user: UserCreate, db: Session = Depends(get_db)):
         }
     }
 
+# ── Global Chat ──────────────────────────────────────────────────────────────
+class ChatSend(BaseModel):
+    message: str
+    room: str = "global"
+
+@app.get("/api/chat")
+def get_chat(room: str = "global", since_id: int = 0, limit: int = 60, db: Session = Depends(get_db)):
+    q = db.query(ChatMessage).filter(ChatMessage.room == room)
+    if since_id:
+        q = q.filter(ChatMessage.id > since_id)
+    else:
+        q = q.order_by(ChatMessage.id.desc()).limit(limit)
+        msgs = list(reversed(q.all()))
+        return {"messages": [_fmt_chat(m) for m in msgs], "last_id": msgs[-1].id if msgs else 0}
+    msgs = q.order_by(ChatMessage.id.asc()).all()
+    return {"messages": [_fmt_chat(m) for m in msgs], "last_id": msgs[-1].id if msgs else since_id}
+
+def _fmt_chat(m):
+    def time_ago(dt):
+        if not dt: return ""
+        d = (datetime.utcnow() - dt).total_seconds()
+        if d < 60: return "now"
+        if d < 3600: return f"{int(d//60)}m"
+        if d < 86400: return f"{int(d//3600)}h"
+        return f"{int(d//86400)}d"
+    return {"id": m.id, "user_id": m.user_id, "username": m.username,
+            "message": m.message, "room": m.room,
+            "ts": time_ago(m.created_at),
+            "created_at": m.created_at.isoformat() if m.created_at else ""}
+
+@app.post("/api/chat")
+def send_chat(msg: ChatSend, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id: raise HTTPException(401, "Invalid token")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user: raise HTTPException(404, "User not found")
+    text = msg.message.strip()
+    if not text: raise HTTPException(400, "Message cannot be empty")
+    if len(text) > 500: raise HTTPException(400, "Max 500 chars")
+    recent = db.query(ChatMessage).filter(
+        ChatMessage.user_id == user_id,
+        ChatMessage.created_at >= datetime.utcnow() - timedelta(seconds=2)
+    ).first()
+    if recent: raise HTTPException(429, "Slow down")
+    cm = ChatMessage(user_id=user_id, username=user.username, message=text, room=msg.room)
+    db.add(cm); db.commit(); db.refresh(cm)
+    return _fmt_chat(cm)
+
+@app.delete("/api/chat/{msg_id}")
+def delete_chat(msg_id: int, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id: raise HTTPException(401, "Invalid token")
+    user = db.query(User).filter(User.id == user_id).first()
+    cm = db.query(ChatMessage).filter(ChatMessage.id == msg_id).first()
+    if not cm: raise HTTPException(404, "Not found")
+    if cm.user_id != user_id and not user.is_admin: raise HTTPException(403, "Not your message")
+    db.delete(cm); db.commit()
+    return {"ok": True}
+
+# ── Social Activity Feed ──────────────────────────────────────────────────────
+@app.get("/api/feed")
+def get_feed(token: str, limit: int = 40, db: Session = Depends(get_db)):
+    """
+    Returns a unified activity feed of recent platform activity.
+    Personalized: people you follow appear first, then global activity.
+    Event types: line_posted, bet_matched, bet_won, bet_lost, parlay_posted,
+                 parlay_won, parlay_lost, challenge_sent, challenge_won
+    """
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+
+    # Who the user follows
+    follows = db.query(Follow).filter(Follow.follower_id == user_id).all()
+    followed_ids = {f.followed_id for f in follows}
+
+    cutoff = datetime.utcnow() - timedelta(days=7)  # last 7 days
+    events = []
+
+    def time_ago(dt):
+        if not dt:
+            return "recently"
+        diff = datetime.utcnow() - dt
+        s = diff.total_seconds()
+        if s < 60:   return "just now"
+        if s < 3600: return f"{int(s//60)}m ago"
+        if s < 86400: return f"{int(s//3600)}h ago"
+        return f"{int(s//86400)}d ago"
+
+    def is_followed(uid):
+        return uid in followed_ids
+
+    # ── Lines posted (open only, non-private) ────────────────────────────────
+    lines = db.query(Line).filter(
+        Line.status == "open",
+        Line.is_private == False,
+        Line.created_at >= cutoff
+    ).order_by(Line.created_at.desc()).limit(60).all()
+
+    for l in lines:
+        odds = l.odds or -110
+        oddsStr = (f"+{odds}" if odds > 0 else str(odds))
+        gp = (l.game or "").split(" @ ")
+        away, home = (gp[0], gp[1]) if len(gp)==2 else ("Away","Home")
+        if l.type == "total":
+            pick = f"{'Over' if l.side=='over' else 'Under'} {l.value}"
+        elif l.type == "spread":
+            pick = f"{'Home' if l.side=='home' else 'Away'} {l.value:+.1f}"
+        else:
+            pick = home if l.side == "home" else away
+        events.append({
+            "id": f"line_{l.id}",
+            "type": "line_posted",
+            "actor": l.bookie_name,
+            "actor_id": l.bookie_id,
+            "followed": is_followed(l.bookie_id),
+            "text": f"posted a {l.type} line",
+            "detail": f"{l.game}",
+            "meta": f"{pick} · {oddsStr} · ${l.amount:.0f} liability",
+            "sport": l.sport or "",
+            "amount": l.amount,
+            "ts": time_ago(l.created_at),
+            "raw_ts": l.created_at.isoformat() if l.created_at else "",
+            "emoji": "⚡"
+        })
+
+    # ── Bets matched ─────────────────────────────────────────────────────────
+    bets = db.query(Bet).filter(
+        Bet.created_at >= cutoff
+    ).order_by(Bet.created_at.desc()).limit(80).all()
+
+    for b in bets:
+        if b.status == "pending":
+            events.append({
+                "id": f"bet_matched_{b.id}",
+                "type": "bet_matched",
+                "actor": b.bettor_name,
+                "actor_id": b.bettor_id,
+                "followed": is_followed(b.bettor_id) or is_followed(b.bookie_id),
+                "text": f"took a line from @{b.bookie_name}",
+                "detail": b.game or "",
+                "meta": f"{b.type.upper()} · ${b.bettor_amount or b.amount:.0f} at risk",
+                "sport": "",
+                "amount": b.bettor_amount or b.amount,
+                "ts": time_ago(b.created_at),
+                "raw_ts": b.created_at.isoformat() if b.created_at else "",
+                "emoji": "🤝"
+            })
+        elif b.status == "settled" and b.winner:
+            winner_name = b.bookie_name if b.winner == "bookie" else b.bettor_name
+            winner_id   = b.bookie_id   if b.winner == "bookie" else b.bettor_id
+            loser_name  = b.bettor_name if b.winner == "bookie" else b.bookie_name
+            payout = b.bookie_amount if b.winner == "bookie" else b.bettor_amount
+            events.append({
+                "id": f"bet_settled_{b.id}",
+                "type": "bet_won",
+                "actor": winner_name,
+                "actor_id": winner_id,
+                "followed": is_followed(winner_id),
+                "text": f"won a bet vs @{loser_name}",
+                "detail": b.game or "",
+                "meta": f"{b.type.upper()} · +${payout:.2f}",
+                "sport": "",
+                "amount": payout,
+                "ts": time_ago(b.created_at),
+                "raw_ts": b.created_at.isoformat() if b.created_at else "",
+                "emoji": "🏆"
+            })
+
+    # ── Parlays posted ────────────────────────────────────────────────────────
+    parlays = db.query(Parlay).filter(
+        Parlay.is_private == False,
+        Parlay.created_at >= cutoff
+    ).order_by(Parlay.created_at.desc()).limit(30).all()
+
+    for p in parlays:
+        import json as _json
+        try:
+            legs = _json.loads(p.legs or "[]")
+        except:
+            legs = []
+        odds = p.combined_odds or 0
+        oddsStr = f"+{odds}" if odds > 0 else str(odds)
+        events.append({
+            "id": f"parlay_{p.id}",
+            "type": "parlay_posted",
+            "actor": p.bookie_name,
+            "actor_id": p.bookie_id,
+            "followed": is_followed(p.bookie_id),
+            "text": f"posted a {len(legs)}-leg parlay",
+            "detail": " · ".join(l.get("game","")[:20] for l in legs[:3]),
+            "meta": f"Combined {oddsStr} · ${p.amount:.0f} liability",
+            "sport": "",
+            "amount": p.amount,
+            "ts": time_ago(p.created_at),
+            "raw_ts": p.created_at.isoformat() if p.created_at else "",
+            "emoji": "🎰"
+        })
+
+    # ── Challenges ───────────────────────────────────────────────────────────
+    challenges = db.query(Challenge).filter(
+        Challenge.created_at >= cutoff
+    ).order_by(Challenge.created_at.desc()).limit(30).all()
+
+    for c in challenges:
+        if c.status == "pending":
+            events.append({
+                "id": f"challenge_{c.id}",
+                "type": "challenge_sent",
+                "actor": c.challenger_name,
+                "actor_id": c.challenger_id,
+                "followed": is_followed(c.challenger_id),
+                "text": f"challenged @{c.challenged_name}",
+                "detail": c.game or "",
+                "meta": f"${c.amount:.0f} on the line",
+                "sport": c.sport or "",
+                "amount": c.amount,
+                "ts": time_ago(c.created_at),
+                "raw_ts": c.created_at.isoformat() if c.created_at else "",
+                "emoji": "⚔️"
+            })
+
+    # ── Sort: followed events first, then by timestamp ───────────────────────
+    events.sort(key=lambda e: (0 if e["followed"] else 1, e["raw_ts"]), reverse=False)
+    # Stable sort: followed first within same time bucket, newest overall on top
+    events.sort(key=lambda e: e["raw_ts"], reverse=True)
+    # Now re-sort so followed float up but we keep recency
+    followed_events = [e for e in events if e["followed"]]
+    global_events   = [e for e in events if not e["followed"]]
+    # Interleave: 1 followed per 3 global, then append the rest
+    merged = []
+    fi, gi = 0, 0
+    while fi < len(followed_events) or gi < len(global_events):
+        if fi < len(followed_events):
+            merged.append(followed_events[fi]); fi += 1
+        for _ in range(3):
+            if gi < len(global_events):
+                merged.append(global_events[gi]); gi += 1
+    # Deduplicate by id
+    seen = set()
+    final = []
+    for e in merged:
+        if e["id"] not in seen:
+            seen.add(e["id"])
+            final.append(e)
+
+    return {"events": final[:limit], "total": len(final)}
+
+
+# ── PWA Manifest + Service Worker ─────────────────────────────────────────────
+@app.get("/manifest.json")
+def get_manifest():
+    return JSONResponse({
+        "name": "BookieVerse",
+        "short_name": "BookieVerse",
+        "description": "P2P Sports Betting — Post lines, take action, settle up.",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#0b1120",
+        "theme_color": "#0b1120",
+        "orientation": "portrait",
+        "icons": [
+            {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+        ],
+        "categories": ["sports", "games", "entertainment"],
+        "shortcuts": [
+            {"name": "Marketplace", "url": "/?view=marketplace", "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]},
+            {"name": "Set Lines",   "url": "/?view=create",      "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]},
+            {"name": "My Bets",     "url": "/?view=bets",        "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]}
+        ]
+    })
+
+@app.get("/sw.js")
+def get_service_worker():
+    sw_content = """
+const CACHE_NAME = 'bookieverse-v1';
+const STATIC_ASSETS = ['/'];
+
+self.addEventListener('install', e => {
+    e.waitUntil(
+        caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', e => {
+    e.waitUntil(
+        caches.keys().then(keys =>
+            Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+        )
+    );
+    self.clients.claim();
+});
+
+// Network first for API calls, cache first for static assets
+self.addEventListener('fetch', e => {
+    const url = new URL(e.request.url);
+    if (url.pathname.startsWith('/api/')) {
+        // API: network only, no caching
+        e.respondWith(fetch(e.request).catch(() => new Response('{"error":"offline"}', {headers:{'Content-Type':'application/json'}})));
+    } else {
+        // App shell: network first, fall back to cache
+        e.respondWith(
+            fetch(e.request)
+                .then(res => {
+                    const clone = res.clone();
+                    caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+                    return res;
+                })
+                .catch(() => caches.match(e.request))
+        );
+    }
+});
+
+// Push notifications
+self.addEventListener('push', e => {
+    if (!e.data) return;
+    const data = e.data.json();
+    e.waitUntil(
+        self.registration.showNotification(data.title || 'BookieVerse', {
+            body: data.body || '',
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            vibrate: [100, 50, 100],
+            data: { url: data.url || '/' }
+        })
+    );
+});
+
+self.addEventListener('notificationclick', e => {
+    e.notification.close();
+    e.waitUntil(clients.openWindow(e.notification.data.url));
+});
+"""
+    from fastapi.responses import Response
+    return Response(content=sw_content, media_type="application/javascript")
+
+@app.get("/icon-192.png")
+@app.get("/icon-512.png")
+def get_icon():
+    """Return a simple SVG-based icon as PNG placeholder — replace with real icons."""
+    import io, struct, zlib
+    # Simple green BV icon as minimal PNG
+    svg = b"""<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192'>
+    <rect width='192' height='192' rx='32' fill='%230b1120'/>
+    <text x='96' y='130' font-family='Arial Black' font-size='88' font-weight='900'
+          fill='%2300d67a' text-anchor='middle'>BV</text></svg>"""
+    # Return SVG with image/png content-type is not ideal but works as placeholder
+    # For production: replace with real PNG files served via static files
+    from fastapi.responses import Response
+    return Response(content=svg, media_type="image/svg+xml")
+
 @app.get("/api/games")
 def get_games():
     return get_cached_games()
@@ -984,7 +1374,8 @@ def get_prop_types():
 
 @app.get("/api/lines")
 def get_lines(db: Session = Depends(get_db)):
-    maybe_check_scores()  # recover from Render sleep — runs at most once per 6 min
+    maybe_check_scores()   # recover from Render sleep — runs at most once per 6 min
+    expire_pregame_lines() # close any lines whose game just started
     lines = db.query(Line).filter(Line.status == "open", (Line.is_private == False) | (Line.is_private == None)).all()
     result = []
     for l in lines:
@@ -1142,11 +1533,33 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
     if not user_id:
         raise HTTPException(401, "Invalid token")
 
+    # Run expiry first so any just-started games are closed before we check
+    expire_pregame_lines()
+
     line = db.query(Line).filter(Line.id == take.line_id, Line.status == "open").first()
     if not line:
-        raise HTTPException(404, "Line not available")
+        raise HTTPException(404, "Line not available — game may have already started")
     if line.bookie_id == user_id:
         raise HTTPException(400, "Can't bet your own line")
+
+    # Hard server-side guard: reject if game has started regardless of line status
+    all_games = get_cached_games()
+    now_utc = datetime.utcnow()
+    game_obj = next((g for g in all_games if g["id"] == line.game_id), None)
+    if game_obj:
+        ct = game_obj.get("commence_time", "")
+        if ct:
+            try:
+                game_dt = datetime.strptime(ct[:19], "%Y-%m-%dT%H:%M:%S")
+                if game_dt <= now_utc:
+                    refund_unmatched_line(db, line)
+                    line.status = "expired"
+                    db.commit()
+                    raise HTTPException(400, "Game has already started — this line is now closed")
+            except HTTPException:
+                raise
+            except Exception:
+                pass
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -1364,11 +1777,13 @@ def get_bets(token: str, db: Session = Depends(get_db)):
     return {
         "single_bets": [{"id": b.id, "bookie_id": b.bookie_id, "bookie_name": b.bookie_name,
                         "bettor_id": b.bettor_id, "bettor_name": b.bettor_name, "game": b.game,
+                        "game_id": b.game_id or "", "sport": getattr(b, "sport", ""),
                         "type": b.type, "bookie_side": b.bookie_side, "bettor_side": b.bettor_side,
                         "value": b.value, "odds": b.odds or -110, "amount": b.amount,
                         "bookie_amount": b.bookie_amount or b.amount,
                         "bettor_amount": b.bettor_amount or b.amount,
-                        "status": b.status, "winner": b.winner} for b in bets],
+                        "status": b.status, "winner": b.winner,
+                        "created_at": b.created_at.isoformat() if b.created_at else ""} for b in bets],
         "prop_bets": [{"id": p.id, "bookie_id": p.bookie_id, "bookie_name": p.bookie_name,
                       "bettor_id": p.bettor_id, "bettor_name": p.bettor_name, "player_name": p.player_name,
                       "prop_type": p.prop_type, "line": p.line, "bookie_side": p.bookie_side,
@@ -1925,6 +2340,139 @@ def leaderboard(db: Session = Depends(get_db)):
     return [{"id": u.id, "username": u.username, "balance": u.balance, "profit": u.profit,
              "wins": u.wins, "losses": u.losses} for u in users]
 
+@app.patch("/api/user/profile")
+def update_profile(token: str, db: Session = Depends(get_db), request_data: dict = None):
+    """Update profile fields. Accepts JSON body with any subset of profile fields."""
+    from fastapi import Request
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    if request_data is None:
+        raise HTTPException(400, "No data provided")
+    allowed = {"bio", "favorite_team", "favorite_sport", "location", "banner_color", "avatar"}
+    for k, v in request_data.items():
+        if k not in allowed:
+            continue
+        if k == "bio" and v and len(v) > 300:
+            raise HTTPException(400, "Bio max 300 characters")
+        if k == "avatar" and v and len(v) > 500_000:
+            raise HTTPException(400, "Image too large — max ~375KB")
+        setattr(user, k, v if v else None)
+    db.commit()
+    return {"ok": True, "message": "Profile updated"}
+
+# Pydantic wrapper so FastAPI can parse the body
+from pydantic import BaseModel as _BM
+class ProfileUpdate(_BM):
+    bio: str = None
+    favorite_team: str = None
+    favorite_sport: str = None
+    location: str = None
+    banner_color: str = None
+    avatar: str = None  # base64 data URI
+
+@app.patch("/api/user/profile")
+def update_profile_v2(data: ProfileUpdate, token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    if data.bio is not None:
+        if len(data.bio) > 300:
+            raise HTTPException(400, "Bio max 300 characters")
+        user.bio = data.bio or None
+    if data.favorite_team is not None: user.favorite_team = data.favorite_team or None
+    if data.favorite_sport is not None: user.favorite_sport = data.favorite_sport or None
+    if data.location is not None: user.location = data.location or None
+    if data.banner_color is not None: user.banner_color = data.banner_color or None
+    if data.avatar is not None:
+        if data.avatar and len(data.avatar) > 500_000:
+            raise HTTPException(400, "Image too large — compress before uploading")
+        user.avatar = data.avatar or None
+    db.commit()
+    total = (user.wins or 0) + (user.losses or 0)
+    win_rate = round((user.wins or 0) / total * 100, 1) if total > 0 else 0
+    return {"ok": True, "avatar": user.avatar, "bio": user.bio,
+            "favorite_team": user.favorite_team, "favorite_sport": user.favorite_sport,
+            "location": user.location, "banner_color": user.banner_color, "win_rate": win_rate}
+
+@app.get("/api/users/{username}")
+def get_public_profile(username: str, token: str = None, db: Session = Depends(get_db)):
+    """Public profile — stats, recent bets, open lines, follower counts."""
+    target = db.query(User).filter(User.username == username).first()
+    if not target:
+        raise HTTPException(404, f"User @{username} not found")
+
+    viewer_id = verify_token(token) if token else None
+    is_following = False
+    if viewer_id:
+        is_following = db.query(Follow).filter(
+            Follow.follower_id == viewer_id,
+            Follow.followed_id == target.id
+        ).first() is not None
+
+    # Follower / following counts
+    followers = db.query(Follow).filter(Follow.followed_id == target.id).count()
+    following = db.query(Follow).filter(Follow.follower_id == target.id).count()
+
+    # Recent settled bets (last 10)
+    bets = db.query(Bet).filter(
+        (Bet.bookie_id == target.id) | (Bet.bettor_id == target.id),
+        Bet.status == "settled"
+    ).order_by(Bet.created_at.desc()).limit(10).all()
+
+    recent_bets = []
+    for b in bets:
+        is_bookie = b.bookie_id == target.id
+        my_side = b.bookie_side if is_bookie else b.bettor_side
+        i_won = b.winner == ("bookie" if is_bookie else "bettor")
+        pnl = (b.bookie_amount if i_won else -(b.bettor_amount or b.amount)) if is_bookie else               (b.bettor_amount if i_won else -(b.bettor_amount or b.amount))
+        recent_bets.append({
+            "id": b.id, "game": b.game, "type": b.type, "side": my_side,
+            "value": b.value, "odds": b.odds or -110,
+            "result": "won" if i_won else ("push" if b.winner == "push" else "lost"),
+            "pnl": round(pnl or 0, 2),
+            "role": "bookie" if is_bookie else "bettor",
+            "created_at": b.created_at.isoformat() if b.created_at else ""
+        })
+
+    # Open lines they've posted
+    open_lines = db.query(Line).filter(
+        Line.bookie_id == target.id,
+        Line.status == "open",
+        Line.is_private == False
+    ).order_by(Line.created_at.desc()).limit(5).all()
+
+    lines_out = [{
+        "id": l.id, "game": l.game, "type": l.type, "side": l.side,
+        "value": l.value, "odds": l.odds or -110, "amount": l.amount,
+        "total_action": l.total_action or 0, "sport": l.sport or ""
+    } for l in open_lines]
+
+    total = (target.wins or 0) + (target.losses or 0)
+    win_rate = round((target.wins or 0) / total * 100, 1) if total > 0 else 0
+
+    return {
+        "id": target.id, "username": target.username,
+        "wins": target.wins or 0, "losses": target.losses or 0,
+        "win_rate": win_rate, "profit": target.profit or 0,
+        "lines_created": target.lines_created or 0,
+        "is_admin": target.is_admin,
+        "avatar": target.avatar, "bio": target.bio,
+        "favorite_team": target.favorite_team, "favorite_sport": target.favorite_sport,
+        "location": target.location, "banner_color": target.banner_color,
+        "followers": followers, "following": following,
+        "is_following": is_following,
+        "recent_bets": recent_bets,
+        "open_lines": lines_out,
+        "member_since": target.created_at.strftime("%b %Y") if target.created_at else ""
+    }
+
 @app.get("/api/user")
 def get_user(token: str, db: Session = Depends(get_db)):
     user_id = verify_token(token)
@@ -1933,8 +2481,15 @@ def get_user(token: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
+    total = (user.wins or 0) + (user.losses or 0)
+    win_rate = round((user.wins or 0) / total * 100, 1) if total > 0 else 0
     return {"id": user.id, "username": user.username, "balance": user.balance, "profit": user.profit,
-            "wins": user.wins, "losses": user.losses, "lines_created": user.lines_created, "is_admin": user.is_admin}
+            "wins": user.wins, "losses": user.losses, "lines_created": user.lines_created,
+            "is_admin": user.is_admin, "win_rate": win_rate,
+            "avatar": user.avatar, "bio": user.bio, "favorite_team": user.favorite_team,
+            "favorite_sport": user.favorite_sport, "location": user.location,
+            "banner_color": user.banner_color,
+            "created_at": user.created_at.isoformat() if user.created_at else ""}
 
 
 @app.post("/api/admin/mark-settled")
