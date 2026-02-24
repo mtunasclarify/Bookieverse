@@ -304,13 +304,38 @@
 <div class="modal-overlay" id="betAmountModal">
     <div class="modal-box" style="max-width:420px;">
         <div class="modal-title">Place Bet</div>
-        <div id="betModalInfo" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:14px;line-height:1.6;"></div>
-        <div class="form-group">
-            <label>Your Stake ($)</label>
-            <input type="number" id="betAmountInput" step="1" min="1" placeholder="Enter amount">
+        <div id="betModalInfo" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:14px;line-height:1.6;"></div>
+        <div class="form-group" style="margin-bottom:8px;">
+            <label style="display:flex;justify-content:space-between;align-items:center;">
+                <span>Your Stake ($)</span>
+                <span id="betModalBalance" style="font-size:11px;color:var(--text-dim);font-weight:400;"></span>
+            </label>
+            <input type="number" id="betAmountInput" step="1" min="1" placeholder="Enter amount" oninput="updateBetCalc()">
+        </div>
+        <!-- Quick amount buttons -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;" id="quickBetBtns"></div>
+        <!-- Live calculator -->
+        <div id="betCalc" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">
+                <div>
+                    <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text-dim);margin-bottom:3px;">YOU RISK</div>
+                    <div id="calcRisk" style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--orange);">—</div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:center;">
+                    <span style="font-size:20px;color:var(--text-dim);">→</span>
+                </div>
+                <div>
+                    <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text-dim);margin-bottom:3px;">YOU WIN</div>
+                    <div id="calcWin" style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--green);">—</div>
+                </div>
+            </div>
+            <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);">
+                <span>Total payout if you win</span>
+                <span id="calcPayout" style="font-weight:700;color:var(--text);">—</span>
+            </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-primary btn-full" onclick="confirmBetAmount()">Confirm Bet</button>
+            <button class="btn btn-primary btn-full" onclick="confirmBetAmount()" id="confirmBetBtn">Confirm Bet</button>
             <button class="btn btn-secondary" onclick="closeBetModal()">Cancel</button>
         </div>
     </div>
@@ -352,29 +377,84 @@ function toast(msg,type='info'){
     t.className='toast '+type;t.textContent=msg;t.onclick=()=>t.remove();
     ct.appendChild(t);setTimeout(()=>t.remove(),3000);
 }
-function promptBetAmount(info,max){
+let _betCalcOdds = -110; // stored so calculator can use it
+
+function promptBetAmount(info, max, _unused){
     return new Promise(r=>{
         _betResolve=r;
         document.getElementById('betModalInfo').innerHTML=info;
         const inp=document.getElementById('betAmountInput');
-        inp.value='';inp.max=max;inp.placeholder='Max $'+max;
+        inp.value=''; inp.max=max; inp.placeholder='Enter stake';
+
+        // Balance display
+        const balEl=document.getElementById('betModalBalance');
+        if(balEl&&user) balEl.textContent='Balance: $'+user.balance.toFixed(2);
+
+        // Extract odds from the info HTML (looks for +NNN or -NNN pattern near odds context)
+        let extractedOdds=-110;
+        const oddsMatch=info.match(/([+\-]\d{3,4})<\/strong>\s*<\/span>/);
+        if(oddsMatch) extractedOdds=parseInt(oddsMatch[1]);
+        else { const m2=info.match(/>([+\-]\d{3,4})<\/strong>/); if(m2) extractedOdds=parseInt(m2[1]); }
+        _betCalcOdds=isNaN(extractedOdds)?-110:extractedOdds;
+
+        // Quick bet buttons: 25%, 50%, 75%, max
+        const quickBtns=document.getElementById('quickBetBtns');
+        if(quickBtns&&max>0){
+            const pcts=[{l:'25%',v:.25},{l:'50%',v:.5},{l:'75%',v:.75},{l:'Max',v:1}];
+            quickBtns.innerHTML=pcts.map(p=>{
+                const amt=Math.floor(max*p.v*100)/100;
+                return`<button type="button" onclick="setQuickBet(${amt})" style="flex:1;padding:6px 4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;min-width:48px;">${p.l}<br><span style="font-size:10px;color:var(--text-dim);">$${amt%1===0?amt:amt.toFixed(2)}</span></button>`;
+            }).join('');
+        }
+
+        // Reset calc
+        document.getElementById('betCalc').style.display='none';
         document.getElementById('betAmountModal').classList.add('open');
         setTimeout(()=>inp.focus(),100);
     });
+}
+function setQuickBet(amt){
+    const inp=document.getElementById('betAmountInput');
+    inp.value=amt;
+    updateBetCalc();
+}
+function updateBetCalc(){
+    const inp=document.getElementById('betAmountInput');
+    const stake=parseFloat(inp.value);
+    const calc=document.getElementById('betCalc');
+    if(isNaN(stake)||stake<=0){calc.style.display='none';return;}
+    calc.style.display='block';
+    const odds=_betCalcOdds||(-110);
+    let profit;
+    if(odds>0) profit=stake*(odds/100);
+    else profit=stake*(100/Math.abs(odds));
+    profit=Math.round(profit*100)/100;
+    const payout=Math.round((stake+profit)*100)/100;
+    document.getElementById('calcRisk').textContent='$'+stake.toFixed(2);
+    document.getElementById('calcWin').textContent='+$'+profit.toFixed(2);
+    document.getElementById('calcPayout').textContent='$'+payout.toFixed(2);
+    // Color confirm button green when ready
+    const btn=document.getElementById('confirmBetBtn');
+    if(btn) btn.textContent=`Confirm — Win $${profit.toFixed(2)} ✓`;
 }
 function confirmBetAmount(){
     const val=parseFloat(document.getElementById('betAmountInput').value);
     const max=parseFloat(document.getElementById('betAmountInput').max);
     if(isNaN(val)||val<=0){toast('Enter a valid amount','error');return;}
     if(!isNaN(max)&&val>max){toast('Max bet is $'+max.toFixed(2),'error');return;}
-    // Resolve FIRST, then close — closing nullifies _betResolve
     const resolve=_betResolve;
     _betResolve=null;
     document.getElementById('betAmountModal').classList.remove('open');
+    document.getElementById('betCalc').style.display='none';
+    const btn=document.getElementById('confirmBetBtn');
+    if(btn) btn.textContent='Confirm Bet';
     if(resolve)resolve(val);
 }
 function closeBetModal(){
     document.getElementById('betAmountModal').classList.remove('open');
+    document.getElementById('betCalc').style.display='none';
+    const btn=document.getElementById('confirmBetBtn');
+    if(btn) btn.textContent='Confirm Bet';
     if(_betResolve){_betResolve(null);_betResolve=null;}
 }
 document.getElementById('betAmountInput').addEventListener('keydown',e=>{if(e.key==='Enter')confirmBetAmount();});
@@ -529,27 +609,52 @@ async function loadLines(){
                     ?`<span style="color:var(--green);font-size:10px;font-weight:700;">🔴 ${sc.away_team||''} ${sc.away_score}-${sc.home_score} ${sc.home_team||''} <span style="color:var(--text-dim)">${sc.status}</span></span>`
                     :sc&&sc.state==='post'
                     ?`<span style="color:var(--text-dim);font-size:10px;">Final: ${sc.away_team||''} ${sc.away_score}-${sc.home_score} ${sc.home_team||''}</span>`:'';
-                const sideLabel=line.side==='over'||line.side==='under'?line.side.toUpperCase():line.side.charAt(0).toUpperCase()+line.side.slice(1);
-                const valueLabel=line.type!=='moneyline'?` ${line.value>0?'+':''}${line.value}`:'';
+                // Parse actual team names from "Away @ Home"
+                const _gp=line.game.split(' @ ');
+                const _away=_gp[0]||'Away';
+                const _home=_gp[1]||'Home';
+                let bookiePick,bettorPick;
+                if(line.type==='total'){
+                    const _v=(line.value>0?'+':'')+line.value;
+                    bookiePick=(line.side==='over'?'Over':'Under')+' '+_v;
+                    bettorPick=(line.side==='over'?'Under':'Over')+' '+_v;
+                }else if(line.type==='spread'){
+                    const _v=line.value;
+                    if(line.side==='home'){
+                        bookiePick=_home+' '+(_v>0?'+':'')+_v;
+                        bettorPick=_away+' '+(_v>0?'-':'+')+(Math.abs(_v));
+                    }else{
+                        bookiePick=_away+' '+(_v>0?'+':'')+_v;
+                        bettorPick=_home+' '+(_v>0?'-':'+')+(Math.abs(_v));
+                    }
+                }else{
+                    bookiePick=line.side==='home'?_home:_away;
+                    bettorPick=line.side==='home'?_away:_home;
+                }
 
                 html+=`<div class="card" style="padding:12px 16px;margin-bottom:8px;${isFull?'opacity:.7':''}${!isFull&&!isOwn?';border-color:rgba(255,255,255,.08)':''}">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                         <div style="flex:1;min-width:0;">
-                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
-                                <span class="badge ${tBadge}" style="font-size:10px;">${line.type}</span>
-                                <span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:${oddsColor}">${oddsStr}</span>
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
+                                <span class="badge ${tBadge}" style="font-size:10px;">${line.type.toUpperCase()}</span>
                                 ${scoreBadge}
                                 ${line.is_private?'<span class="badge badge-private" style="font-size:10px;">Private</span>':''}
                             </div>
-                            <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${line.game}</div>
-                            <div style="font-size:12px;color:var(--orange);font-weight:700;margin-top:2px;" data-game-id="${line.game_id||''}">${sideLabel}${valueLabel}</div>
-                            <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">@${line.bookie_name} · ${pct}% filled · ${isFull?'Full':'$'+availBettor.toFixed(0)+' avail'}</div>
+                            <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px;">${line.game}</div>
+                            ${isOwn
+                                ?`<div style="font-size:13px;font-weight:800;color:var(--orange);">You back: ${bookiePick} <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;color:${oddsColor};">${oddsStr}</span></div>`
+                                :`<div style="background:rgba(0,200,100,.08);border:1px solid rgba(0,200,100,.25);border-radius:8px;padding:6px 10px;margin-bottom:5px;">
+                                    <div style="font-size:10px;color:var(--text-dim);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">You get</div>
+                                    <div style="font-size:17px;font-weight:800;color:#fff;">${bettorPick} <span style="font-family:'Barlow Condensed',sans-serif;font-size:22px;color:${oddsColor};">${oddsStr}</span></div>
+                                </div>`
+                            }
+                            <div style="font-size:11px;color:var(--text-dim);">@${line.bookie_name} backs ${bookiePick} &middot; ${pct}% filled &middot; ${isFull?'Full':'$'+availBettor.toFixed(0)+' avail'}</div>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
                             <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green);">+$${avail.toFixed(0)}</div>
                             <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">risk $${availBettor.toFixed(0)}</div>
                             <button class="btn ${isOwn?'btn-secondary':'btn-primary'} btn-sm" onclick="takeLine(${line.id})" ${(isFull||isOwn)?'disabled':''} style="font-size:12px;padding:5px 12px;">
-                                ${isFull?'Full ✓':isOwn?'Yours':'Take Bet'}
+                                ${isFull?'Full':isOwn?'Yours':'Take Bet'}
                             </button>
                         </div>
                     </div>
@@ -577,11 +682,21 @@ async function takeLine(lineId){
 
     const maxBettor=Math.min(availBettor, line.max_bet_per_user||availBettor, user.balance);
 
+    // Build clear pick labels for the confirmation modal
+    const _gp2=line.game.split(' @ ');
+    const _aw2=_gp2[0]||'Away'; const _hm2=_gp2[1]||'Home';
+    let _bettorLabel;
+    if(line.type==='total'){_bettorLabel=(line.side==='over'?'Under':'Over')+' '+(line.value>0?'+':'')+line.value;}
+    else if(line.type==='spread'){const v=line.value;_bettorLabel=line.side==='home'?(_aw2+' '+(v>0?'-':'+')+Math.abs(v)):(_hm2+' '+(v>0?'-':'+')+Math.abs(v));}
+    else{_bettorLabel=line.side==='home'?_aw2:_hm2;}
+
     const amount=await promptBetAmount(
         `<strong style="color:var(--text)">${line.game}</strong><br>
-        ${line.type.toUpperCase()} · ${line.side} ${line.type!=='moneyline'?(line.value>0?'+':'')+line.value:''}<br>
-        Odds: <strong style="color:${odds>0?'var(--green)':'var(--text-muted)'}">${oddsStr}</strong><br>
-        <span style="color:var(--text-dim);font-size:12px;">Risk your money → win bookie's liability. Max you can win: <strong style="color:var(--green)">$${avail.toFixed(2)}</strong></span>`,
+        <div style="margin:6px 0;display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="font-size:12px;background:rgba(255,255,255,.06);border-radius:5px;padding:2px 8px;">📚 Bookie: <strong>${line.side==='home'?_hm2:line.side==='away'?_aw2:line.side}</strong></span>
+          <span style="font-size:12px;background:rgba(0,200,100,.1);border:1px solid rgba(0,200,100,.3);border-radius:5px;padding:2px 8px;color:var(--green);">🎯 You take: <strong>${_bettorLabel}</strong> <strong style="color:${odds>0?'var(--green)':'inherit'}">${oddsStr}</strong></span>
+        </div>
+        <span style="color:var(--text-dim);font-size:12px;">Enter your stake. Max you can win: <strong style="color:var(--green)">$${avail.toFixed(2)}</strong></span>`,
         maxBettor
     );
     if(!amount)return;
