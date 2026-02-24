@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BookieVerse">
+    <meta name="theme-color" content="#0b1120">
+    <meta name="description" content="P2P Sports Betting — Post lines, take action, settle up.">
+    <link rel="manifest" href="/manifest.json">
     <title>BookieVerse</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -52,12 +59,40 @@
             background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
         .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--green);}
         .topbar-bal{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green);}
-        .mobile-nav{display:none;overflow-x:auto;padding:8px 12px;background:var(--surface);
-            border-bottom:1px solid var(--border);gap:6px;scrollbar-width:none;}
-        .mobile-nav::-webkit-scrollbar{display:none;}
-        .mob-tab{flex-shrink:0;padding:8px 14px;border-radius:20px;font-size:12px;font-weight:600;
-            cursor:pointer;color:var(--text-muted);border:1px solid var(--border);white-space:nowrap;transition:all .15s;}
-        .mob-tab.active{background:var(--green);color:#000;border-color:var(--green);}
+        /* ── Mobile bottom tab bar ────────────────────── */
+        .mobile-nav{display:none;}
+        .mob-bottom-bar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;
+            background:rgba(11,17,32,0.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+            border-top:1px solid var(--border);padding:0;padding-bottom:env(safe-area-inset-bottom);
+            box-shadow:0 -4px 24px rgba(0,0,0,.4);}
+        .mob-bar-inner{display:flex;align-items:stretch;height:58px;}
+        .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+            gap:3px;cursor:pointer;color:var(--text-dim);font-size:9px;font-weight:700;letter-spacing:.5px;
+            text-transform:uppercase;transition:color .15s;position:relative;-webkit-tap-highlight-color:transparent;
+            min-width:0;padding:6px 2px;}
+        .mob-tab .mob-icon{font-size:20px;line-height:1;transition:transform .15s;}
+        .mob-tab.active{color:var(--green);}
+        .mob-tab.active .mob-icon{transform:scale(1.15);}
+        .mob-tab .mob-badge{position:absolute;top:4px;right:calc(50% - 14px);background:var(--red);
+            color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;
+            display:flex;align-items:center;justify-content:center;padding:0 4px;}
+        /* More drawer */
+        .mob-more-drawer{position:fixed;bottom:0;left:0;right:0;z-index:300;
+            background:var(--surface);border-top:2px solid var(--border);border-radius:20px 20px 0 0;
+            padding:16px 0;padding-bottom:calc(16px + env(safe-area-inset-bottom));
+            transform:translateY(100%);transition:transform .25s cubic-bezier(.32,.72,0,1);}
+        .mob-more-drawer.open{transform:translateY(0);}
+        .mob-more-overlay{position:fixed;inset:0;z-index:290;background:rgba(0,0,0,.5);
+            opacity:0;pointer-events:none;transition:opacity .25s;}
+        .mob-more-overlay.open{opacity:1;pointer-events:all;}
+        .mob-drawer-handle{width:36px;height:4px;background:var(--border-hi);border-radius:2px;
+            margin:0 auto 16px;}
+        .mob-drawer-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
+        .mob-drawer-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;
+            cursor:pointer;color:var(--text-muted);font-size:10px;font-weight:700;letter-spacing:.5px;
+            text-transform:uppercase;-webkit-tap-highlight-color:transparent;transition:color .15s;}
+        .mob-drawer-item:active{color:var(--green);}
+        .mob-drawer-item .di-icon{font-size:26px;}
         .page-header{margin-bottom:28px;}
         .page-title{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;letter-spacing:.5px;}
         .page-subtitle{font-size:14px;color:var(--text-muted);margin-top:4px;}
@@ -196,15 +231,255 @@
         .wr-bar{height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:6px;}
         .wr-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green-dim),var(--green));}
         @media(max-width:768px){
-            .sidebar{display:none!important;}.topbar{display:flex;}.mobile-nav{display:flex;}
-            .content-area{padding:20px 16px;}
+            .sidebar{display:none!important;}
+            .topbar{display:flex;}
+            .mob-bottom-bar{display:flex;flex-direction:column;}
+            .content-area{padding:16px 14px;padding-bottom:calc(74px + env(safe-area-inset-bottom));}
             .form-grid-2,.form-grid-3{grid-template-columns:1fr;}
             .line-card{flex-direction:column;}.line-card-amount{text-align:left;}
+            /* Touch-friendly sizing */
+            .btn{min-height:40px;}
+            .btn-sm{min-height:34px;}
+            .card{padding:14px 16px;border-radius:12px;}
+            input,select,textarea{font-size:16px!important;} /* prevents iOS zoom */
+            .modal-box{margin:16px;max-height:calc(100dvh - 32px);overflow-y:auto;}
         }
-        @media(max-width:440px){.login-box{padding:32px 24px;}}
+        @media(max-width:440px){
+            .login-box{padding:28px 20px;}
+            .page-title{font-size:28px;}
+        }
+        /* ── Live Bet Tracking ────────────────────────── */
+        .live-card{position:relative;overflow:hidden;border-radius:16px;margin-bottom:14px;
+            padding:0;background:var(--card);border:1px solid var(--border);transition:border-color .3s,box-shadow .3s;}
+        .live-card.winning{border-color:rgba(0,214,122,.5);box-shadow:0 0 24px rgba(0,214,122,.12);}
+        .live-card.losing{border-color:rgba(255,69,96,.5);box-shadow:0 0 24px rgba(255,69,96,.1);}
+        .live-card.push{border-color:rgba(245,166,35,.4);box-shadow:0 0 24px rgba(245,166,35,.08);}
+        .live-card.settled{opacity:.75;border-color:var(--border);}
+        .live-card-glow{position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0;}
+        .live-card.winning .live-card-glow{background:linear-gradient(90deg,transparent,var(--green),transparent);animation:glowPulse 2s infinite;}
+        .live-card.losing .live-card-glow{background:linear-gradient(90deg,transparent,var(--red),transparent);}
+        .live-card.push .live-card-glow{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+        @keyframes glowPulse{0%,100%{opacity:.6}50%{opacity:1}}
+        .live-score-box{display:flex;align-items:center;justify-content:center;gap:0;
+            background:var(--bg);border-radius:10px;padding:10px 0;margin:10px 0;}
+        .live-score-team{flex:1;text-align:center;min-width:0;}
+        .live-score-name{font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.5px;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px;}
+        .live-score-num{font-family:'Bebas Neue',sans-serif;font-size:52px;line-height:1;letter-spacing:1px;}
+        .live-score-num.leading{color:var(--text);}
+        .live-score-num.trailing{color:var(--text-dim);}
+        .live-score-sep{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 8px;flex-shrink:0;}
+        .live-dot{width:6px;height:6px;background:var(--red);border-radius:50%;animation:blink 1s infinite;}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+        .live-period{font-size:10px;font-weight:800;color:var(--text-dim);letter-spacing:1px;white-space:nowrap;}
+        .live-status-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.5px;}
+        .live-status-badge.winning{background:rgba(0,214,122,.15);color:var(--green);}
+        .live-status-badge.losing{background:rgba(255,69,96,.15);color:var(--red);}
+        .live-status-badge.push{background:rgba(245,166,35,.15);color:var(--gold);}
+        .live-status-badge.pending{background:rgba(107,144,184,.1);color:var(--text-muted);}
+        .live-pl{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;line-height:1;}
+        .live-pl.winning{color:var(--green);}
+        .live-pl.losing{color:var(--red);}
+        .live-pl.push{color:var(--gold);}
+        .live-refresh-bar{height:2px;background:var(--border);border-radius:1px;overflow:hidden;margin-top:12px;}
+        .live-refresh-fill{height:100%;background:var(--green);border-radius:1px;transition:width 1s linear;}
+        .live-empty{text-align:center;padding:60px 20px;}
+        .live-empty-icon{font-size:56px;margin-bottom:16px;display:block;}
+        /* ── Live view responsive — must come AFTER base live CSS ── */
+        @media(max-width:768px){
+            .live-score-num{font-size:40px!important;}
+            .live-score-name{font-size:10px!important;}
+            .live-pl{font-size:22px!important;}
+            .live-status-badge{font-size:9px!important;padding:2px 7px!important;}
+            .live-card{border-radius:12px;margin-bottom:10px;}
+            .live-empty{padding:40px 16px;}
+            .live-score-box{padding:8px 0;margin:8px 0;}
+            .live-score-sep{padding:0 6px;}
+        }
+        @media(max-width:380px){
+            .live-score-num{font-size:32px!important;}
+            .live-score-sep{padding:0 4px;}
+        }
+        /* ── Social Feed ─────────────────────────────── */
+        .feed-wrap{max-width:600px;}
+        .feed-item{display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--border);
+            animation:fadeIn .25s ease both;}
+        .feed-item:last-child{border-bottom:none;}
+        .feed-avatar{width:40px;height:40px;border-radius:50%;background:var(--card2);
+            border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+            font-size:15px;font-weight:800;color:var(--green);flex-shrink:0;font-family:'Barlow Condensed',sans-serif;
+            letter-spacing:.5px;position:relative;}
+        .feed-avatar-badge{position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;
+            border-radius:50%;display:flex;align-items:center;justify-content:center;
+            font-size:9px;background:var(--bg);border:1px solid var(--border);}
+        .feed-body{flex:1;min-width:0;}
+        .feed-actor{font-size:13px;font-weight:700;color:var(--text);}
+        .feed-actor.followed{color:var(--green);}
+        .feed-action{font-size:13px;color:var(--text-muted);display:inline;}
+        .feed-detail{font-size:13px;font-weight:600;color:var(--text);
+            margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .feed-meta{display:inline-flex;align-items:center;gap:6px;margin-top:5px;
+            background:var(--bg);border:1px solid var(--border);border-radius:6px;
+            padding:3px 10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap;}
+        .feed-ts{font-size:11px;color:var(--text-dim);margin-top:4px;}
+        .feed-amount-pill{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;
+            padding:2px 8px;border-radius:4px;flex-shrink:0;}
+        .feed-amount-pill.big{color:var(--green);}
+        .feed-amount-pill.medium{color:var(--gold);}
+        .feed-amount-pill.small{color:var(--text-muted);}
+        .feed-tabs{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;
+            overflow:hidden;margin-bottom:20px;}
+        .feed-tab{flex:1;padding:10px 0;font-size:13px;font-weight:700;background:transparent;
+            color:var(--text-muted);border:none;cursor:pointer;transition:.15s;}
+        .feed-tab.active{background:var(--green);color:#000;}
+        .feed-card{background:var(--card);border:1px solid var(--border);border-radius:12px;
+            padding:12px 14px;margin-top:6px;}
+        .followed-tag{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.8px;
+            color:var(--green);background:rgba(0,214,122,.1);border:1px solid rgba(0,214,122,.2);
+            border-radius:3px;padding:1px 5px;margin-left:5px;vertical-align:middle;}
+        @media(max-width:768px){
+            .feed-wrap{max-width:100%;}
+            .feed-avatar{width:36px;height:36px;font-size:13px;}
+            .feed-item{gap:10px;padding:12px 0;}
+            .feed-detail{font-size:12px;}
+            .feed-actor,.feed-action{font-size:12px;}
+        }
+        /* ── Global Chat ─────────────────────────────── */
+        .chat-shell{display:flex;flex-direction:column;height:calc(100vh - 120px);max-width:680px;}
+        .chat-header{display:flex;align-items:center;justify-content:space-between;
+            padding-bottom:12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+        .chat-messages{flex:1;overflow-y:auto;padding:12px 0;display:flex;
+            flex-direction:column;gap:2px;scroll-behavior:smooth;}
+        .chat-messages::-webkit-scrollbar{width:4px;}
+        .chat-messages::-webkit-scrollbar-track{background:transparent;}
+        .chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+        .chat-msg{display:flex;gap:8px;padding:4px 0;align-items:flex-end;}
+        .chat-msg.mine{flex-direction:row-reverse;}
+        .chat-msg-avatar{width:28px;height:28px;border-radius:50%;background:var(--card2);
+            border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+            font-size:10px;font-weight:800;color:var(--green);flex-shrink:0;
+            font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;align-self:flex-end;}
+        .chat-bubble{max-width:72%;padding:8px 12px;border-radius:16px;
+            font-size:13px;line-height:1.4;word-break:break-word;position:relative;}
+        .chat-bubble.theirs{background:var(--card2);border-radius:4px 16px 16px 16px;color:var(--text);}
+        .chat-bubble.mine{background:var(--green);color:#000;border-radius:16px 4px 16px 16px;font-weight:500;}
+        .chat-meta{display:flex;align-items:center;gap:5px;margin-bottom:2px;}
+        .chat-meta.mine{flex-direction:row-reverse;}
+        .chat-username{font-size:10px;font-weight:800;color:var(--text-muted);letter-spacing:.3px;}
+        .chat-username.mine{color:var(--green);}
+        .chat-ts{font-size:9px;color:var(--text-dim);}
+        .chat-delete{font-size:10px;color:var(--text-dim);cursor:pointer;padding:2px 4px;
+            opacity:0;transition:opacity .15s;background:none;border:none;}
+        .chat-msg:hover .chat-delete{opacity:1;}
+        .chat-input-row{display:flex;gap:8px;align-items:flex-end;padding-top:10px;
+            border-top:1px solid var(--border);flex-shrink:0;}
+        .chat-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:20px;
+            padding:10px 16px;color:var(--text);font-size:14px;font-family:'Barlow',sans-serif;
+            resize:none;max-height:100px;overflow-y:auto;line-height:1.4;outline:none;
+            transition:border-color .15s;}
+        .chat-input:focus{border-color:var(--green);}
+        .chat-send{width:40px;height:40px;border-radius:50%;background:var(--green);border:none;
+            cursor:pointer;display:flex;align-items:center;justify-content:center;
+            font-size:16px;flex-shrink:0;transition:transform .1s,background .15s;}
+        .chat-send:hover{transform:scale(1.05);}
+        .chat-send:active{transform:scale(.95);}
+        .chat-send:disabled{background:var(--border);cursor:not-allowed;transform:none;}
+        .chat-online{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-dim);}
+        .chat-pulse{width:7px;height:7px;border-radius:50%;background:var(--green);
+            animation:blink 2s infinite;}
+        .chat-day-divider{text-align:center;font-size:10px;font-weight:800;letter-spacing:1.5px;
+            color:var(--text-dim);padding:8px 0;position:relative;}
+        .chat-day-divider::before,.chat-day-divider::after{content:'';position:absolute;
+            top:50%;width:calc(50% - 50px);height:1px;background:var(--border);}
+        .chat-day-divider::before{left:0;}
+        .chat-day-divider::after{right:0;}
+        @media(max-width:768px){
+            .chat-shell{height:calc(100dvh - 130px);}
+            .chat-bubble{max-width:82%;font-size:13px;}
+            .chat-input{font-size:16px!important;} /* prevent iOS zoom */
+            .chat-msg-avatar{width:26px;height:26px;font-size:9px;}
+        }
+        /* ── Profile & Settings ──────────────────────── */
+        .profile-banner{height:110px;border-radius:16px 16px 0 0;position:relative;
+            background:linear-gradient(135deg,#0f2744,#1a3a5c);}
+        .profile-avatar-wrap{position:absolute;bottom:-32px;left:20px;}
+        .profile-avatar{width:68px;height:68px;border-radius:50%;border:3px solid var(--bg);
+            background:var(--card2);display:flex;align-items:center;justify-content:center;
+            font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;
+            color:var(--green);overflow:hidden;object-fit:cover;}
+        .profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+        .profile-card{background:var(--card);border:1px solid var(--border);border-radius:16px;
+            overflow:hidden;max-width:680px;margin-bottom:20px;}
+        .profile-info{padding:44px 20px 16px;}
+        .profile-username{font-family:'Barlow Condensed',sans-serif;font-size:26px;
+            font-weight:800;letter-spacing:.5px;}
+        .profile-bio{font-size:13px;color:var(--text-muted);margin-top:4px;line-height:1.5;}
+        .profile-meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--text-dim);}
+        .profile-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+            background:var(--border);border-top:1px solid var(--border);}
+        .profile-stat{background:var(--card);padding:14px 8px;text-align:center;}
+        .profile-stat-num{font-family:'Barlow Condensed',sans-serif;font-size:24px;
+            font-weight:800;line-height:1;}
+        .profile-stat-num.green{color:var(--green);}
+        .profile-stat-num.red{color:var(--red);}
+        .profile-stat-num.gold{color:var(--gold);}
+        .profile-stat-label{font-size:9px;font-weight:800;letter-spacing:1px;
+            color:var(--text-dim);text-transform:uppercase;margin-top:3px;}
+        .profile-section{max-width:680px;margin-bottom:20px;}
+        .profile-section-title{font-size:11px;font-weight:800;letter-spacing:2px;
+            color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;}
+        .bet-result-pill{display:inline-block;padding:2px 8px;border-radius:4px;
+            font-size:10px;font-weight:800;letter-spacing:.5px;}
+        .bet-result-pill.won{background:rgba(0,214,122,.15);color:var(--green);}
+        .bet-result-pill.lost{background:rgba(255,69,96,.15);color:var(--red);}
+        .bet-result-pill.push{background:rgba(245,166,35,.15);color:var(--gold);}
+        /* Settings */
+        .settings-section{background:var(--card);border:1px solid var(--border);
+            border-radius:14px;padding:20px;margin-bottom:16px;max-width:600px;}
+        .settings-section-title{font-size:12px;font-weight:800;letter-spacing:1.5px;
+            color:var(--green);text-transform:uppercase;margin-bottom:16px;}
+        .avatar-upload-area{width:90px;height:90px;border-radius:50%;border:2px dashed var(--border);
+            display:flex;align-items:center;justify-content:center;cursor:pointer;
+            overflow:hidden;transition:border-color .2s;position:relative;}
+        .avatar-upload-area:hover{border-color:var(--green);}
+        .avatar-upload-area img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+        .color-swatch{width:32px;height:32px;border-radius:50%;cursor:pointer;border:2px solid transparent;
+            transition:border-color .15s,transform .15s;flex-shrink:0;}
+        .color-swatch.selected{border-color:white;transform:scale(1.15);}
+        @media(max-width:768px){
+            .profile-stat-row{grid-template-columns:repeat(2,1fr);}
+            .profile-banner{height:90px;}
+            .profile-avatar{width:58px;height:58px;font-size:22px;}
+            .profile-stat-num{font-size:20px;}
+            .profile-info{padding:36px 14px 14px;}
+            .profile-card{border-radius:12px;}
+        }
     </style>
 </head>
 <body>
+<!-- PWA Install Banner -->
+<div id="installBanner" style="display:none;position:fixed;bottom:80px;left:12px;right:12px;z-index:500;
+    background:linear-gradient(135deg,#0f1f35,#162032);border:1px solid var(--green);border-radius:14px;
+    padding:14px 16px;box-shadow:0 8px 32px rgba(0,0,0,.5);align-items:center;gap:12px;">
+    <div style="font-size:28px;">📲</div>
+    <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);">Add to Home Screen</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Install BookieVerse for the full app experience</div>
+    </div>
+    <button onclick="triggerInstall()" style="background:var(--green);color:#000;border:none;border-radius:8px;
+        padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;">Install</button>
+    <button onclick="dismissInstall()" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;padding:4px;">✕</button>
+</div>
+
+<!-- Mobile More Drawer overlay -->
+<div class="mob-more-overlay" id="mobMoreOverlay" onclick="closeMobMore()"></div>
+<!-- Mobile More Drawer -->
+<div class="mob-more-drawer" id="mobMoreDrawer">
+    <div class="mob-drawer-handle"></div>
+    <div class="mob-drawer-grid" id="mobMoreGrid"></div>
+</div>
+
 <div class="notif-overlay" id="notifOverlay" onclick="closeNotifDrawer()"></div>
 <div class="notif-drawer" id="notifDrawer">
     <div class="notif-drawer-header">
@@ -343,7 +618,61 @@
 <script>
 const API=window.location.origin+'/api';
 let token=localStorage.getItem('token');
-let user=null,view='marketplace',propTypes={},linesCache=[],propsCache=[],gamesCache=[];
+
+// Support ?view= URL param (used by PWA shortcuts)
+(()=>{const p=new URLSearchParams(location.search).get('view');if(p)localStorage.setItem('lastView',p);})();
+
+// ── PWA: Service Worker Registration ──────────────────────────────────────────
+if('serviceWorker' in navigator){
+    window.addEventListener('load',()=>{
+        navigator.serviceWorker.register('/sw.js').then(r=>{
+            console.log('[SW] Registered',r.scope);
+        }).catch(e=>console.log('[SW] Registration failed',e));
+    });
+}
+
+// ── PWA: Install Prompt ───────────────────────────────────────────────────────
+let _deferredInstallPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+    e.preventDefault();
+    _deferredInstallPrompt=e;
+    // Show banner after 3 seconds if not dismissed — mobile only
+    if(!localStorage.getItem('installDismissed') && window.innerWidth<=768){
+        setTimeout(()=>{
+            const b=document.getElementById('installBanner');
+            if(b)b.style.display='flex';
+        },3000);
+    }
+});
+function triggerInstall(){
+    if(!_deferredInstallPrompt)return;
+    _deferredInstallPrompt.prompt();
+    _deferredInstallPrompt.userChoice.then(r=>{
+        if(r.outcome==='accepted') localStorage.setItem('installDismissed','1');
+        _deferredInstallPrompt=null;
+        dismissInstall();
+    });
+}
+function dismissInstall(){
+    localStorage.setItem('installDismissed','1');
+    const b=document.getElementById('installBanner');
+    if(b)b.style.display='none';
+}
+window.addEventListener('appinstalled',()=>{
+    dismissInstall();
+    console.log('[PWA] App installed');
+});
+
+// ── Mobile More Drawer ────────────────────────────────────────────────────────
+function openMobMore(){
+    document.getElementById('mobMoreDrawer').classList.add('open');
+    document.getElementById('mobMoreOverlay').classList.add('open');
+}
+function closeMobMore(){
+    document.getElementById('mobMoreDrawer').classList.remove('open');
+    document.getElementById('mobMoreOverlay').classList.remove('open');
+}
+let user=null,view=localStorage.getItem('lastView')||'marketplace',propTypes={},linesCache=[],propsCache=[],gamesCache=[];
 let _liveScores={};
 let _liveScoreInterval=null;
 
@@ -605,10 +934,11 @@ async function loadLines(){
                 const oddsStr=odds>0?'+'+odds:String(odds);
                 const oddsColor=odds>0?'var(--green)':'var(--text-muted)';
                 const sc=_liveScores[line.game_id]||null;
+                const isGameStarted=sc&&(sc.state==='in'||sc.state==='post');
                 const scoreBadge=sc&&sc.state==='in'
-                    ?`<span style="color:var(--green);font-size:10px;font-weight:700;">🔴 ${sc.away_team||''} ${sc.away_score}-${sc.home_score} ${sc.home_team||''} <span style="color:var(--text-dim)">${sc.status}</span></span>`
+                    ?`<span style="color:var(--red);font-size:10px;font-weight:700;background:rgba(255,50,50,.1);padding:2px 7px;border-radius:4px;">🔴 LIVE ${sc.away_team||''} ${sc.away_score}-${sc.home_score} ${sc.home_team||''} · ${sc.status} · 🔒 Betting closed</span>`
                     :sc&&sc.state==='post'
-                    ?`<span style="color:var(--text-dim);font-size:10px;">Final: ${sc.away_team||''} ${sc.away_score}-${sc.home_score} ${sc.home_team||''}</span>`:'';
+                    ?`<span style="color:var(--text-dim);font-size:10px;">Final: ${sc.away_team||''} ${sc.away_score}-${sc.home_score} ${sc.home_team||''} · 🔒 Closed</span>`:'';
                 // Parse actual team names from "Away @ Home"
                 const _gp=line.game.split(' @ ');
                 const _away=_gp[0]||'Away';
@@ -653,8 +983,8 @@ async function loadLines(){
                         <div style="text-align:right;flex-shrink:0;">
                             <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green);">+$${avail.toFixed(0)}</div>
                             <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">risk $${availBettor.toFixed(0)}</div>
-                            <button class="btn ${isOwn?'btn-secondary':'btn-primary'} btn-sm" onclick="takeLine(${line.id})" ${(isFull||isOwn)?'disabled':''} style="font-size:12px;padding:5px 12px;">
-                                ${isFull?'Full':isOwn?'Yours':'Take Bet'}
+                            <button class="btn ${isOwn||isGameStarted?'btn-secondary':'btn-primary'} btn-sm" onclick="takeLine(${line.id})" ${(isFull||isOwn||isGameStarted)?'disabled':''} style="font-size:12px;padding:5px 12px;">
+                                ${isFull?'Full ✓':isOwn?'Yours':isGameStarted?'🔒 Started':'Take Bet'}
                             </button>
                         </div>
                     </div>
@@ -1526,7 +1856,7 @@ async function renderLeaderboard(){
     let html=`<div class="page-header"><div class="page-title">Leaderboard</div><div class="page-subtitle">Top bookies by P&L</div></div>`;
     leaders.forEach((l,i)=>{
         const pos=l.profit>=0;
-        html+=`<div class="card"><div class="lb-row"><div class="lb-rank" style="color:${i===0?'var(--gold)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text-dim)'}">${medals[i]||(i+1)}</div><div style="flex:1;"><div class="lb-name">@${l.username}${user&&l.id===user.id?' <span style="color:var(--green);font-size:12px;">(you)</span>':''}</div><div class="lb-record">${l.wins}W — ${l.losses}L</div><div class="wr-bar" style="width:120px;margin-top:6px;"><div class="wr-fill" style="width:${l.wins+l.losses>0?Math.round(l.wins/(l.wins+l.losses)*100):0}%"></div></div></div><div class="lb-profit" style="color:${pos?'var(--green)':'var(--red)'};">${pos?'+':''}$${l.profit.toLocaleString()}</div></div></div>`;
+        html+=`<div class="card"><div class="lb-row"><div class="lb-rank" style="color:${i===0?'var(--gold)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text-dim)'}">${medals[i]||(i+1)}</div><div style="flex:1;"><div class="lb-name" style="cursor:pointer;" onclick="viewProfile('${l.username}')">@${l.username}${user&&l.id===user.id?' <span style="color:var(--green);font-size:12px;">(you)</span>':''}</div><div class="lb-record">${l.wins}W — ${l.losses}L</div><div class="wr-bar" style="width:120px;margin-top:6px;"><div class="wr-fill" style="width:${l.wins+l.losses>0?Math.round(l.wins/(l.wins+l.losses)*100):0}%"></div></div></div><div class="lb-profit" style="color:${pos?'var(--green)':'var(--red)'};">${pos?'+':''}$${l.profit.toLocaleString()}</div></div></div>`;
     });
     return html;
 }
@@ -1804,7 +2134,1028 @@ async function renderFollowing(){
     });
     return html;
 }
+// ─── LIVE BET TRACKING ───────────────────────────────────────────────────────
+let _liveInterval = null;
+let _liveRefillAnim = null;
+let _liveBetsCache = [];
+let _liveRefreshPct = 100; // 0→100 over 60s, resets on refresh
+
+function stopLiveTracking(){
+    if(_liveInterval){clearInterval(_liveInterval);_liveInterval=null;}
+    if(_liveRefillAnim){clearInterval(_liveRefillAnim);_liveRefillAnim=null;}
+}
+
+function determineLiveBetStatus(bet, sc){
+    // Given a bet and live score, return 'winning'|'losing'|'push'|'pending'
+    if(!sc||sc.state==='pre') return 'pending';
+    const homeScore=parseInt(sc.home_score)||0;
+    const awayScore=parseInt(sc.away_score)||0;
+    const isBookie=user&&bet.bookie_id===user.id;
+    const mySide=isBookie?bet.bookie_side:bet.bettor_side;
+
+    if(bet.type==='moneyline'){
+        if(homeScore===awayScore) return 'push';
+        const homeWinning=homeScore>awayScore;
+        if(mySide==='home') return homeWinning?'winning':'losing';
+        return homeWinning?'losing':'winning';
+    } else if(bet.type==='spread'){
+        const val=bet.value||0;
+        let adj;
+        if(mySide==='home') adj=(homeScore-awayScore)+val;
+        else adj=(awayScore-homeScore)+val;
+        if(adj===0) return 'push';
+        return adj>0?'winning':'losing';
+    } else if(bet.type==='total'){
+        const total=homeScore+awayScore;
+        if(total===bet.value) return 'push';
+        if(mySide==='over') return total>bet.value?'winning':'losing';
+        return total<bet.value?'winning':'losing';
+    }
+    return 'pending';
+}
+
+function calcLivePL(bet, status){
+    const isBookie=user&&bet.bookie_id===user.id;
+    const myStake=isBookie?(bet.bookie_amount||bet.amount):(bet.bettor_amount||bet.amount);
+    const oppStake=isBookie?(bet.bettor_amount||bet.amount):(bet.bookie_amount||bet.amount);
+    if(status==='winning') return {val:oppStake, label:`+$${oppStake.toFixed(2)}`};
+    if(status==='losing')  return {val:-myStake,  label:`-$${myStake.toFixed(2)}`};
+    if(status==='push')    return {val:0,          label:`$0.00`};
+    return {val:0, label:'—'};
+}
+
+function buildLiveCard(bet, sc, idx){
+    const isBookie=user&&bet.bookie_id===user.id;
+    const mySide=isBookie?bet.bookie_side:bet.bettor_side;
+    const oppName=isBookie?bet.bettor_name:bet.bookie_name;
+    const myStake=isBookie?(bet.bookie_amount||bet.amount):(bet.bettor_amount||bet.amount);
+    const isLive=sc&&sc.state==='in';
+    const isFinal=sc&&sc.state==='post';
+    const isSettled=bet.status==='settled';
+
+    let status='pending';
+    if(isSettled){
+        const iWon=bet.winner===(isBookie?'bookie':'bettor');
+        status=bet.winner==='push'?'push':iWon?'winning':'losing';
+    } else if(sc){
+        status=determineLiveBetStatus(bet,sc);
+    }
+
+    const pl=calcLivePL(bet,status);
+    const statusLabels={winning:'🟢 WINNING',losing:'🔴 LOSING',push:'🟡 PUSH',pending:'⏳ PENDING'};
+    const statusLabel=isSettled?(status==='winning'?'✅ WON':status==='losing'?'❌ LOST':'🤝 PUSH'):statusLabels[status];
+
+    // Score block
+    let scoreHtml='';
+    if(sc&&(isLive||isFinal)){
+        const homeScore=parseInt(sc.home_score)||0;
+        const awayScore=parseInt(sc.away_score)||0;
+        const homeLeading=homeScore>=awayScore;
+        scoreHtml=`
+        <div class="live-score-box">
+            <div class="live-score-team">
+                <div class="live-score-name">${sc.away_team||'Away'}</div>
+                <div class="live-score-num ${homeLeading?'trailing':'leading'}">${awayScore}</div>
+            </div>
+            <div class="live-score-sep">
+                ${isLive?'<div class="live-dot"></div>':''}
+                <div class="live-period">${isLive?sc.status||'LIVE':isFinal?'FINAL':''}</div>
+                <div style="font-size:11px;color:var(--text-dim);">vs</div>
+            </div>
+            <div class="live-score-team">
+                <div class="live-score-name">${sc.home_team||'Home'}</div>
+                <div class="live-score-num ${homeLeading?'leading':'trailing'}">${homeScore}</div>
+            </div>
+        </div>`;
+    } else {
+        scoreHtml=`<div style="text-align:center;padding:14px 0;color:var(--text-dim);font-size:12px;">
+            ${isSettled?'Game settled':'⏳ Waiting for game to start'}
+        </div>`;
+    }
+
+    // Bet detail label
+    const gp=(bet.game||'').split(' @ ');
+    const awayT=gp[0]||'Away'; const homeT=gp[1]||'Home';
+    let pickLabel;
+    if(bet.type==='total') pickLabel=`${mySide==='over'?'Over':'Under'} ${bet.value}`;
+    else if(bet.type==='spread') pickLabel=`${mySide==='home'?homeT:awayT} ${bet.value>0?'+':''}${bet.value}`;
+    else pickLabel=mySide==='home'?homeT:awayT;
+
+    const odds=bet.odds||-110;
+    const oddsStr=odds>0?'+'+odds:String(odds);
+
+    const cardStatus=isSettled?(status==='winning'?'winning':status==='losing'?'losing':'push'):status;
+    return`<div class="live-card ${isSettled?'settled':status}" style="max-width:680px;animation:fadeIn .3s ease ${idx*0.05}s both;">
+        <div class="live-card-glow"></div>
+        <div style="padding:14px 16px;">
+
+            <!-- Row 1: game title + pick -->
+            <div style="margin-bottom:6px;">
+                <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:4px;">${bet.game||'—'}</div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                    <span class="live-status-badge ${cardStatus}">${statusLabel}</span>
+                    <span style="font-size:11px;color:var(--text-muted);">
+                        ${bet.type.toUpperCase()} · <strong style="color:var(--text);">${pickLabel}</strong>
+                        <span style="color:${odds>0?'var(--green)':'var(--text-dim)'}"> ${oddsStr}</span>
+                    </span>
+                </div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">vs @${oppName}</div>
+            </div>
+
+            <!-- Row 2: live scoreboard -->
+            ${scoreHtml}
+
+            <!-- Row 3: stake + P&L footer -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:8px;">
+                <div style="font-size:11px;color:var(--text-dim);flex:1;min-width:0;">
+                    ${isBookie?'📚 Booked':'🎯 Bet'} · Stake
+                    <strong style="color:var(--text);"> $${myStake.toFixed(2)}</strong>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div class="live-pl ${cardStatus}">${pl.label}</div>
+                    <div style="font-size:9px;color:var(--text-dim);letter-spacing:.5px;">${isSettled?'FINAL P/L':'IF SETTLED NOW'}</div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+async function refreshLiveView(){
+    // Fetch fresh scores + bets
+    try{
+        const [scRes, betsRes]=await Promise.all([
+            fetch(API+'/live-scores'),
+            fetch(API+'/bets?token='+token)
+        ]);
+        const scores=scRes.ok?await scRes.json():{};
+        const betsData=betsRes.ok?await betsRes.json():{};
+        const bets=(betsData.single_bets||[]);
+        _liveScores=scores;
+        _liveBetsCache=bets;
+        renderLiveCards(bets,scores);
+        // Reset refresh bar animation
+        _liveRefreshPct=0;
+        const bar=document.getElementById('liveRefreshFill');
+        if(bar){bar.style.transition='none';bar.style.width='0%';
+            setTimeout(()=>{bar.style.transition='width 60s linear';bar.style.width='100%';},50);}
+        // Update timestamp
+        const ts=document.getElementById('liveTimestamp');
+        if(ts)ts.textContent='Updated '+new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
+    }catch(e){console.error('refreshLiveView',e);}
+}
+
+function renderLiveCards(bets, scores){
+    const ct=document.getElementById('liveCardsContainer');
+    if(!ct)return;
+
+    // Separate: live games first, then pending, then settled
+    const pending=bets.filter(b=>b.status==='pending'&&b.game_id);
+    const settled=bets.filter(b=>b.status==='settled'&&b.game_id);
+
+    const liveSection=pending.filter(b=>scores[b.game_id]&&scores[b.game_id].state==='in');
+    const upcomingSection=pending.filter(b=>!scores[b.game_id]||scores[b.game_id].state==='pre');
+    const recentSettled=settled.slice(0,5);
+
+    let html='';
+
+    if(!pending.length&&!settled.length){
+        html=`<div class="live-empty">
+            <span class="live-empty-icon">🎯</span>
+            <div style="font-size:18px;font-weight:700;margin-bottom:8px;">No active bets</div>
+            <div style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">Head to the Marketplace to place your first bet</div>
+            <button class="btn btn-primary" onclick="changeView('marketplace')">Browse Lines</button>
+        </div>`;
+    } else {
+        if(liveSection.length){
+            // Desktop: wrap in max-width container so cards don't stretch 960px wide
+    const maxW='max-width:680px;';
+    html+=`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;letter-spacing:2px;color:var(--red);margin-bottom:10px;display:flex;align-items:center;gap:6px;${maxW}"><div class="live-dot"></div>LIVE NOW · ${liveSection.length} bet${liveSection.length!==1?'s':''}</div>`;
+            liveSection.forEach((b,i)=>html+=buildLiveCard(b,scores[b.game_id],i));
+        }
+        if(upcomingSection.length){
+            html+=`<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin:${liveSection.length?'20px':0} 0 10px;max-width:680px;">⏳ UPCOMING · ${upcomingSection.length}</div>`;
+            upcomingSection.forEach((b,i)=>html+=buildLiveCard(b,scores[b.game_id]||null,i));
+        }
+        if(recentSettled.length){
+            html+=`<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin:20px 0 10px;max-width:680px;">📋 RECENTLY SETTLED</div>`;
+            recentSettled.forEach((b,i)=>html+=buildLiveCard(b,scores[b.game_id]||null,i));
+        }
+    }
+    ct.innerHTML=html;
+
+    // Update header stats
+    const livePL=liveSection.reduce((sum,b)=>{
+        const sc=scores[b.game_id];
+        const s=determineLiveBetStatus(b,sc);
+        return sum+calcLivePL(b,s).val;
+    },0);
+    const plEl=document.getElementById('liveTotalPL');
+    if(plEl&&liveSection.length){
+        plEl.textContent=(livePL>=0?'+':'')+`$${livePL.toFixed(2)}`;
+        plEl.className='live-pl '+(livePL>0?'winning':livePL<0?'losing':'push');
+    }
+}
+
+async function renderLive(){
+    document.getElementById('content').innerHTML=`
+        <!-- Header: responsive — stacks on mobile, side by side on desktop -->
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div class="live-dot" style="width:10px;height:10px;flex-shrink:0;"></div>
+                <div>
+                    <div class="page-title" style="line-height:1;font-size:clamp(22px,5vw,36px);">Live Tracker</div>
+                    <div class="page-subtitle" style="margin-top:2px;">Scores refresh every 60s</div>
+                </div>
+            </div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 14px;text-align:center;flex-shrink:0;min-width:80px;">
+                <div style="font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:2px;">LIVE P/L</div>
+                <div class="live-pl pending" id="liveTotalPL" style="font-size:clamp(18px,4vw,28px);">—</div>
+            </div>
+        </div>
+        <div id="liveCardsContainer">${skeletonCards(3)}</div>
+        <div class="live-refresh-bar" style="margin-top:16px;">
+            <div class="live-refresh-fill" id="liveRefreshFill" style="width:0%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:5px;">
+            <span style="font-size:11px;color:var(--text-dim);" id="liveTimestamp">Loading...</span>
+            <button onclick="refreshLiveView()" style="background:none;border:none;color:var(--text-dim);font-size:11px;cursor:pointer;padding:4px 8px;border-radius:4px;">↻ Refresh</button>
+        </div>`;
+
+    stopLiveTracking();
+    await refreshLiveView();
+    _liveInterval=setInterval(refreshLiveView,60000);
+
+    return '';
+}
+
+// ─── PROFILE & SETTINGS ───────────────────────────────────────────────────────
+let _profileUsername = null;
+
+const BANNER_COLORS = [
+    '#0f2744','#1a2840','#1a1a2e','#0d2137',
+    '#1a0f2e','#2e0f1a','#0f2e1a','#2e2000',
+    '#1a2e0f','#0f1a2e','#2d1b00','#00152d',
+];
+
+const ALL_TEAMS = {
+    'NBA':['Lakers','Celtics','Warriors','Bulls','Knicks','Heat','Bucks','Nets','76ers','Suns','Nuggets','Clippers','Mavericks','Spurs','Thunder','Cavaliers','Raptors','Hawks','Pistons','Kings','Pelicans','Grizzlies','Timberwolves','Blazers','Jazz','Rockets','Hornets','Wizards','Magic','Pacers'],
+    'NFL':['Chiefs','Eagles','Bills','49ers','Cowboys','Patriots','Ravens','Bengals','Chargers','Rams','Dolphins','Jets','Steelers','Seahawks','Packers','Lions','Vikings','Bears','Falcons','Saints','Panthers','Buccaneers','Cardinals','Broncos','Raiders','Titans','Colts','Texans','Jaguars','Browns','Commanders','Giants'],
+    'MLB':['Yankees','Dodgers','Red Sox','Cubs','Giants','Astros','Braves','Mets','Cardinals','Phillies','Blue Jays','Mariners','Padres','Twins','Brewers','Rays','Tigers','White Sox','Athletics','Orioles','Rangers','Angels','Rockies','Reds','Pirates','Nationals','Guardians','Royals','Diamondbacks','Marlins'],
+    'NHL':['Maple Leafs','Bruins','Rangers','Canadiens','Blackhawks','Penguins','Lightning','Capitals','Blues','Stars','Avalanche','Golden Knights','Oilers','Flames','Canucks','Wild','Ducks','Kings','Sharks','Coyotes','Panthers','Red Wings','Predators','Hurricanes','Flyers','Devils','Islanders','Senators','Sabres','Blue Jackets','Jets','Kraken'],
+    'Premier League':['Arsenal','Chelsea','Liverpool','Man City','Man United','Tottenham','Newcastle','Aston Villa','West Ham','Brighton'],
+    'La Liga':['Real Madrid','Barcelona','Atletico Madrid','Sevilla','Valencia','Villarreal','Athletic Bilbao','Real Sociedad','Betis','Osasuna'],
+    'MLS':['Inter Miami','LA Galaxy','LAFC','Seattle Sounders','Atlanta United','NYCFC','Portland Timbers','Toronto FC','New England Revolution','Columbus Crew'],
+};
+
+function viewProfile(username){
+    _profileUsername = username;
+    changeView('profile');
+}
+
+function avatarHtml(u, size=68, fontSize=26){
+    if(u && u.avatar){
+        return `<img src="${u.avatar}" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:50%;border:3px solid var(--bg);" alt="avatar">`;
+    }
+    const initials = (u && u.username) ? u.username.slice(0,2).toUpperCase() : '?';
+    return `<div style="width:${size}px;height:${size}px;border-radius:50%;border:3px solid var(--bg);
+        background:var(--card2);display:flex;align-items:center;justify-content:center;
+        font-family:'Barlow Condensed',sans-serif;font-size:${fontSize}px;font-weight:800;color:var(--green);">${initials}</div>`;
+}
+
+async function renderProfile(username){
+    document.getElementById('content').innerHTML = skeletonCards(3);
+    try{
+        const isOwnProfile = !username || username === user?.username;
+        const targetUser = isOwnProfile ? user?.username : username;
+        const res = await fetch(`${API}/users/${targetUser}?token=${token}`);
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'User not found'); }
+        const p = await res.json();
+
+        const bannerColor = p.banner_color || '#0f2744';
+        const winRateColor = p.win_rate >= 55 ? 'var(--green)' : p.win_rate >= 45 ? 'var(--gold)' : 'var(--red)';
+        const profitColor = (p.profit||0) >= 0 ? 'var(--green)' : 'var(--red)';
+        const isMe = user && p.id === user.id;
+
+        // Avatar
+        const avatarInner = p.avatar
+            ? `<img src="${p.avatar}" style="width:100%;height:100%;object-fit:cover;" alt="avatar">`
+            : `<span>${p.username.slice(0,2).toUpperCase()}</span>`;
+
+        // Recent bets
+        let betsHtml = '';
+        if(p.recent_bets && p.recent_bets.length){
+            p.recent_bets.forEach(b => {
+                const odds = b.odds > 0 ? `+${b.odds}` : String(b.odds);
+                const gp = (b.game||'').split(' @ ');
+                const away=gp[0]||'Away', home=gp[1]||'Home';
+                let pick = b.type==='total' ? `${b.side==='over'?'Over':'Under'} ${b.value}`
+                    : b.type==='spread' ? `${b.side==='home'?home:away} ${b.value>0?'+':''}${b.value}`
+                    : (b.side==='home'?home:away);
+                const pnlStr = (b.pnl||0) >= 0 ? `+$${Math.abs(b.pnl).toFixed(2)}` : `-$${Math.abs(b.pnl).toFixed(2)}`;
+                betsHtml += `<div style="display:flex;align-items:center;gap:8px;padding:10px 0;
+                    border-bottom:1px solid var(--border);flex-wrap:wrap;">
+                    <span class="bet-result-pill ${b.result}">${b.result.toUpperCase()}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.game}</div>
+                        <div style="font-size:11px;color:var(--text-muted);">${b.type.toUpperCase()} · ${pick} · ${odds} · <span style="color:var(--text-dim);">${b.role}</span></div>
+                    </div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
+                        color:${(b.pnl||0)>=0?'var(--green)':'var(--red)'};">${pnlStr}</div>
+                </div>`;
+            });
+        } else {
+            betsHtml = `<div style="padding:16px 0;color:var(--text-dim);font-size:13px;">No settled bets yet</div>`;
+        }
+
+        // Open lines
+        let linesHtml = '';
+        if(p.open_lines && p.open_lines.length){
+            p.open_lines.forEach(l => {
+                const odds = l.odds > 0 ? `+${l.odds}` : String(l.odds);
+                const oddsColor = l.odds > 0 ? 'var(--green)' : 'var(--text-muted)';
+                const avail = Math.max(0, l.amount - (l.total_action||0));
+                linesHtml += `<div style="display:flex;align-items:center;justify-content:space-between;
+                    gap:8px;padding:10px 0;border-bottom:1px solid var(--border);">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game}</div>
+                        <div style="font-size:11px;color:var(--text-muted);">${l.type.toUpperCase()} · ${l.side} · <span style="color:${oddsColor};font-weight:700;">${odds}</span></div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="changeView('marketplace')" style="font-size:11px;white-space:nowrap;">
+                        +$${avail.toFixed(0)} avail
+                    </button>
+                </div>`;
+            });
+        } else {
+            linesHtml = `<div style="padding:16px 0;color:var(--text-dim);font-size:13px;">No open lines right now</div>`;
+        }
+
+        const followBtn = !isMe ? `<button class="btn ${p.is_following?'btn-secondary':'btn-primary'} btn-sm"
+            onclick="toggleFollow('${p.username}',this)" style="font-size:12px;">
+            ${p.is_following ? 'Following ✓' : '+ Follow'}</button>` : '';
+        const editBtn = isMe ? `<button class="btn btn-secondary btn-sm" onclick="changeView('settings')" style="font-size:12px;">✏️ Edit Profile</button>` : '';
+
+        return `<div>
+            <!-- Profile Card -->
+            <div class="profile-card">
+                <!-- Banner -->
+                <div class="profile-banner" style="background:linear-gradient(135deg,${bannerColor},${bannerColor}cc);">
+                    <div class="profile-avatar-wrap">
+                        <div class="profile-avatar">${avatarInner}</div>
+                    </div>
+                </div>
+                <!-- Info -->
+                <div class="profile-info">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+                        <div>
+                            <div class="profile-username">@${p.username}${p.is_admin?' 👑':''}</div>
+                            ${p.bio ? `<div class="profile-bio">${p.bio}</div>` : ''}
+                            <div class="profile-meta">
+                                ${p.favorite_team ? `<span>🏅 ${p.favorite_team}</span>` : ''}
+                                ${p.location ? `<span>📍 ${p.location}</span>` : ''}
+                                ${p.member_since ? `<span>📅 Since ${p.member_since}</span>` : ''}
+                            </div>
+                            <div style="display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--text-muted);">
+                                <span><strong style="color:var(--text);">${p.followers}</strong> Followers</span>
+                                <span><strong style="color:var(--text);">${p.following}</strong> Following</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:6px;">${followBtn}${editBtn}</div>
+                    </div>
+                </div>
+                <!-- Stats grid -->
+                <div class="profile-stat-row">
+                    <div class="profile-stat">
+                        <div class="profile-stat-num green">${p.wins}</div>
+                        <div class="profile-stat-label">Wins</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-num red">${p.losses}</div>
+                        <div class="profile-stat-label">Losses</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-num" style="color:${winRateColor};">${p.win_rate}%</div>
+                        <div class="profile-stat-label">Win Rate</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-num" style="color:${profitColor};">${(p.profit||0)>=0?'+':''}$${Math.abs(p.profit||0).toFixed(0)}</div>
+                        <div class="profile-stat-label">P/L</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Bets -->
+            <div class="profile-section">
+                <div class="profile-section-title">📋 Recent Results</div>
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:0 16px;">
+                    ${betsHtml}
+                </div>
+            </div>
+
+            <!-- Open Lines -->
+            ${p.open_lines && p.open_lines.length ? `
+            <div class="profile-section">
+                <div class="profile-section-title">⚡ Open Lines</div>
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:0 16px;">
+                    ${linesHtml}
+                </div>
+            </div>` : ''}
+        </div>`;
+    } catch(e){
+        return `<div class="empty-state">
+            <div class="empty-icon">😕</div>
+            <div class="empty-title">Profile not found</div>
+            <div class="empty-desc">${e.message}</div>
+        </div>`;
+    }
+}
+
+async function renderSettings(){
+    // Use current user data
+    await loadUser();
+    const u = user || {};
+    const bannerColor = u.banner_color || '#0f2744';
+
+    const swatches = BANNER_COLORS.map(c =>
+        `<div class="color-swatch ${c===bannerColor?'selected':''}"
+            style="background:${c};" onclick="selectBannerColor('${c}',this)" data-color="${c}"></div>`
+    ).join('');
+
+    // Sport selector
+    const sportOpts = ['','NBA','NFL','MLB','NHL','Premier League','La Liga','MLS']
+        .map(s => `<option value="${s}" ${u.favorite_sport===s?'selected':''}>${s||'— Pick a sport —'}</option>`).join('');
+
+    // Team selector based on current sport
+    const teamOpts = _buildTeamOptions(u.favorite_sport, u.favorite_team);
+
+    document.getElementById('content').innerHTML = `
+        <div style="max-width:600px;">
+            <div class="page-header">
+                <div class="page-title" style="font-size:clamp(22px,5vw,36px);">Settings</div>
+                <div class="page-subtitle">Customize your BookieVerse profile</div>
+            </div>
+
+            <!-- Avatar + Banner -->
+            <div class="settings-section">
+                <div class="settings-section-title">Profile Picture</div>
+                <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                    <div class="avatar-upload-area" onclick="document.getElementById('avatarInput').click()" id="avatarPreview">
+                        ${u.avatar
+                            ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;" alt="avatar">`
+                            : `<div style="text-align:center;"><div style="font-size:28px;">📷</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px;">UPLOAD</div></div>`}
+                    </div>
+                    <div>
+                        <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)">
+                        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('avatarInput').click()">Choose Photo</button>
+                        ${u.avatar ? `<button class="btn btn-secondary btn-sm" style="margin-left:8px;" onclick="removeAvatar()">Remove</button>` : ''}
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">JPG, PNG · Max 375KB</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Banner Color -->
+            <div class="settings-section">
+                <div class="settings-section-title">Banner Color</div>
+                <div style="height:50px;border-radius:8px;margin-bottom:12px;transition:background .2s;
+                    background:linear-gradient(135deg,${bannerColor},${bannerColor}aa);"
+                    id="bannerPreview"></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">${swatches}</div>
+            </div>
+
+            <!-- Bio + Info -->
+            <div class="settings-section">
+                <div class="settings-section-title">About You</div>
+                <div class="form-group">
+                    <label>Bio <span style="color:var(--text-dim);font-weight:400;">(max 300 chars)</span></label>
+                    <textarea id="settingsBio" rows="3" maxlength="300"
+                        style="resize:vertical;" placeholder="Talk your trash...">${u.bio||''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="settingsLocation" value="${u.location||''}" maxlength="60" placeholder="City, State">
+                </div>
+            </div>
+
+            <!-- Favorite Team -->
+            <div class="settings-section">
+                <div class="settings-section-title">🏅 Favorite Team</div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label>Sport</label>
+                        <select id="settingsSport" onchange="updateTeamSelect(this.value)">
+                            ${sportOpts}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Team</label>
+                        <select id="settingsTeam">
+                            ${teamOpts}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save -->
+            <button class="btn btn-primary btn-full" onclick="saveSettings()" style="margin-bottom:40px;">
+                Save Profile
+            </button>
+        </div>`;
+    return '';
+}
+
+function _buildTeamOptions(sport, selectedTeam){
+    const teams = (sport && ALL_TEAMS[sport]) ? ALL_TEAMS[sport] : [];
+    const opts = [`<option value="">— Pick a team —</option>`];
+    teams.forEach(t => opts.push(`<option value="${t}" ${t===selectedTeam?'selected':''}>${t}</option>`));
+    return opts.join('');
+}
+
+function updateTeamSelect(sport){
+    const sel = document.getElementById('settingsTeam');
+    if(sel) sel.innerHTML = _buildTeamOptions(sport, null);
+}
+
+function selectBannerColor(color, el){
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    const preview = document.getElementById('bannerPreview');
+    if(preview) preview.style.background = `linear-gradient(135deg,${color},${color}aa)`;
+}
+
+function handleAvatarUpload(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    if(file.size > 400_000){
+        toast('Image too large — keep it under 375KB', 'error');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        const preview = document.getElementById('avatarPreview');
+        if(preview) preview.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;" alt="avatar">`;
+        window._pendingAvatar = dataUrl;
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeAvatar(){
+    window._pendingAvatar = '';
+    const preview = document.getElementById('avatarPreview');
+    if(preview) preview.innerHTML = `<div style="text-align:center;"><div style="font-size:28px;">📷</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px;">UPLOAD</div></div>`;
+}
+
+async function saveSettings(){
+    const bio = document.getElementById('settingsBio')?.value?.trim() || '';
+    const location = document.getElementById('settingsLocation')?.value?.trim() || '';
+    const sport = document.getElementById('settingsSport')?.value || '';
+    const team = document.getElementById('settingsTeam')?.value || '';
+    const selectedSwatch = document.querySelector('.color-swatch.selected');
+    const bannerColor = selectedSwatch ? selectedSwatch.dataset.color : (user?.banner_color || '');
+
+    const payload = { bio, location, favorite_sport: sport, favorite_team: team, banner_color: bannerColor };
+    if(window._pendingAvatar !== undefined) payload.avatar = window._pendingAvatar;
+
+    try{
+        const res = await fetch(`${API}/user/profile?token=${token}`, {
+            method: 'PATCH',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(payload)
+        });
+        if(res.ok){
+            const data = await res.json();
+            // Update local user object
+            if(user){
+                Object.assign(user, payload);
+                if(data.avatar !== undefined) user.avatar = data.avatar;
+            }
+            window._pendingAvatar = undefined;
+            toast('✅ Profile saved!', 'success');
+            updateSidebarBalance();
+        } else {
+            const e = await res.json().catch(()=>({}));
+            toast(e.detail || 'Could not save', 'error');
+        }
+    } catch(e){ toast('Connection error', 'error'); }
+}
+
+
+// ─── GLOBAL CHAT ──────────────────────────────────────────────────────────────
+let _chatPollInterval = null;
+let _chatLastId = 0;
+let _chatRoom = 'global';
+let _chatSending = false;
+
+function stopChat(){
+    if(_chatPollInterval){ clearInterval(_chatPollInterval); _chatPollInterval = null; }
+}
+
+function chatAvatarLetters(name){
+    if(!name) return '?';
+    return name.slice(0,2).toUpperCase();
+}
+
+function buildChatMessage(m, showMeta){
+    const isMe = user && m.user_id === user.id;
+    const initials = chatAvatarLetters(m.username);
+    const canDelete = isMe || (user && user.is_admin);
+
+    return `<div class="chat-msg ${isMe?'mine':''}" id="cmsg-${m.id}">
+        ${!isMe ? `<div class="chat-msg-avatar">${initials}</div>` : ''}
+        <div style="display:flex;flex-direction:column;${isMe?'align-items:flex-end':''};">
+            ${showMeta ? `<div class="chat-meta ${isMe?'mine':''}">
+                <span class="chat-username ${isMe?'mine':''}" style="cursor:pointer;" onclick="viewProfile('${m.username}')">@${m.username}</span>
+                <span class="chat-ts">${m.ts||'now'}</span>
+                ${canDelete ? `<button class="chat-delete" onclick="deleteChat(${m.id})" title="Delete">✕</button>` : ''}
+            </div>` : ''}
+            <div class="chat-bubble ${isMe?'mine':'theirs'}">${escapeHtml(m.message)}</div>
+        </div>
+        ${isMe ? `<div class="chat-msg-avatar" style="background:rgba(0,214,122,.15);border-color:rgba(0,214,122,.3);color:var(--green);">${initials}</div>` : ''}
+    </div>`;
+}
+
+function escapeHtml(str){
+    return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+}
+
+function shouldShowMeta(msgs, idx){
+    // Show username/time if first message or different user from previous
+    if(idx === 0) return true;
+    return msgs[idx].user_id !== msgs[idx-1].user_id;
+}
+
+function renderChatMessages(msgs, append=false){
+    const box = document.getElementById('chatMessages');
+    if(!box) return;
+    const wasAtBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+
+    if(!append){
+        if(!msgs.length){
+            box.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--text-dim);">
+                <div style="font-size:40px;">💬</div>
+                <div style="font-size:14px;font-weight:600;">No messages yet</div>
+                <div style="font-size:12px;">Be the first to say something!</div>
+            </div>`;
+            return;
+        }
+        let html = '';
+        msgs.forEach((m,i) => html += buildChatMessage(m, shouldShowMeta(msgs,i)));
+        box.innerHTML = html;
+        box.scrollTop = box.scrollHeight;
+    } else {
+        // Append new messages only
+        msgs.forEach((m,i) => {
+            const showMeta = i === 0 ? true : msgs[i].user_id !== msgs[i-1].user_id;
+            const div = document.createElement('div');
+            div.innerHTML = buildChatMessage(m, showMeta);
+            box.appendChild(div.firstElementChild);
+        });
+        if(wasAtBottom || (msgs.length && msgs[msgs.length-1].user_id === user?.id)){
+            box.scrollTop = box.scrollHeight;
+        }
+    }
+}
+
+async function pollChat(){
+    try{
+        const res = await fetch(`${API}/chat?room=${_chatRoom}&since_id=${_chatLastId}`);
+        if(!res.ok) return;
+        const data = await res.json();
+        if(data.messages && data.messages.length){
+            _chatLastId = data.last_id;
+            renderChatMessages(data.messages, true);
+            // Update typing count badge
+            const badge = document.getElementById('chatOnlineCount');
+            if(badge) badge.textContent = '';
+        }
+    } catch(e){ /* silent */ }
+}
+
+async function renderChat(){
+    document.getElementById('content').innerHTML = `
+        <div class="chat-shell">
+            <!-- Header -->
+            <div class="chat-header">
+                <div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:.5px;">
+                        💬 Global Chat
+                    </div>
+                    <div class="chat-online">
+                        <div class="chat-pulse"></div>
+                        <span>BookieVerse Live</span>
+                    </div>
+                </div>
+                <div style="font-size:11px;color:var(--text-dim);text-align:right;">
+                    Last 60 messages<br>
+                    <span style="color:var(--green);font-size:10px;">● Updating live</span>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div class="chat-messages" id="chatMessages">
+                <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+                    <div style="color:var(--text-dim);font-size:13px;">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="chat-input-row">
+                <textarea class="chat-input" id="chatInput" placeholder="Say something..." rows="1"
+                    onkeydown="chatKeyDown(event)"
+                    oninput="chatAutoResize(this)"></textarea>
+                <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
+            </div>
+        </div>`;
+
+    stopChat();
+
+    // Load initial messages
+    try{
+        const res = await fetch(`${API}/chat?room=${_chatRoom}&limit=60`);
+        if(res.ok){
+            const data = await res.json();
+            _chatLastId = data.last_id || 0;
+            renderChatMessages(data.messages || [], false);
+        }
+    } catch(e){ console.error('chat load:', e); }
+
+    // Start polling every 3 seconds
+    _chatPollInterval = setInterval(pollChat, 3000);
+
+    // Focus input
+    setTimeout(() => {
+        const inp = document.getElementById('chatInput');
+        if(inp) inp.focus();
+    }, 150);
+}
+
+function chatAutoResize(el){
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function chatKeyDown(e){
+    // Send on Enter (not Shift+Enter)
+    if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        sendChat();
+    }
+}
+
+async function sendChat(){
+    if(_chatSending) return;
+    const inp = document.getElementById('chatInput');
+    const btn = document.getElementById('chatSendBtn');
+    if(!inp) return;
+    const text = inp.value.trim();
+    if(!text) return;
+
+    _chatSending = true;
+    if(btn){ btn.disabled = true; btn.textContent = '...'; }
+
+    // Optimistic UI — show message immediately
+    const optimistic = {
+        id: -1,
+        user_id: user?.id,
+        username: user?.username,
+        message: text,
+        ts: 'now'
+    };
+    const box = document.getElementById('chatMessages');
+    const wasEmpty = box && box.querySelector('[style*="No messages"]');
+    if(wasEmpty) box.innerHTML = '';
+    if(box){
+        const div = document.createElement('div');
+        div.id = 'optimistic-msg';
+        div.innerHTML = buildChatMessage(optimistic, true);
+        box.appendChild(div.firstElementChild);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    inp.value = '';
+    inp.style.height = 'auto';
+
+    try{
+        const res = await fetch(`${API}/chat?token=${token}`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({message: text, room: _chatRoom})
+        });
+        if(res.ok){
+            const newMsg = await res.json();
+            _chatLastId = Math.max(_chatLastId, newMsg.id);
+            // Remove optimistic, real message will come via next poll
+            const opt = document.getElementById('optimistic-msg');
+            if(opt) opt.remove();
+            // Immediately append real message
+            if(box){
+                const div = document.createElement('div');
+                div.innerHTML = buildChatMessage(newMsg, true);
+                box.appendChild(div.firstElementChild);
+                box.scrollTop = box.scrollHeight;
+            }
+        } else {
+            const err = await res.json().catch(()=>({}));
+            toast(err.detail || 'Could not send message', 'error');
+            // Remove optimistic on failure
+            const opt = document.getElementById('optimistic-msg');
+            if(opt) opt.remove();
+            inp.value = text; // restore
+        }
+    } catch(e){
+        toast('Connection error', 'error');
+        const opt = document.getElementById('optimistic-msg');
+        if(opt) opt.remove();
+        inp.value = text;
+    }
+
+    _chatSending = false;
+    if(btn){ btn.disabled = false; btn.textContent = '➤'; }
+    inp.focus();
+}
+
+async function deleteChat(msgId){
+    try{
+        const res = await fetch(`${API}/chat/${msgId}?token=${token}`, {method:'DELETE'});
+        if(res.ok){
+            const el = document.getElementById(`cmsg-${msgId}`);
+            if(el){ el.style.opacity='0'; el.style.transform='scale(.95)'; el.style.transition='.2s';
+                setTimeout(()=>el.remove(), 200); }
+        } else {
+            toast('Could not delete', 'error');
+        }
+    } catch(e){ toast('Error', 'error'); }
+}
+
+
+// ─── SOCIAL FEED ──────────────────────────────────────────────────────────────
+let _feedTab = 'all'; // 'all' | 'following'
+
+function feedAvatarLetters(name){
+    if(!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    return parts.length >= 2
+        ? (parts[0][0]+parts[parts.length-1][0]).toUpperCase()
+        : name.slice(0,2).toUpperCase();
+}
+
+function feedAmountClass(amount){
+    if(amount >= 200) return 'big';
+    if(amount >= 50)  return 'medium';
+    return 'small';
+}
+
+const SPORT_EMOJI_FEED = {
+    'NBA':'🏀','NFL':'🏈','MLB':'⚾','NHL':'🏒',
+    'Premier League':'⚽','La Liga':'⚽','Champions League':'🏆','MLS':'⚽',
+    'NCAAMB':'🏀','NCAAFB':'🏈',
+};
+
+function buildFeedItem(ev, idx){
+    const initials = feedAvatarLetters(ev.actor);
+    const amtClass = feedAmountClass(ev.amount || 0);
+    const sportEmoji = SPORT_EMOJI_FEED[ev.sport] || '';
+    const followedTag = ev.followed
+        ? `<span class="followed-tag">FOLLOWING</span>`
+        : '';
+
+    // Type-specific accent colors on avatar border
+    const borderColor = {
+        line_posted:    'rgba(74,158,255,.4)',
+        bet_matched:    'rgba(139,92,246,.4)',
+        bet_won:        'rgba(0,214,122,.5)',
+        challenge_sent: 'rgba(255,140,66,.4)',
+        parlay_posted:  'rgba(245,166,35,.4)',
+    }[ev.type] || 'var(--border)';
+
+    return `<div class="feed-item" style="animation-delay:${idx*0.04}s">
+        <div class="feed-avatar" style="border-color:${borderColor};">
+            ${initials}
+            <div class="feed-avatar-badge">${ev.emoji}</div>
+        </div>
+        <div class="feed-body">
+            <div style="display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;">
+                <span class="feed-actor ${ev.followed?'followed':''}" style="cursor:pointer;" onclick="viewProfile('${ev.actor}')">@${ev.actor}</span>
+                ${followedTag}
+                <span class="feed-action">${ev.text}</span>
+            </div>
+            ${ev.detail ? `<div class="feed-detail">${sportEmoji ? sportEmoji+' ' : ''}${ev.detail}</div>` : ''}
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:5px;">
+                <div class="feed-meta">
+                    <span>${ev.meta}</span>
+                </div>
+                ${ev.amount ? `<span class="feed-amount-pill ${amtClass}">$${(ev.amount||0) >= 1000
+                    ? (ev.amount/1000).toFixed(1)+'K'
+                    : (ev.amount||0).toFixed(0)}</span>` : ''}
+            </div>
+            <div class="feed-ts">${ev.ts}</div>
+        </div>
+    </div>`;
+}
+
+async function renderFeed(){
+    document.getElementById('content').innerHTML = `
+        <div class="feed-wrap">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+                <div>
+                    <div class="page-title" style="font-size:clamp(22px,5vw,36px);line-height:1;">Activity Feed</div>
+                    <div class="page-subtitle" style="margin-top:2px;">What's happening on BookieVerse</div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button onclick="switchFeedTab('all')" id="feedTabAll"
+                        class="btn btn-sm ${_feedTab==='all'?'btn-primary':'btn-secondary'}"
+                        style="font-size:11px;min-height:32px;">🌍 All</button>
+                    <button onclick="switchFeedTab('following')" id="feedTabFollowing"
+                        class="btn btn-sm ${_feedTab==='following'?'btn-primary':'btn-secondary'}"
+                        style="font-size:11px;min-height:32px;">⭐ Following</button>
+                </div>
+            </div>
+            <div id="feedList">${skeletonCards(5)}</div>
+        </div>`;
+
+    await loadFeedEvents();
+    return '';
+}
+
+async function switchFeedTab(tab){
+    _feedTab = tab;
+    document.getElementById('feedTabAll').className      = `btn btn-sm ${tab==='all'      ?'btn-primary':'btn-secondary'}`;
+    document.getElementById('feedTabFollowing').className= `btn btn-sm ${tab==='following'?'btn-primary':'btn-secondary'}`;
+    document.getElementById('feedList').innerHTML = skeletonCards(4);
+    await loadFeedEvents();
+}
+
+async function loadFeedEvents(){
+    try{
+        const res = await fetch(API+'/feed?token='+token+'&limit=60');
+        if(!res.ok) throw new Error('Feed unavailable');
+        const data = await res.json();
+        let events = data.events || [];
+
+        if(_feedTab === 'following'){
+            events = events.filter(e => e.followed);
+        }
+
+        const ct = document.getElementById('feedList');
+        if(!ct) return;
+
+        if(!events.length){
+            ct.innerHTML = `<div class="empty-state" style="padding:60px 20px;">
+                <div class="empty-icon">${_feedTab==='following'?'⭐':'📡'}</div>
+                <div class="empty-title">${_feedTab==='following'?'Nobody you follow has posted yet':'No activity yet'}</div>
+                <div class="empty-desc" style="margin-top:8px;">
+                    ${_feedTab==='following'
+                        ? 'Follow some bookies to see their activity here'
+                        : 'Be the first — post a line and get the action started'}
+                </div>
+                ${_feedTab==='following'
+                    ? `<button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('search')">Find Bookies</button>`
+                    : `<button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('create')">Post a Line</button>`}
+            </div>`;
+            return;
+        }
+
+        // Group by time bucket for section headers
+        const now = Date.now();
+        let lastBucket = null;
+        let html = '';
+
+        events.forEach((ev, i) => {
+            // Time bucket header
+            let bucket = null;
+            if(ev.raw_ts){
+                const diff = (now - new Date(ev.raw_ts).getTime()) / 1000;
+                if(diff < 3600)        bucket = '🔴 Last Hour';
+                else if(diff < 86400)  bucket = 'Today';
+                else if(diff < 172800) bucket = 'Yesterday';
+                else                   bucket = 'This Week';
+            }
+            if(bucket && bucket !== lastBucket){
+                html += `<div style="font-size:10px;font-weight:800;letter-spacing:2px;
+                    color:var(--text-dim);padding:${i===0?'0':'16px'} 0 8px;
+                    border-top:${i===0?'none':'1px solid var(--border)'};">${bucket}</div>`;
+                lastBucket = bucket;
+            }
+            html += buildFeedItem(ev, i);
+        });
+
+        ct.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);
+            border-radius:14px;padding:0 16px;">${html}</div>`;
+    } catch(e){
+        const ct = document.getElementById('feedList');
+        if(ct) ct.innerHTML = `<div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <div class="empty-title">Couldn't load feed</div>
+            <div class="empty-desc">${e.message}</div>
+        </div>`;
+    }
+}
+
 // ─── PARLAY HELPERS ──────────────────────────────────────────────────────────
+
 const PARLAY_SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒','Premier League':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','La Liga':'🇪🇸','Champions League':'🏆',MLS:'🇺🇸',Other:'⚽'};
 let _parlayLegs=[];
 let _parlaySelectedLeague='';
@@ -2241,13 +3592,14 @@ async function renderApp(){
     if(!user){await loadUser();}if(!user)return;
     refreshBadges(); // async, non-blocking — updates badge count for next render cycle
     const NAV=[
-        {id:'marketplace',icon:'📊',label:'Marketplace'},{id:'create',icon:'⚡',label:'Set Lines'},
+        {id:'marketplace',icon:'📊',label:'Marketplace'},{id:'live',icon:'🔴',label:'Live'},{id:'feed',icon:'📡',label:'Feed'},{id:'chat',icon:'💬',label:'Chat'},{id:'create',icon:'⚡',label:'Set Lines'},{id:'profile',icon:'👤',label:'Profile'},{id:'settings',icon:'⚙️',label:'Settings'},
         {id:'props',icon:'🎲',label:'Props'},{id:'futures',icon:'🔮',label:'Futures'},
         {id:'bets',icon:'📋',label:'My Bets'},{id:'challenges',icon:'⚔️',label:'Challenges',badgeKey:'challengeCount'},
         {id:'friends',icon:'🤝',label:'Friends',badgeKey:'friendRequestCount'},
         {id:'leaderboard',icon:'🏆',label:'Leaderboard'},
         {id:'groups',icon:'👥',label:'Groups'},{id:'following',icon:'⭐',label:'Following'},
         {id:'search',icon:'🔍',label:'Find Bookies'},{id:'parlays',icon:'🎰',label:'Parlays'},{id:'shop',icon:'💰',label:'Shop'},
+        {id:'profile',icon:'👤',label:'My Profile'},{id:'settings',icon:'⚙️',label:'Settings'},
         ...(user.is_admin?[{id:'admin',icon:'⚙',label:'Admin'}]:[])
     ];
     const sidebarNav=NAV.map(n=>{
@@ -2255,19 +3607,55 @@ async function renderApp(){
         const badge=cnt?`<span style="margin-left:auto;background:var(--orange);color:#000;font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;">${cnt}</span>`:'';
         return`<div class="nav-item ${view===n.id?'active':''}" onclick="changeView('${n.id}')"><span class="nav-icon">${n.icon}</span>${n.label}${badge}</div>`;
     }).join('');
-    const mobileNav=NAV.map(n=>{
+    // Bottom tab bar — 5 primary tabs + "More" button
+    const PRIMARY_TABS=[
+        {id:'marketplace',icon:'📊',label:'Market'},
+        {id:'live',icon:'🔴',label:'Live'},
+        {id:'feed',icon:'📡',label:'Feed'},
+        {id:'bets',icon:'📋',label:'My Bets',badgeKey:''},
+        {id:'_more',icon:'☰',label:'More'},
+    ];
+    const bottomTabs=PRIMARY_TABS.map(n=>{
+        const isMore=n.id==='_more';
+        const isMoreActive=!PRIMARY_TABS.find(t=>t.id===view&&t.id!=='_more')&&view!=='marketplace'&&view!=='create'&&view!=='parlays'&&view!=='bets';
+        const active=isMore?isMoreActive:view===n.id;
         const cnt=(n.badgeKey&&window._badges&&window._badges[n.badgeKey])||0;
-        const badge=cnt?` 🔴`:'';
-        return`<div class="mob-tab ${view===n.id?'active':''}" onclick="changeView('${n.id}')">${n.icon} ${n.label}${badge}</div>`;
+        const badge=cnt?`<span class="mob-badge">${cnt}</span>`:'';
+        const clickFn=isMore?`openMobMore()`:`changeView('${n.id}')`;
+        return`<div class="mob-tab ${active?'active':''}" onclick="${clickFn}">
+            ${badge}<span class="mob-icon">${n.icon}</span>
+            <span>${n.label}</span>
+        </div>`;
     }).join('');
+    // Build "More" drawer items (all non-primary tabs)
+    const PRIMARY_IDS=new Set(['marketplace','create','parlays','bets','_more']);
+    const moreItems=NAV.filter(n=>!PRIMARY_IDS.has(n.id)).map(n=>{
+        const cnt=(n.badgeKey&&window._badges&&window._badges[n.badgeKey])||0;
+        const badge=cnt?`<span style="position:absolute;top:8px;right:8px;background:var(--red);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;">${cnt}</span>`:'';
+        return`<div class="mob-drawer-item" onclick="changeView('${n.id}');closeMobMore();" style="position:relative;">
+            ${badge}<span class="di-icon">${n.icon}</span>${n.label}
+        </div>`;
+    }).join('');
+    document.getElementById('mobMoreGrid').innerHTML=moreItems;
+
     document.getElementById('root').innerHTML=`
-        <div class="topbar"><div class="topbar-logo">BV</div><div id="topbarBalance" class="topbar-bal">$${user.balance.toLocaleString()}</div></div>
-        <div class="mobile-nav" id="mobileNav">${mobileNav}</div>
+        <div class="topbar">
+            <div class="topbar-logo">BV</div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div onclick="openNotifDrawer()" style="cursor:pointer;font-size:20px;position:relative;" id="mobNotifBtn">
+                    🔔<span class="mob-badge" id="mobNotifBadge" style="display:none;top:-2px;right:-4px;"></span>
+                </div>
+                <div id="topbarBalance" class="topbar-bal">$${user.balance.toLocaleString()}</div>
+            </div>
+        </div>
+        <div class="mob-bottom-bar">
+            <div class="mob-bar-inner">${bottomTabs}</div>
+        </div>
         <div class="app-shell">
             <div class="sidebar">
                 <div class="sidebar-logo"><div class="logo-text">BookieVerse</div><div class="logo-sub">PvP Sportsbook</div></div>
                 <div class="sidebar-user">
-                    <div class="sidebar-username">@${user.username}${user.is_admin?' 👑':''}</div>
+                    <div class="sidebar-username" style="cursor:pointer;" onclick="viewProfile(user.username)">@${user.username}${user.is_admin?' 👑':''}</div>
                     <div class="sidebar-stats">${user.wins}W — ${user.losses}L</div>
                     <div class="sidebar-balance">
                         <div class="bal-label">Balance</div>
@@ -2288,6 +3676,9 @@ async function renderApp(){
         </div>`;
     let content='';
     if(view==='marketplace')content=await loadLines();
+    else if(view==='live')content=await renderLive();
+    else if(view==='feed')content=await renderFeed();
+    else if(view==='chat'){renderChat();content='';}
     else if(view==='create')content=await renderCreateLine();
     else if(view==='props')content=await renderProps();
     else if(view==='futures')content=await renderFutures();
@@ -2300,6 +3691,8 @@ async function renderApp(){
     else if(view==='parlays')content=await renderParlays();
     else if(view==='shop')content=await renderShop();
     else if(view==='search')content=await renderUserSearch();
+    else if(view==='profile')content=await renderProfile(_profileUsername||user?.username);
+    else if(view==='settings')content=await renderSettings();
     else if(view==='admin')content=await renderAdmin();
     const ct=document.getElementById('content');if(ct&&content)ct.innerHTML=content;
 }
@@ -2610,7 +4003,10 @@ function startNotifPolling() {
 
 function changeView(v){
     if(v!=='marketplace')stopLiveScores();
+    if(v!=='live')stopLiveTracking();
+    if(v!=='chat')stopChat();
     view=v;
+    localStorage.setItem('lastView',v);
     renderApp();
     if(v==='marketplace')startLiveScores();
 }
