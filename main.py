@@ -852,7 +852,9 @@ def verify_token(token: str) -> Optional[int]:
 
 @app.get("/")
 def home():
-    return {"message": "🎯 BookieVerse", "app": "/app"}
+    """Serve the app at root so PWA install and direct links work."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/app", status_code=302)
 
 @app.post("/api/auth/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -1183,7 +1185,7 @@ def get_manifest():
         "name": "BookieVerse",
         "short_name": "BookieVerse",
         "description": "P2P Sports Betting — Post lines, take action, settle up.",
-        "start_url": "/",
+        "start_url": "/app",
         "display": "standalone",
         "background_color": "#0b1120",
         "theme_color": "#0b1120",
@@ -1196,9 +1198,9 @@ def get_manifest():
         ],
         "categories": ["sports", "games", "entertainment"],
         "shortcuts": [
-            {"name": "Marketplace", "url": "/?view=marketplace", "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]},
-            {"name": "Set Lines",   "url": "/?view=create",      "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]},
-            {"name": "My Bets",     "url": "/?view=bets",        "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]}
+            {"name": "Marketplace", "url": "/app?view=marketplace", "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]},
+            {"name": "Set Lines",   "url": "/app?view=create",      "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]},
+            {"name": "My Bets",     "url": "/app?view=bets",        "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]}
         ]
     })
 
