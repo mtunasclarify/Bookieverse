@@ -860,26 +860,40 @@ function skeletonCards(n=3){
     return Array(n).fill(0).map(()=>`<div class="skeleton-card"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line" style="width:40%"></div></div>`).join('');
 }
 async function doLogin(){
-    const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value;
-    if(!u||p.length<6){toast('Username required. Password 6+ chars.','error');return;}
+    const u=document.getElementById('loginUsername').value.trim();
+    const p=document.getElementById('loginPassword').value;
+    if(!u||!p){toast('Please enter your username/email and password','error');return;}
     const btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='Logging in...';
     try{
-        const res=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
-        if(!res.ok){const e=await res.json();toast('Login failed: '+(e.detail||'Invalid credentials'),'error');return;}
-        const data=await res.json();token=data.token;localStorage.setItem('token',token);user=data.user;
+        const res=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({username:u,password:p})});
+        if(!res.ok){const e=await res.json();toast(e.detail||'Invalid credentials','error');return;}
+        const data=await res.json();
+        token=data.token;localStorage.setItem('token',token);user=data.user;
         await loadPropTypes();renderApp();startNotifPolling();
-    }catch(e){toast('Connection error','error');}finally{btn.disabled=false;btn.textContent='Login';}
+    }catch(e){toast('Connection error','error');}
+    finally{btn.disabled=false;btn.textContent='Login';}
 }
+
 async function doRegister(){
-    const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value;
-    if(!u||p.length<6){toast('Username required. Password 6+ chars.','error');return;}
-    const btn=document.getElementById('registerBtn');btn.disabled=true;btn.textContent='Creating...';
+    const u=document.getElementById('regUsername').value.trim();
+    const em=document.getElementById('regEmail').value.trim();
+    const p=document.getElementById('regPassword').value;
+    const ref=document.getElementById('regReferral')?.value.trim()||'';
+    if(!u){toast('Username is required','error');return;}
+    if(!em||!em.includes('@')){toast('Please enter a valid email address','error');return;}
+    if(p.length<6){toast('Password must be 6+ characters','error');return;}
+    const btn=document.getElementById('registerBtn');btn.disabled=true;btn.textContent='Creating account...';
     try{
-        const res=await fetch(API+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
-        if(!res.ok){const e=await res.json();toast('Registration failed: '+(e.detail||'Username taken'),'error');return;}
-        const data=await res.json();token=data.token;localStorage.setItem('token',token);user=data.user;
+        const res=await fetch(API+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({username:u,password:p,email:em,referral_code:ref||null})});
+        if(!res.ok){const e=await res.json();toast(e.detail||'Registration failed','error');return;}
+        const data=await res.json();
+        token=data.token;localStorage.setItem('token',token);user=data.user;
+        if(data.user.referral_bonus>0) toast(`🎉 Referral bonus! +$${data.user.referral_bonus} added to your balance`,'success');
         await loadPropTypes();renderApp();startNotifPolling();
-    }catch(e){toast('Connection error','error');}finally{btn.disabled=false;btn.textContent='Register';}
+    }catch(e){toast('Connection error','error');}
+    finally{btn.disabled=false;btn.textContent='Create Account';}
 }
 async function loadUser(){
     try{
@@ -941,7 +955,7 @@ async function loadLines(){
             <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Available</div><div class="empty-desc">Be the first to set a line</div></div>`;
 
         // Group by sport
-        const SPORT_ORDER=['NBA','NFL','MLB','NHL','Premier League','La Liga','Champions League','MLS'];
+        const SPORT_ORDER=['NBA','NCAA Basketball','NFL','MLB','NHL','Premier League','La Liga','Champions League','MLS'];
         const bySport={};
         for(const line of lines){
             const sp=line.sport||'Other';
@@ -953,7 +967,7 @@ async function loadLines(){
             return (ai===-1?99:ai)-(bi===-1?99:bi);
         });
 
-        const SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒','Premier League':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','La Liga':'🇪🇸','Champions League':'🏆',MLS:'🇺🇸',Other:'🎯'};
+        const SPORT_EMOJI={NBA:'🏀','NCAA Basketball':'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒','Premier League':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','La Liga':'🇪🇸','Champions League':'🏆',MLS:'🇺🇸',Other:'🎯'};
         let html=`<div class="page-header"><div class="page-title">Marketplace</div><div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''}</div></div>${scoreTicker}`;
 
         for(const sp of sports){
@@ -1122,7 +1136,7 @@ async function renderCreateLine(){
             bySport[sp].push(g);
         }
         const sports=Object.keys(bySport);
-        const SPORT_EMOJI={NBA:'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒','Premier League':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','La Liga':'🇪🇸','Champions League':'🏆',MLS:'🇺🇸',Other:'🎯'};
+        const SPORT_EMOJI={NBA:'🏀','NCAA Basketball':'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒','Premier League':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','La Liga':'🇪🇸','Champions League':'🏆',MLS:'🇺🇸',Other:'🎯'};
 
         const sportTabs=sports.map((sp,i)=>`
             <div class="sport-tab ${i===0?'active':''}" onclick="selectLeague('${sp}')" id="tab-${sp}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 16px;border-radius:10px;cursor:pointer;border:2px solid ${i===0?'var(--orange)':'var(--border)'};background:${i===0?'rgba(255,140,0,.1)':'var(--bg)'};transition:.2s;min-width:70px;">
@@ -1987,7 +2001,7 @@ async function renderUserSearch(){
     document.getElementById('content').innerHTML=skeletonCards(5);
     const res=await fetch(API+'/users/search?token='+token);
     const users=await res.json();
-    let html=`<div class="page-header"><div class="page-title">Find Bookies</div><div class="page-subtitle">Send friend requests or challenge players</div></div>`;
+    let html=`<div class="page-header"><div class="page-title">Find Bookies</div><div class="page-subtitle">Follow bookies, send friend requests, or send a challenge</div></div>`;
     if(!users.length)return html+`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No users found</div></div>`;
     users.slice(0,30).forEach(u=>{
         const wr=u.wins+u.losses>0?Math.round(u.wins/(u.wins+u.losses)*100):0;
@@ -2002,14 +2016,25 @@ async function renderUserSearch(){
         } else {
             friendBtn=`<button class="btn btn-outline btn-sm" onclick="sendFriendRequest('${u.username}',this)">+ Add Friend</button>`;
         }
-        html+=`<div class="card"><div style="display:flex;align-items:center;gap:16px;">
-            <div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;font-weight:700;">${u.username.charAt(0).toUpperCase()}</div>
-            <div style="flex:1;"><div style="font-weight:700;font-size:16px;">@${u.username}</div>
-            <div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% win rate</div>
-            <div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div>
+        const avatarEl = u.avatar
+            ? `<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;">`
+            : `<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid ${u.is_following?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;flex-shrink:0;font-weight:800;color:var(--green);">${u.username.slice(0,2).toUpperCase()}</div>`;
+        html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')"><div style="display:flex;align-items:center;gap:16px;">
+            ${avatarEl}
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:15px;">@${u.username}${u.is_following?' <span style="font-size:10px;color:var(--green);font-weight:800;">FOLLOWING</span>':''}</div>
+                <div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% win rate</div>
+                <div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div>
+            </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
                 <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':''}$${u.profit}</div>
-                <div style="display:flex;gap:6px;">${friendBtn}<button class="btn btn-primary btn-sm" onclick="openChallengeModal('${u.username}')">⚔️</button></div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation()">
+                    ${friendBtn}
+                    <button class="btn ${u.is_following?'btn-secondary':'btn-outline'} btn-sm" id="fb-${u.username}"
+                        onclick="event.stopPropagation();${u.is_following?'unfollow':'follow'}User('${u.username}',this)">
+                        ${u.is_following?'Following ✓':'+ Follow'}</button>
+                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openChallengeModal('${u.username}')">⚔️</button>
+                </div>
             </div></div></div>`;
     });
     return html;
@@ -2129,6 +2154,12 @@ async function declineFriendReq(reqId, btns){
         if(res.ok){toast('Request declined','info');renderApp();}
         else{const e=await res.json();toast(e.detail||'Error','error');}
     }catch(e){toast('Connection error','error');}
+}
+
+function toggleFollow(username, btn){
+    const isFollowing = btn.textContent.includes('Following');
+    if(isFollowing) unfollowUser(username, btn);
+    else followUser(username, btn);
 }
 
 async function followUser(username, btn) {
@@ -2430,6 +2461,231 @@ async function renderLive(){
     return '';
 }
 
+// ─── REFERRAL ────────────────────────────────────────────────────────────────
+async function renderReferral(){
+    document.getElementById('content').innerHTML = skeletonCards(2);
+    try{
+        const res = await fetch(`${API}/referral?token=${token}`);
+        if(!res.ok) throw new Error('Could not load referral info');
+        const r = await res.json();
+        const shareUrl = `${location.origin}/app?ref=${r.referral_code}`;
+
+        return `<div style="max-width:600px;">
+            <div class="page-header">
+                <div class="page-title">🎁 Refer & Earn</div>
+                <div class="page-subtitle">Share BookieVerse — you both get $250 bonus coins</div>
+            </div>
+
+            <!-- Stats -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                <div class="settings-section" style="text-align:center;padding:20px 16px;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:48px;font-weight:800;color:var(--green);line-height:1;">${r.referral_count}</div>
+                    <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;margin-top:4px;">Friends Referred</div>
+                </div>
+                <div class="settings-section" style="text-align:center;padding:20px 16px;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:48px;font-weight:800;color:var(--gold);line-height:1;">$${r.referral_count * r.referral_bonus}</div>
+                    <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;margin-top:4px;">Coins Earned</div>
+                </div>
+            </div>
+
+            <!-- Code -->
+            <div class="settings-section">
+                <div class="settings-section-title">Your Referral Code</div>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+                    <div style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:10px;
+                        padding:14px 16px;font-family:'Barlow Condensed',sans-serif;font-size:28px;
+                        font-weight:800;color:var(--green);letter-spacing:2px;">${r.referral_code}</div>
+                    <button class="btn btn-secondary" onclick="copyReferralCode('${r.referral_code}')" style="white-space:nowrap;">
+                        📋 Copy Code
+                    </button>
+                </div>
+                <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">
+                    Share your code or link. When a friend signs up with it, you both get <strong style="color:var(--green);">$${r.referral_bonus} bonus coins</strong>.
+                </div>
+                <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;
+                    padding:12px 14px;font-size:12px;color:var(--text-muted);word-break:break-all;
+                    margin-bottom:10px;">${shareUrl}</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="copyReferralLink('${shareUrl}')">🔗 Copy Link</button>
+                    <button class="btn btn-secondary" onclick="shareReferral('${shareUrl}','${r.referral_code}')">📤 Share</button>
+                </div>
+            </div>
+
+            <!-- How it works -->
+            <div class="settings-section">
+                <div class="settings-section-title">How It Works</div>
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                    ${[
+                        ['1','Share your link or code with friends','🔗'],
+                        ['2','They sign up using your code','✍️'],
+                        ['3','Both of you get $250 bonus coins instantly','💰'],
+                        ['4','No limit — refer as many friends as you want','♾️']
+                    ].map(([n,t,e])=>`
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:28px;height:28px;border-radius:50%;background:rgba(0,214,122,.15);
+                                border:1px solid rgba(0,214,122,.3);display:flex;align-items:center;justify-content:center;
+                                font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:var(--green);flex-shrink:0;">${n}</div>
+                            <div style="font-size:13px;">${e} ${t}</div>
+                        </div>`).join('')}
+                </div>
+            </div>
+        </div>`;
+    } catch(e){
+        return `<div class="empty-state"><div class="empty-icon">😕</div><div class="empty-title">${e.message}</div></div>`;
+    }
+}
+
+function copyReferralCode(code){
+    navigator.clipboard.writeText(code).then(()=>toast('Code copied! 📋','success')).catch(()=>toast('Copy failed','error'));
+}
+function copyReferralLink(url){
+    navigator.clipboard.writeText(url).then(()=>toast('Link copied! 🔗','success')).catch(()=>toast('Copy failed','error'));
+}
+function shareReferral(url, code){
+    if(navigator.share){
+        navigator.share({title:'Join BookieVerse',text:`Use my referral code ${code} and we both get $250 bonus coins!`,url}).catch(()=>{});
+    } else {
+        copyReferralLink(url);
+    }
+}
+
+// ─── ADMIN ANALYTICS ─────────────────────────────────────────────────────────
+async function renderAdminAnalytics(){
+    document.getElementById('content').innerHTML = skeletonCards(4);
+    try{
+        const res = await fetch(`${API}/admin/analytics?token=${token}`);
+        if(!res.ok){ const e=await res.json(); throw new Error(e.detail||'Access denied'); }
+        const d = await res.json();
+
+        // Sparkline bar chart from daily signups
+        const maxDay = Math.max(...(d.users.daily_signups.map(s=>s.count)||[1]), 1);
+        const sparkBars = d.users.daily_signups.slice(-14).map(s=>{
+            const h = Math.max(4, Math.round((s.count/maxDay)*48));
+            return `<div title="${s.day}: ${s.count} signups" style="flex:1;height:${h}px;background:var(--green);
+                border-radius:2px 2px 0 0;opacity:.85;min-width:4px;"></div>`;
+        }).join('');
+
+        const statBox = (label, val, sub='', color='var(--text)') =>
+            `<div class="profile-stat">
+                <div class="profile-stat-num" style="color:${color};">${val}</div>
+                <div class="profile-stat-label">${label}</div>
+                ${sub?`<div style="font-size:9px;color:var(--text-dim);margin-top:2px;">${sub}</div>`:''}
+            </div>`;
+
+        const recentRows = d.recent_signups.map(u=>
+            `<tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:8px 0;font-weight:700;cursor:pointer;color:var(--green);" onclick="viewProfile('${u.username}')">@${u.username}</td>
+                <td style="padding:8px 0;font-size:12px;color:var(--text-muted);">${u.email||'<span style="color:var(--text-dim);">—</span>'}</td>
+                <td style="padding:8px 0;font-size:12px;color:var(--text-dim);">${u.referred_by?`🎁 ${u.referred_by}`:''}</td>
+                <td style="padding:8px 0;font-size:11px;color:var(--text-dim);text-align:right;">${u.joined}</td>
+            </tr>`
+        ).join('');
+
+        const topBookieRows = d.top_bookies.map((u,i)=>
+            `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
+                    color:${i===0?'var(--gold)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text-dim)'};">
+                    ${['🥇','🥈','🥉'][i]||i+1}</div>
+                <div style="flex:1;cursor:pointer;" onclick="viewProfile('${u.username}')">
+                    <div style="font-weight:700;">@${u.username}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${u.wins}W — ${u.losses}L</div>
+                </div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;
+                    color:${u.profit>=0?'var(--green)':'var(--red)'};">
+                    ${u.profit>=0?'+':''}$${Math.abs(u.profit).toFixed(0)}</div>
+            </div>`
+        ).join('');
+
+        return `<div>
+            <div class="page-header">
+                <div class="page-title">⚙️ Admin Analytics</div>
+                <div class="page-subtitle">Platform overview</div>
+            </div>
+
+            <!-- Users -->
+            <div class="profile-section-title" style="max-width:680px;">👥 Users</div>
+            <div class="profile-card" style="margin-bottom:20px;">
+                <div class="profile-stat-row" style="grid-template-columns:repeat(4,1fr);">
+                    ${statBox('Total Users', d.users.total, '', 'var(--text)')}
+                    ${statBox('New Today', d.users.new_today, '', d.users.new_today>0?'var(--green)':'var(--text)')}
+                    ${statBox('This Week', d.users.new_week)}
+                    ${statBox('This Month', d.users.new_month)}
+                </div>
+                <div class="profile-stat-row" style="grid-template-columns:repeat(3,1fr);">
+                    ${statBox('Have Email', d.users.with_email, `${d.users.email_rate}% rate`, 'var(--green)')}
+                    ${statBox('Via Referral', d.users.referred, '', 'var(--gold)')}
+                    ${statBox('Retention', '—', 'coming soon', 'var(--text-dim)')}
+                </div>
+                <!-- Signup sparkline -->
+                <div style="padding:16px 20px;">
+                    <div style="font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--text-dim);
+                        text-transform:uppercase;margin-bottom:8px;">Daily Signups (last 14 days)</div>
+                    <div style="display:flex;align-items:flex-end;gap:2px;height:52px;">
+                        ${sparkBars||'<div style="color:var(--text-dim);font-size:12px;">No data yet</div>'}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bets + Lines -->
+            <div class="profile-section-title" style="max-width:680px;">📋 Activity</div>
+            <div class="profile-card" style="margin-bottom:20px;">
+                <div class="profile-stat-row" style="grid-template-columns:repeat(3,1fr);">
+                    ${statBox('Total Bets', d.bets.total)}
+                    ${statBox('Open Bets', d.bets.open, '', 'var(--gold)')}
+                    ${statBox('Settled', d.bets.settled, '', 'var(--green)')}
+                </div>
+                <div class="profile-stat-row" style="grid-template-columns:repeat(3,1fr);">
+                    ${statBox('Total Wagered', '$'+Math.round(d.bets.total_wagered).toLocaleString(), '', 'var(--green)')}
+                    ${statBox('Lines Posted', d.lines.total)}
+                    ${statBox('Chat Messages', d.chat.total)}
+                </div>
+            </div>
+
+            <!-- Top Bookies -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:680px;margin-bottom:20px;">
+                <div>
+                    <div class="profile-section-title">🏆 Top Bookies</div>
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:0 16px;">
+                        ${topBookieRows||'<div style="padding:16px 0;color:var(--text-dim);font-size:13px;">No data yet</div>'}
+                    </div>
+                </div>
+                <div>
+                    <div class="profile-section-title">🎁 Top Referrers</div>
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;">
+                        ${d.top_referrers.length ? d.top_referrers.map(u=>
+                            `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+                                <span style="font-weight:700;cursor:pointer;" onclick="viewProfile('${u.username}')">@${u.username}</span>
+                                <span style="color:var(--gold);font-weight:700;">${u.referral_count} refs</span>
+                            </div>`).join('')
+                        : '<div style="color:var(--text-dim);font-size:13px;">No referrals yet</div>'}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Signups Table -->
+            <div class="profile-section-title" style="max-width:680px;">🆕 Recent Signups</div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;
+                overflow:auto;max-width:680px;margin-bottom:40px;">
+                <table style="width:100%;border-collapse:collapse;min-width:400px;">
+                    <thead>
+                        <tr style="border-bottom:1px solid var(--border);">
+                            <th style="padding:10px 16px;text-align:left;font-size:10px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">User</th>
+                            <th style="padding:10px 8px;text-align:left;font-size:10px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">Email</th>
+                            <th style="padding:10px 8px;text-align:left;font-size:10px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">Ref Code</th>
+                            <th style="padding:10px 16px;text-align:right;font-size:10px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody style="padding:0 16px;">
+                        ${recentRows||'<tr><td colspan="4" style="padding:16px;color:var(--text-dim);text-align:center;">No signups yet</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>`;
+    } catch(e){
+        return `<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">${e.message}</div></div>`;
+    }
+}
+
 // ─── PROFILE & SETTINGS ───────────────────────────────────────────────────────
 let _profileUsername = null;
 
@@ -2440,6 +2696,10 @@ const BANNER_COLORS = [
 ];
 
 const ALL_TEAMS = {
+    'NCAA Basketball':['Duke','Kentucky','Kansas','North Carolina','Gonzaga','Michigan State','UCLA','Villanova','Arizona','Houston',
+        'Tennessee','Auburn','Purdue','Indiana','Ohio State','Michigan','Louisville','Syracuse','Georgetown','Connecticut',
+        'Florida','Florida State','Texas','Texas Tech','Baylor','Iowa','Illinois','Wisconsin','Oregon','USC',
+        'Marquette','St. John\'s','Creighton','Xavier','Providence','Butler','Seton Hall','DePaul','Oklahoma','Arkansas'],
     'NBA':['Lakers','Celtics','Warriors','Bulls','Knicks','Heat','Bucks','Nets','76ers','Suns','Nuggets','Clippers','Mavericks','Spurs','Thunder','Cavaliers','Raptors','Hawks','Pistons','Kings','Pelicans','Grizzlies','Timberwolves','Blazers','Jazz','Rockets','Hornets','Wizards','Magic','Pacers'],
     'NFL':['Chiefs','Eagles','Bills','49ers','Cowboys','Patriots','Ravens','Bengals','Chargers','Rams','Dolphins','Jets','Steelers','Seahawks','Packers','Lions','Vikings','Bears','Falcons','Saints','Panthers','Buccaneers','Cardinals','Broncos','Raiders','Titans','Colts','Texans','Jaguars','Browns','Commanders','Giants'],
     'MLB':['Yankees','Dodgers','Red Sox','Cubs','Giants','Astros','Braves','Mets','Cardinals','Phillies','Blue Jays','Mariners','Padres','Twins','Brewers','Rays','Tigers','White Sox','Athletics','Orioles','Rangers','Angels','Rockies','Reds','Pirates','Nationals','Guardians','Royals','Diamondbacks','Marlins'],
@@ -2623,7 +2883,7 @@ async function renderSettings(){
     ).join('');
 
     // Sport selector
-    const sportOpts = ['','NBA','NFL','MLB','NHL','Premier League','La Liga','MLS']
+    const sportOpts = ['','NBA','NCAA Basketball','NFL','MLB','NHL','Premier League','La Liga','MLS']
         .map(s => `<option value="${s}" ${u.favorite_sport===s?'selected':''}>${s||'— Pick a sport —'}</option>`).join('');
 
     // Team selector based on current sport
@@ -2661,6 +2921,17 @@ async function renderSettings(){
                     background:linear-gradient(135deg,${bannerColor},${bannerColor}aa);"
                     id="bannerPreview"></div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">${swatches}</div>
+            </div>
+
+            <!-- Email -->
+            <div class="settings-section">
+                <div class="settings-section-title">Account</div>
+                <div class="form-group">
+                    <label>Email ${u.email?'<span style="color:var(--green);font-size:10px;font-weight:800;">✓ VERIFIED</span>':'<span style="color:var(--gold);font-size:10px;font-weight:800;">NOT SET</span>'}</label>
+                    <input type="email" id="settingsEmail" value="${u.email||''}" placeholder="your@email.com"
+                        autocomplete="email">
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Used for account recovery and updates. Never shared.</div>
+                </div>
             </div>
 
             <!-- Bio + Info -->
@@ -2754,7 +3025,8 @@ async function saveSettings(){
     const selectedSwatch = document.querySelector('.color-swatch.selected');
     const bannerColor = selectedSwatch ? selectedSwatch.dataset.color : (user?.banner_color || '');
 
-    const payload = { bio, location, favorite_sport: sport, favorite_team: team, banner_color: bannerColor };
+    const email = document.getElementById('settingsEmail')?.value.trim()||'';
+    const payload = { bio, location, favorite_sport: sport, favorite_team: team, banner_color: bannerColor, email: email||null };
     if(window._pendingAvatar !== undefined) payload.avatar = window._pendingAvatar;
 
     try{
@@ -3634,15 +3906,15 @@ async function renderApp(){
     if(!user){await loadUser();}if(!user)return;
     refreshBadges(); // async, non-blocking — updates badge count for next render cycle
     const NAV=[
-        {id:'marketplace',icon:'📊',label:'Marketplace'},{id:'live',icon:'🔴',label:'Live'},{id:'feed',icon:'📡',label:'Feed'},{id:'chat',icon:'💬',label:'Chat'},{id:'create',icon:'⚡',label:'Set Lines'},{id:'settings',icon:'⚙️',label:'Settings'},
+        {id:'marketplace',icon:'📊',label:'Marketplace'},{id:'live',icon:'🔴',label:'Live'},{id:'feed',icon:'📡',label:'Feed'},{id:'chat',icon:'💬',label:'Chat'},{id:'create',icon:'⚡',label:'Set Lines'},{id:'settings',icon:'⚙️',label:'Settings'},{id:'referral',icon:'🎁',label:'Refer & Earn'},
         {id:'props',icon:'🎲',label:'Props'},{id:'futures',icon:'🔮',label:'Futures'},
         {id:'bets',icon:'📋',label:'My Bets'},{id:'challenges',icon:'⚔️',label:'Challenges',badgeKey:'challengeCount'},
         {id:'friends',icon:'🤝',label:'Friends',badgeKey:'friendRequestCount'},
         {id:'leaderboard',icon:'🏆',label:'Leaderboard'},
         {id:'groups',icon:'👥',label:'Groups'},{id:'following',icon:'⭐',label:'Following'},
         {id:'search',icon:'🔍',label:'Find Bookies'},{id:'parlays',icon:'🎰',label:'Parlays'},{id:'shop',icon:'💰',label:'Shop'},
-        {id:'settings',icon:'⚙️',label:'Settings'},
-        ...(user.is_admin?[{id:'admin',icon:'⚙',label:'Admin'}]:[])
+        {id:'settings',icon:'⚙️',label:'Settings'},{id:'referral',icon:'🎁',label:'Refer & Earn'},
+        ...(user.is_admin?[{id:'admin',icon:'⚙',label:'Admin'},{id:'analytics',icon:'📊',label:'Analytics'}]:[])
     ];
     const sidebarNav=NAV.map(n=>{
         const cnt=(n.badgeKey&&window._badges&&window._badges[n.badgeKey])||0;
@@ -3735,6 +4007,8 @@ async function renderApp(){
     else if(view==='search')content=await renderUserSearch();
     else if(view==='profile')content=await renderProfile(_profileUsername||user?.username);
     else if(view==='settings')content=await renderSettings();
+    else if(view==='referral')content=await renderReferral();
+    else if(view==='analytics')content=await renderAdminAnalytics();
     else if(view==='admin')content=await renderAdmin();
     const ct=document.getElementById('content');if(ct&&content)ct.innerHTML=content;
 }
@@ -4057,20 +4331,79 @@ function renderLogin(){
         <div class="login-screen"><div class="login-box">
             <div class="login-logo">BookieVerse</div>
             <div class="login-tagline">PvP Sportsbook</div>
-            <div class="form-group"><label>Username</label><input id="loginUsername" placeholder="Enter username" autofocus></div>
-            <div class="form-group"><label>Password</label><input id="loginPassword" type="password" placeholder="6+ characters"></div>
-            <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px;">
-                <button id="loginBtn" class="btn btn-primary btn-lg btn-full" onclick="doLogin()">Login</button>
-                <button id="registerBtn" class="btn btn-secondary btn-lg btn-full" onclick="doRegister()">Register</button>
+
+            <!-- Tabs -->
+            <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:20px;">
+                <button id="tabLogin" onclick="switchLoginTab(true)"
+                    style="flex:1;background:none;border:none;padding:10px;font-size:14px;font-weight:700;
+                    cursor:pointer;color:var(--green);border-bottom:2px solid var(--green);transition:.15s;">
+                    Login</button>
+                <button id="tabRegister" onclick="switchLoginTab(false)"
+                    style="flex:1;background:none;border:none;padding:10px;font-size:14px;font-weight:700;
+                    cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:.15s;">
+                    Register</button>
             </div>
 
+            <!-- Login form -->
+            <div id="formLogin">
+                <div class="form-group">
+                    <label>Username or Email</label>
+                    <input id="loginUsername" placeholder="Enter username or email" autofocus autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+                </div>
+                <button id="loginBtn" class="btn btn-primary btn-lg btn-full" style="margin-top:20px;" onclick="doLogin()">Login</button>
+            </div>
+
+            <!-- Register form -->
+            <div id="formRegister" style="display:none;">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input id="regUsername" placeholder="Choose a username" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input id="regEmail" type="email" placeholder="your@email.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input id="regPassword" type="password" placeholder="6+ characters" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label>Referral Code <span style="color:var(--text-dim);font-weight:400;">(optional)</span></label>
+                    <input id="regReferral" placeholder="e.g. BV-MIKE7X" style="text-transform:uppercase;"
+                        oninput="this.value=this.value.toUpperCase()">
+                </div>
+                <button id="registerBtn" class="btn btn-primary btn-lg btn-full" style="margin-top:20px;" onclick="doRegister()">
+                    Create Account
+                </button>
+                <div style="font-size:11px;color:var(--text-dim);text-align:center;margin-top:10px;">
+                    Have a referral code? Both you and your friend get $250 bonus coins 🎉
+                </div>
+            </div>
         </div></div>`;
-    document.getElementById('loginUsername').addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('loginPassword').focus();});
-    document.getElementById('loginPassword').addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('loginBtn').click();});
+
+    // Enter key handlers
+    document.getElementById('loginUsername')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('loginPassword').focus();});
+    document.getElementById('loginPassword')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('loginBtn').click();});
+    document.getElementById('regUsername')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('regEmail').focus();});
+    document.getElementById('regEmail')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('regPassword').focus();});
+    document.getElementById('regPassword')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('registerBtn').click();});
+
+    // Pre-fill referral code from URL ?ref=XXX
+    const urlRef = new URLSearchParams(window.location.search).get('ref');
+    if(urlRef){ switchLoginTab(false); const ri=document.getElementById('regReferral'); if(ri)ri.value=urlRef.toUpperCase(); }
 }
+
 function switchLoginTab(isLogin){
-    document.getElementById('tabLogin').classList.toggle('active',isLogin);
-    document.getElementById('tabRegister').classList.toggle('active',!isLogin);
+    document.getElementById('tabLogin').style.color = isLogin?'var(--green)':'var(--text-muted)';
+    document.getElementById('tabLogin').style.borderBottomColor = isLogin?'var(--green)':'transparent';
+    document.getElementById('tabRegister').style.color = isLogin?'var(--text-muted)':'var(--green)';
+    document.getElementById('tabRegister').style.borderBottomColor = isLogin?'transparent':'var(--green)';
+    document.getElementById('formLogin').style.display = isLogin?'block':'none';
+    document.getElementById('formRegister').style.display = isLogin?'none':'block';
 }
 if(!token){renderLogin();}else{(async()=>{await loadPropTypes();renderApp();startNotifPolling();})();}
 </script>
