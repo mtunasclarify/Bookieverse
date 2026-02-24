@@ -6,6 +6,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import hashlib
+import secrets
+import string
 import jwt
 from datetime import datetime, timedelta
 import uvicorn
@@ -72,6 +74,11 @@ class User(Base):
     favorite_sport = Column(String(40), nullable=True)
     location = Column(String(60), nullable=True)
     banner_color = Column(String(20), nullable=True)  # hex color for profile banner
+    # Contact + referral
+    email = Column(String(200), nullable=True, unique=True)
+    referral_code = Column(String(20), nullable=True, unique=True)  # their shareable code
+    referred_by = Column(String(20), nullable=True)  # code used at signup
+    referral_count = Column(Integer, default=0)       # how many people they referred
 
 class Line(Base):
     __tablename__ = "lines"
@@ -276,6 +283,11 @@ def run_migrations():
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS odds INTEGER DEFAULT -110",
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS bookie_amount FLOAT",
         "ALTER TABLE prop_bets ADD COLUMN IF NOT EXISTS bettor_amount FLOAT",
+        # users table — email + referral
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(200)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by VARCHAR(20)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0",
         # users table — profile fields (added for profile/settings feature)
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio VARCHAR(300)",
@@ -377,6 +389,7 @@ def get_cached_games() -> list:
 # ─────────────────────────────────────────────────────────────────────────────
 ESPN_SPORTS = [
     ("basketball/nba", "NBA"),
+    ("basketball/mens-college-basketball", "NCAA Basketball"),
     ("football/nfl", "NFL"),
     ("baseball/mlb", "MLB"),
     ("hockey/nhl", "NHL"),
@@ -781,6 +794,8 @@ def stop_scheduler():
 class UserCreate(BaseModel):
     username: str
     password: str
+    email: str = None        # required for new signups, optional for existing
+    referral_code: str = None  # code used at signup
 
 class LineCreate(BaseModel):
     game_id: str
@@ -856,77 +871,212 @@ def home():
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/app", status_code=302)
 
+def generate_referral_code(username: str) -> str:
+    """Generate a unique referral code like BV-MIGUEL7X"""
+    suffix = ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(4))
+    base = username[:6].upper().replace(' ','')
+    return f"BV-{base}{suffix}"
+
 @app.post("/api/auth/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     try:
         print(f"=== REGISTER ATTEMPT: {user.username} ===")
-        
+
         if len(user.password) < 6:
-            print("Password too short")
-            raise HTTPException(400, "Password 6+ chars")
-        
-        # Check if username exists
-        print(f"Checking if {user.username} exists...")
+            raise HTTPException(400, "Password must be 6+ characters")
+
+        # Validate email for new signups (skip if no email — grandfathered accounts)
+        if user.email is not None:
+            email = user.email.strip().lower()
+            if "@" not in email or "." not in email.split("@")[-1]:
+                raise HTTPException(400, "Please enter a valid email address")
+            # Check email uniqueness
+            email_taken = db.query(User).filter(User.email == email).first()
+            if email_taken:
+                raise HTTPException(400, "An account with that email already exists")
+        else:
+            email = None
+
+        # Check username uniqueness
         existing = db.query(User).filter(User.username == user.username).first()
-        print(f"Existing user found: {existing is not None}")
-        
         if existing:
-            print(f"User {user.username} already exists!")
-            raise HTTPException(400, "Username taken")
-        
-        print("Counting total users...")
+            raise HTTPException(400, "Username taken — try another")
+
+        # First user ever = admin
         user_count = db.query(User).count()
         is_admin = user_count == 0
-        print(f"Total users: {user_count}, Will be admin: {is_admin}")
-        
-        print("Creating new user...")
-        new_user = User(username=user.username, password=hash_password(user.password), is_admin=is_admin)
+
+        # Generate unique referral code
+        ref_code = generate_referral_code(user.username)
+        while db.query(User).filter(User.referral_code == ref_code).first():
+            ref_code = generate_referral_code(user.username)
+
+        # Handle referral bonus
+        referral_bonus = 0
+        referred_by_code = None
+        if user.referral_code:
+            referrer = db.query(User).filter(User.referral_code == user.referral_code.upper().strip()).first()
+            if referrer and referrer.username != user.username:
+                referral_bonus = 250  # both get $250 bonus
+                referrer.balance += referral_bonus
+                referrer.referral_count = (referrer.referral_count or 0) + 1
+                referred_by_code = user.referral_code.upper().strip()
+                # Notify referrer
+                push_notification(db, referrer.id, "bet_settled",
+                    "🎉 Referral bonus!",
+                    f"@{user.username} joined using your link — you both got ${referral_bonus}!",
+                    None)
+
+        new_user = User(
+            username=user.username,
+            password=hash_password(user.password),
+            email=email,
+            is_admin=is_admin,
+            referral_code=ref_code,
+            referred_by=referred_by_code,
+            balance=1000.0 + referral_bonus
+        )
         db.add(new_user)
-        
-        print("Committing to database...")
         db.commit()
         db.refresh(new_user)
-        
-        print(f"User created successfully! ID: {new_user.id}")
+
+        print(f"User created: {new_user.id} | email: {email} | ref_code: {ref_code}")
         return {
-            "token": create_token(new_user.id), 
+            "token": create_token(new_user.id),
             "user": {
-                "id": new_user.id, 
-                "username": new_user.username, 
-                "balance": new_user.balance,
-                "profit": new_user.profit,
-                "wins": new_user.wins,
-                "losses": new_user.losses,
-                "lines_created": new_user.lines_created,
-                "is_admin": new_user.is_admin
+                "id": new_user.id, "username": new_user.username,
+                "balance": new_user.balance, "profit": new_user.profit,
+                "wins": new_user.wins, "losses": new_user.losses,
+                "lines_created": new_user.lines_created, "is_admin": new_user.is_admin,
+                "email": new_user.email, "referral_code": new_user.referral_code,
+                "referral_count": new_user.referral_count or 0,
+                "referral_bonus": referral_bonus
             }
         }
     except HTTPException:
         raise
     except Exception as e:
         print(f"!!! REGISTRATION ERROR: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
         db.rollback()
-        raise HTTPException(500, f"Database error: {str(e)}")
+        raise HTTPException(500, f"Registration error: {str(e)}")
 
 @app.post("/api/auth/login")
 def login(user: UserCreate, db: Session = Depends(get_db)):
-    u = db.query(User).filter(User.username == user.username).first()
+    # Accept username OR email for login
+    identifier = user.username.strip().lower()
+    u = db.query(User).filter(User.username == user.username.strip()).first()
+    if not u:
+        u = db.query(User).filter(User.email == identifier).first()
     if not u or u.password != hash_password(user.password):
-        raise HTTPException(401, "Invalid credentials")
+        raise HTTPException(401, "Invalid username/email or password")
     return {
-        "token": create_token(u.id), 
+        "token": create_token(u.id),
         "user": {
-            "id": u.id, 
-            "username": u.username, 
-            "balance": u.balance,
-            "profit": u.profit,
-            "wins": u.wins,
-            "losses": u.losses,
-            "lines_created": u.lines_created,
-            "is_admin": u.is_admin
+            "id": u.id, "username": u.username, "balance": u.balance,
+            "profit": u.profit, "wins": u.wins, "losses": u.losses,
+            "lines_created": u.lines_created, "is_admin": u.is_admin,
+            "email": u.email, "referral_code": u.referral_code,
+            "referral_count": u.referral_count or 0
         }
+    }
+
+# ── Referral ─────────────────────────────────────────────────────────────────
+@app.get("/api/referral")
+def get_referral_info(token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    if not user_id: raise HTTPException(401, "Invalid token")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user: raise HTTPException(404, "User not found")
+    # Generate code if they don't have one yet
+    if not user.referral_code:
+        code = generate_referral_code(user.username)
+        while db.query(User).filter(User.referral_code == code).first():
+            code = generate_referral_code(user.username)
+        user.referral_code = code
+        db.commit()
+    return {
+        "referral_code": user.referral_code,
+        "referral_count": user.referral_count or 0,
+        "referral_bonus": 250,
+        "share_url": f"/app?ref={user.referral_code}"
+    }
+
+# ── Admin Analytics ────────────────────────────────────────────────────────────
+@app.get("/api/admin/analytics")
+def admin_analytics(token: str, db: Session = Depends(get_db)):
+    user_id = verify_token(token)
+    user = db.query(User).filter(User.id == user_id, User.is_admin == True).first()
+    if not user: raise HTTPException(403, "Admin only")
+
+    now = datetime.utcnow()
+    day_ago   = now - timedelta(days=1)
+    week_ago  = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
+
+    # ── User stats ────────────────────────────────────────────────────────────
+    total_users   = db.query(User).count()
+    new_today     = db.query(User).filter(User.created_at >= day_ago).count()
+    new_week      = db.query(User).filter(User.created_at >= week_ago).count()
+    new_month     = db.query(User).filter(User.created_at >= month_ago).count()
+    with_email    = db.query(User).filter(User.email.isnot(None)).count()
+    referred_users= db.query(User).filter(User.referred_by.isnot(None)).count()
+
+    # Signups per day last 30 days
+    from sqlalchemy import func
+    daily_signups = db.query(
+        func.date(User.created_at).label('day'),
+        func.count(User.id).label('count')
+    ).filter(User.created_at >= month_ago).group_by(func.date(User.created_at)).order_by('day').all()
+
+    # ── Bet stats ─────────────────────────────────────────────────────────────
+    total_bets    = db.query(Bet).count()
+    bets_today    = db.query(Bet).filter(Bet.created_at >= day_ago).count()
+    bets_week     = db.query(Bet).filter(Bet.created_at >= week_ago).count()
+    settled_bets  = db.query(Bet).filter(Bet.status == "settled").count()
+    open_bets     = db.query(Bet).filter(Bet.status == "pending").count()
+
+    # Total money wagered
+    from sqlalchemy import func as f2
+    total_wagered = db.query(f2.sum(Bet.amount)).scalar() or 0
+
+    # ── Line stats ────────────────────────────────────────────────────────────
+    total_lines   = db.query(Line).count()
+    open_lines    = db.query(Line).filter(Line.status == "open").count()
+    lines_week    = db.query(Line).filter(Line.created_at >= week_ago).count()
+
+    # ── Chat stats ────────────────────────────────────────────────────────────
+    total_msgs    = db.query(ChatMessage).count()
+    msgs_today    = db.query(ChatMessage).filter(ChatMessage.created_at >= day_ago).count()
+    msgs_week     = db.query(ChatMessage).filter(ChatMessage.created_at >= week_ago).count()
+
+    # ── Top bookies ───────────────────────────────────────────────────────────
+    top_bookies = db.query(User).order_by(User.profit.desc()).limit(5).all()
+    top_referrers = db.query(User).filter(User.referral_count > 0).order_by(User.referral_count.desc()).limit(5).all()
+
+    # ── Recent signups ────────────────────────────────────────────────────────
+    recent_users = db.query(User).order_by(User.created_at.desc()).limit(10).all()
+
+    return {
+        "users": {
+            "total": total_users, "new_today": new_today,
+            "new_week": new_week, "new_month": new_month,
+            "with_email": with_email, "email_rate": round(with_email/total_users*100,1) if total_users else 0,
+            "referred": referred_users,
+            "daily_signups": [{"day": str(r.day), "count": r.count} for r in daily_signups]
+        },
+        "bets": {
+            "total": total_bets, "today": bets_today, "week": bets_week,
+            "settled": settled_bets, "open": open_bets,
+            "total_wagered": round(total_wagered, 2)
+        },
+        "lines": {"total": total_lines, "open": open_lines, "week": lines_week},
+        "chat": {"total": total_msgs, "today": msgs_today, "week": msgs_week},
+        "top_bookies": [{"username": u.username, "profit": u.profit, "wins": u.wins, "losses": u.losses} for u in top_bookies],
+        "top_referrers": [{"username": u.username, "referral_count": u.referral_count} for u in top_referrers],
+        "recent_signups": [{"username": u.username, "email": u.email,
+            "referred_by": u.referred_by, "joined": u.created_at.strftime("%b %d %H:%M") if u.created_at else ""
+        } for u in recent_users]
     }
 
 # ── Global Chat ──────────────────────────────────────────────────────────────
@@ -2385,6 +2535,7 @@ class ProfileUpdate(_BM):
     location: str = None
     banner_color: str = None
     avatar: str = None  # base64 data URI
+    email: str = None
 
 @app.patch("/api/user/profile")
 def update_profile_v2(data: ProfileUpdate, token: str, db: Session = Depends(get_db)):
@@ -2406,6 +2557,15 @@ def update_profile_v2(data: ProfileUpdate, token: str, db: Session = Depends(get
         if data.avatar and len(data.avatar) > 500_000:
             raise HTTPException(400, "Image too large — compress before uploading")
         user.avatar = data.avatar or None
+    if data.email is not None:
+        em = data.email.strip().lower() if data.email else None
+        if em and ("@" not in em or "." not in em.split("@")[-1]):
+            raise HTTPException(400, "Invalid email address")
+        if em:
+            taken = db.query(User).filter(User.email == em, User.id != user.id).first()
+            if taken:
+                raise HTTPException(400, "Email already in use by another account")
+        user.email = em
     db.commit()
     total = (user.wins or 0) + (user.losses or 0)
     win_rate = round((user.wins or 0) / total * 100, 1) if total > 0 else 0
@@ -2500,7 +2660,8 @@ def get_user(token: str, db: Session = Depends(get_db)):
             "is_admin": user.is_admin, "win_rate": win_rate,
             "avatar": user.avatar, "bio": user.bio, "favorite_team": user.favorite_team,
             "favorite_sport": user.favorite_sport, "location": user.location,
-            "banner_color": user.banner_color,
+            "banner_color": user.banner_color, "email": user.email,
+            "referral_code": user.referral_code, "referral_count": user.referral_count or 0,
             "created_at": user.created_at.isoformat() if user.created_at else ""}
 
 
