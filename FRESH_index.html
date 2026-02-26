@@ -9,7 +9,13 @@
     <meta name="apple-mobile-web-app-title" content="BookieVerse">
     <meta name="theme-color" content="#0b1120">
     <meta name="description" content="P2P Sports Betting — Post lines, take action, settle up.">
+    <meta property="og:title" content="BookieVerse — P2P Sportsbook">
+    <meta property="og:description" content="Post lines, take action, settle up.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
     <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="icon" type="image/png" href="/icon-192.png">
     <title>BookieVerse</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -21,6 +27,8 @@
             --gold:#f5a623;--red:#ff4560;--orange:#ff8c42;--blue:#4a9eff;--purple:#8b5cf6;
             --text:#ddeeff;--text-muted:#6b90b8;--text-dim:#3d607e;
             --muted:#6b90b8;--dim:#3d607e;
+            --bg-secondary:#0f1826;
+            --border-subtle:rgba(255,255,255,.04);
         }
         *{margin:0;padding:0;box-sizing:border-box;}
         body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
@@ -30,7 +38,7 @@
         .sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
             display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
         .main{flex:1;min-width:0;}
-        .content-area{max-width:960px;margin:0 auto;padding:28px 24px;}
+        .content-area{max-width:960px;margin:0 auto;padding:28px 24px;position:relative;}
         .sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid var(--border);}
         .logo-text{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;
             background:linear-gradient(135deg,var(--green),#00a8ff);-webkit-background-clip:text;
@@ -44,9 +52,11 @@
         .bal-amount{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--green);line-height:1.1;}
         .bal-pl{font-size:13px;font-weight:600;margin-top:2px;}
         .bal-pl.pos{color:var(--green);}.bal-pl.neg{color:var(--red);}
-        .sidebar-nav{padding:12px 0;flex:1;}
+        .sidebar-nav{padding:12px 0;flex:1;overflow-y:auto;}
+        .nav-section-label{font-size:8px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;padding:14px 20px 4px;border-top:1px solid rgba(255,255,255,.03);}        .sidebar-nav::-webkit-scrollbar{width:3px;}.sidebar-nav::-webkit-scrollbar-track{background:transparent;}.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
         .nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:14px;font-weight:500;
-            color:var(--text-muted);cursor:pointer;transition:all .15s;border-left:3px solid transparent;user-select:none;}
+            color:var(--text-muted);cursor:pointer;transition:all .15s;border-left:3px solid transparent;user-select:none;outline:none;}
+        .nav-item:focus-visible{outline:2px solid var(--green);outline-offset:-2px;border-radius:4px;}
         .nav-item:hover{color:var(--text);background:rgba(255,255,255,.03);}
         .nav-item.active{color:var(--green);background:var(--green-glow);border-left-color:var(--green);}
         .nav-icon{width:18px;text-align:center;font-size:16px;}
@@ -67,12 +77,14 @@
             box-shadow:0 -4px 24px rgba(0,0,0,.4);}
         .mob-bar-inner{display:flex;align-items:stretch;height:58px;}
         .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-            gap:3px;cursor:pointer;color:var(--text-dim);font-size:9px;font-weight:700;letter-spacing:.5px;
+            gap:3px;cursor:pointer;color:var(--text-dim);font-size:9px;font-weight:700;letter-spacing:.3px;
             text-transform:uppercase;transition:color .15s;position:relative;-webkit-tap-highlight-color:transparent;
-            min-width:0;padding:6px 2px;}
+            min-width:0;padding:6px 1px;}
+        @media(max-width:360px){.mob-tab{font-size:8px;letter-spacing:0;}.mob-tab .mob-icon{font-size:18px!important;}}
         .mob-tab .mob-icon{font-size:20px;line-height:1;transition:transform .15s;}
         .mob-tab.active{color:var(--green);}
         .mob-tab.active .mob-icon{transform:scale(1.15);}
+        .mob-tab:active{opacity:.7;}
         .mob-tab .mob-badge{position:absolute;top:4px;right:calc(50% - 14px);background:var(--red);
             color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;
             display:flex;align-items:center;justify-content:center;padding:0 4px;}
@@ -91,14 +103,20 @@
         .mob-drawer-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;
             cursor:pointer;color:var(--text-muted);font-size:10px;font-weight:700;letter-spacing:.5px;
             text-transform:uppercase;-webkit-tap-highlight-color:transparent;transition:color .15s;}
-        .mob-drawer-item:active{color:var(--green);}
+        .mob-drawer-item:active{color:var(--green);background:rgba(0,214,122,.06);border-radius:12px;}
         .mob-drawer-item .di-icon{font-size:26px;}
         .page-header{margin-bottom:28px;}
+        @media(max-width:768px){.page-header{margin-bottom:18px;}.page-title{font-size:28px!important;}}
         .page-title{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;letter-spacing:.5px;}
-        .page-subtitle{font-size:14px;color:var(--text-muted);margin-top:4px;}
+        .page-subtitle{font-size:13px;color:var(--text-muted);margin-top:4px;line-height:1.4;}
         .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;
-            margin-bottom:14px;transition:border-color .2s,box-shadow .2s;}
+            margin-bottom:14px;transition:border-color .18s,box-shadow .18s,background .18s,transform .1s;animation:fadeIn .25s ease both;}
+        .card[onclick]:active{transform:scale(.99);}
         .card:hover{border-color:var(--border-hi);box-shadow:0 4px 24px rgba(0,0,0,.3);}
+        @media(hover:none){.card:hover{border-color:var(--border);box-shadow:none;}}
+        .card[onclick]{cursor:pointer;}
+        .card[onclick]:hover{border-color:var(--border-hi);box-shadow:0 6px 28px rgba(0,0,0,.35);transform:translateY(-1px);}
+        @media(hover:none){.card[onclick]:hover{border-color:var(--border);box-shadow:none;transform:none;}}
         .card-glow{box-shadow:0 0 0 1px var(--green-glow),0 4px 24px rgba(0,214,122,.08);}
         .badge{display:inline-block;padding:3px 10px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;}
         .badge-spread{background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.3);}
@@ -111,12 +129,13 @@
         .fill-bar-wrap{margin-top:10px;}
         .fill-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:5px;}
         .fill-bar-track{height:5px;background:var(--border);border-radius:99px;overflow:hidden;}
-        .fill-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green-dim),var(--green));transition:width .4s ease;}
+        .fill-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green-dim),var(--green));transition:width .6s ease;}
         .fill-bar-fill.partial{background:linear-gradient(90deg,var(--gold),#ffdc70);}
         .fill-bar-fill.full{background:var(--text-dim);}
         .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;
             border:none;border-radius:9px;font-family:'Barlow',sans-serif;font-size:14px;font-weight:700;
-            cursor:pointer;transition:all .15s;letter-spacing:.3px;}
+            cursor:pointer;transition:all .15s;letter-spacing:.3px;-webkit-tap-highlight-color:transparent;
+            touch-action:manipulation;user-select:none;}
         .btn-primary{background:var(--green);color:#000;}
         .btn-primary:hover{background:#00f090;box-shadow:0 4px 16px rgba(0,214,122,.3);transform:translateY(-1px);}
         .btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border);}
@@ -128,11 +147,14 @@
         .btn-sm{padding:7px 14px;font-size:13px;}.btn-lg{padding:14px 28px;font-size:16px;}
         .btn-full{width:100%;}
         .btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
+        .btn:active:not(:disabled){transform:scale(.97)!important;transition:transform .08s!important;}
+        .btn:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
         .form-group{margin-bottom:16px;}
         label{display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
         input,select,textarea{width:100%;padding:12px 14px;background:var(--bg);color:var(--text);
             border:1px solid var(--border);border-radius:8px;font-family:'Barlow',sans-serif;font-size:15px;transition:border-color .15s;}
         input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(0,214,122,.1);}
+        input::placeholder,textarea::placeholder{color:var(--text-dim);}
         select option{background:var(--surface);}
         .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
         .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
@@ -140,13 +162,13 @@
             backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;}
         .modal-overlay.open{display:flex;}
         .modal-box{background:var(--surface);border:1px solid var(--border-hi);border-radius:16px;
-            padding:28px;width:90%;max-width:480px;max-height:90vh;overflow-y:auto;
-            box-shadow:0 20px 60px rgba(0,0,0,.5);}
+            padding:24px 28px;width:90%;max-width:480px;max-height:90dvh;overflow-y:auto;
+            box-shadow:0 20px 60px rgba(0,0,0,.5);animation:popIn .2s ease;}
         .modal-title{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;margin-bottom:20px;}
         .modal-footer{display:flex;gap:10px;margin-top:20px;}
         /* ─── NOTIFICATIONS ─── */
         .notif-bell{position:relative;cursor:pointer;padding:10px 18px;display:flex;align-items:center;gap:8px;
-            color:var(--muted);font-size:20px;transition:color .15s;border-top:1px solid var(--border);}
+            color:var(--text-muted);font-size:20px;transition:color .15s;border-top:1px solid var(--border);}
         .notif-bell:hover{color:var(--text);}
         .notif-badge{position:absolute;top:6px;left:30px;background:var(--orange);color:#000;
             font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;
@@ -161,22 +183,28 @@
         .notif-drawer-header{padding:20px 20px 16px;border-bottom:1px solid var(--border);
             display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
         .notif-drawer-title{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;letter-spacing:1px;}
-        .notif-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;
+        .notif-close{background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer;
             padding:4px 8px;border-radius:6px;transition:color .15s;}
         .notif-close:hover{color:var(--text);}
         .notif-list{flex:1;overflow-y:auto;padding:8px;}
-        .notif-item{padding:14px 16px;border-radius:10px;margin-bottom:6px;
-            border:1px solid var(--border);transition:background .15s;}
+        .notif-item{padding:12px 14px;border-radius:10px;margin-bottom:5px;
+            border:1px solid var(--border);transition:background .15s;cursor:pointer;}
         .notif-item:hover{background:var(--card2);}
-        .notif-item.unread{background:var(--card);border-left:3px solid var(--orange);}
+        .notif-item:active{transform:scale(.99);}
+        .notif-item.unread{background:rgba(255,140,0,.04);border-left:3px solid var(--orange);}
+        .notif-item-title{font-weight:700;font-size:14px;margin-bottom:3px;}
+        .notif-item-body{font-size:12px;color:var(--text-muted);line-height:1.4;}
+        .notif-item-time{font-size:11px;color:var(--text-dim);margin-top:4px;}
         .notif-item-title{font-size:14px;font-weight:700;margin-bottom:3px;}
-        .notif-item-body{font-size:12px;color:var(--muted);}
-        .notif-item-time{font-size:11px;color:var(--dim);margin-top:4px;}
-        .notif-empty{text-align:center;padding:60px 20px;color:var(--muted);}
-        .notif-overlay{position:fixed;inset:0;z-index:999;display:none;}
+        .notif-item-body{font-size:12px;color:var(--text-muted);}
+        .notif-item-time{font-size:11px;color:var(--text-dim);margin-top:4px;}
+        .notif-empty{text-align:center;padding:60px 20px;color:var(--text-muted);}
+        .notif-overlay{position:fixed;inset:0;z-index:999;display:none;cursor:pointer;}
         .notif-overlay.open{display:block;}
         /* ─── TOAST ─── */
-        .toast-container{position:fixed;bottom:28px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;}
+        .toast-container{position:fixed;bottom:calc(28px + env(safe-area-inset-bottom));right:16px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;max-width:calc(100vw - 32px);}
+        @media(max-width:768px){.toast-container{bottom:calc(72px + env(safe-area-inset-bottom));right:12px;left:12px;}
+        .toast{min-width:unset;max-width:100%;font-size:13px;}}
         .toast{pointer-events:all;padding:14px 20px;border-radius:10px;border:1px solid;font-size:14px;font-weight:600;
             min-width:260px;max-width:380px;animation:toastIn .3s ease,toastOut .3s ease 2.7s forwards;cursor:pointer;}
         .toast.success{background:rgba(0,214,122,.15);border-color:rgba(0,214,122,.4);color:#6fffc7;}
@@ -187,9 +215,17 @@
         .skeleton{background:linear-gradient(90deg,var(--card) 25%,var(--card-hover) 50%,var(--card) 75%);
             background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px;}
         @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .loading-overlay{position:fixed;inset:0;background:rgba(11,17,32,.7);backdrop-filter:blur(4px);z-index:9000;display:flex;align-items:center;justify-content:center;}
         .skeleton-line{height:14px;margin:8px 0;}
         .skeleton-title{height:22px;margin:8px 0;width:60%;}
-        .skeleton-card{padding:20px 24px;border:1px solid var(--border);border-radius:14px;margin-bottom:14px;}
+        .skeleton-card{padding:20px 24px;border:1px solid var(--border);border-radius:14px;margin-bottom:14px;animation:none;}
+        #content > .card:nth-child(1){animation-delay:.0s}
+        #content > .card:nth-child(2){animation-delay:.04s}
+        #content > .card:nth-child(3){animation-delay:.08s}
+        #content > .card:nth-child(4){animation-delay:.12s}
+        #content > .card:nth-child(5){animation-delay:.16s}
         .line-card{display:flex;gap:20px;align-items:flex-start;}
         .line-card-info{flex:1;min-width:0;}
         .line-card-amount{flex-shrink:0;text-align:right;}
@@ -206,7 +242,8 @@
         .bet-status.pending{background:rgba(245,166,35,.15);color:var(--gold);border:1px solid rgba(245,166,35,.3);}
         .bet-status.won{background:rgba(0,214,122,.15);color:var(--green);border:1px solid rgba(0,214,122,.3);}
         .bet-status.lost{background:rgba(255,69,96,.15);color:var(--red);border:1px solid rgba(255,69,96,.3);}
-        .login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+        .login-screen{min-height:100dvh;display:flex;align-items:center;justify-content:center;
+            padding:16px;
             background-image:radial-gradient(ellipse 100% 80% at 50% 0%,rgba(0,100,255,.08),transparent 60%),
             radial-gradient(ellipse 60% 60% at 80% 100%,rgba(0,214,122,.07),transparent 60%);}
         .login-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:48px 44px;
@@ -219,7 +256,9 @@
         .login-tab{flex:1;text-align:center;padding:10px;border-radius:7px;font-size:14px;font-weight:600;
             cursor:pointer;transition:all .15s;color:var(--text-muted);}
         .login-tab.active{background:var(--green);color:#000;}
-        .empty-state{text-align:center;padding:80px 20px;}
+        .empty-state{text-align:center;padding:60px 20px;}
+        .empty-state .btn{margin-top:16px;}
+        @media(max-width:768px){.empty-state{padding:40px 16px;}.empty-icon{font-size:44px!important;margin-bottom:12px!important;}}
         .empty-icon{font-size:56px;margin-bottom:16px;}
         .empty-title{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;color:var(--text-muted);}
         .empty-desc{font-size:14px;color:var(--text-dim);margin-top:8px;}
@@ -230,23 +269,41 @@
         .checkbox-row span{font-size:14px;font-weight:500;color:var(--text);}
         .wr-bar{height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:6px;}
         .wr-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--green-dim),var(--green));}
+        /* ── User Card ── */
+        .user-card{display:flex;align-items:center;gap:14px;padding:14px 18px;}
+        .user-avatar{width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;color:var(--green);flex-shrink:0;overflow:hidden;}
+        .user-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+        .user-info{flex:1;min-width:0;}
+        .user-name{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .user-record{font-size:12px;color:var(--text-muted);margin-top:2px;}
+        .user-profit{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;flex-shrink:0;}
         @media(max-width:768px){
             .sidebar{display:none!important;}
             .topbar{display:flex;}
             .mob-bottom-bar{display:flex;flex-direction:column;}
-            .content-area{padding:16px 14px;padding-bottom:calc(74px + env(safe-area-inset-bottom));}
+            .content-area{padding:14px 12px;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
             .form-grid-2,.form-grid-3{grid-template-columns:1fr;}
             .line-card{flex-direction:column;}.line-card-amount{text-align:left;}
             /* Touch-friendly sizing */
-            .btn{min-height:40px;}
-            .btn-sm{min-height:34px;}
+            .btn{min-height:42px;}
+            .btn-sm{min-height:36px;padding:8px 14px;}
+            .btn-lg{min-height:50px;}
             .card{padding:14px 16px;border-radius:12px;}
             input,select,textarea{font-size:16px!important;} /* prevents iOS zoom */
-            .modal-box{margin:16px;max-height:calc(100dvh - 32px);overflow-y:auto;}
+            .modal-box{margin:12px;width:calc(100% - 24px);max-height:calc(100dvh - 24px);overflow-y:auto;}
+            .lb-rank{font-size:22px!important;min-width:36px!important;}
+            .lb-profit{font-size:22px!important;}
+            .lb-name{font-size:15px!important;}
+            .line-amount-num{font-size:28px!important;}
         }
         @media(max-width:440px){
-            .login-box{padding:28px 20px;}
+            .login-box{padding:28px 20px;border-radius:16px;}
             .page-title{font-size:28px;}
+            .login-logo{font-size:38px;}
+            .login-tab{padding:9px 10px;font-size:13px;}
+        }
+        @media(max-width:380px){
+            .login-box{padding:20px 14px;margin:8px;border-radius:14px;}
         }
         /* ── Live Bet Tracking ────────────────────────── */
         .live-card{position:relative;overflow:hidden;border-radius:16px;margin-bottom:14px;
@@ -272,6 +329,8 @@
         .live-dot{width:6px;height:6px;background:var(--red);border-radius:50%;animation:blink 1s infinite;}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+        @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+        @keyframes popIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
         .live-period{font-size:10px;font-weight:800;color:var(--text-dim);letter-spacing:1px;white-space:nowrap;}
         .live-status-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:.5px;}
         .live-status-badge.winning{background:rgba(0,214,122,.15);color:var(--green);}
@@ -395,7 +454,7 @@
         .chat-day-divider::before{left:0;}
         .chat-day-divider::after{right:0;}
         @media(max-width:768px){
-            .chat-shell{height:calc(100dvh - 130px);}
+            .chat-shell{height:calc(100dvh - 130px - env(safe-area-inset-bottom));}
             .chat-bubble{max-width:82%;font-size:13px;}
             .chat-input{font-size:16px!important;} /* prevent iOS zoom */
             .chat-msg-avatar{width:26px;height:26px;font-size:9px;}
@@ -434,9 +493,11 @@
         .bet-result-pill.won{background:rgba(0,214,122,.15);color:var(--green);}
         .bet-result-pill.lost{background:rgba(255,69,96,.15);color:var(--red);}
         .bet-result-pill.push{background:rgba(245,166,35,.15);color:var(--gold);}
+        .bet-result-pill.pending{background:rgba(107,144,184,.15);color:var(--text-muted);}
         /* Settings */
         .settings-section{background:var(--card);border:1px solid var(--border);
             border-radius:14px;padding:20px;margin-bottom:16px;max-width:600px;}
+        @media(max-width:768px){.settings-section{border-radius:12px;padding:16px;}}
         .settings-section-title{font-size:12px;font-weight:800;letter-spacing:1.5px;
             color:var(--green);text-transform:uppercase;margin-bottom:16px;}
         .avatar-upload-area{width:90px;height:90px;border-radius:50%;border:2px dashed var(--border);
@@ -453,6 +514,8 @@
             .profile-avatar{width:58px;height:58px;font-size:22px;}
             .profile-stat-num{font-size:20px;}
             .profile-info{padding:36px 14px 14px;}
+            .profile-section-title{font-size:10px!important;}
+            .profile-username{font-size:22px!important;}
             .profile-card{border-radius:12px;}
         }
     </style>
@@ -493,6 +556,10 @@
 <!-- Mobile More Drawer -->
 <div class="mob-more-drawer" id="mobMoreDrawer">
     <div class="mob-drawer-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px 12px;">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:1px;color:var(--text-muted);">MORE</span>
+        <button onclick="closeMobMore()" style="background:none;border:none;color:var(--text-dim);font-size:22px;cursor:pointer;padding:4px;line-height:1;">✕</button>
+    </div>
     <div class="mob-drawer-grid" id="mobMoreGrid"></div>
 </div>
 
@@ -501,7 +568,7 @@
     <div class="notif-drawer-header">
         <div class="notif-drawer-title">🔔 Notifications</div>
         <div style="display:flex;gap:8px;align-items:center;">
-            <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;" onclick="markAllRead()">Mark all read</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;" onclick="markAllNotifsRead()">Mark all read</button>
             <button class="notif-close" onclick="closeNotifDrawer()">✕</button>
         </div>
     </div>
@@ -515,9 +582,9 @@
     <div class="modal-box">
         <div class="modal-title" id="confirmTitle">Confirm</div>
         <div id="confirmBody" style="color:var(--text-muted);font-size:15px;margin-bottom:20px;"></div>
-        <div class="modal-footer">
+        <div class="modal-footer" style="display:flex;flex-direction:column;gap:8px;">
             <button class="btn btn-danger btn-full" id="confirmOkBtn">Confirm</button>
-            <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+            <button class="btn btn-secondary btn-full" onclick="closeConfirmModal()">Cancel</button>
         </div>
     </div>
 </div>
@@ -642,8 +709,7 @@ let token=localStorage.getItem('token');
 if('serviceWorker' in navigator){
     window.addEventListener('load',()=>{
         navigator.serviceWorker.register('/sw.js').then(r=>{
-            console.log('[SW] Registered',r.scope);
-        }).catch(e=>console.log('[SW] Registration failed',e));
+        }).catch(e=>console.debug('[SW] Registration failed',e));
     });
 }
 
@@ -702,19 +768,35 @@ function dismissInstall(){
 }
 window.addEventListener('appinstalled', () => {
     dismissInstall();
-    console.log('[PWA] BookieVerse installed ✅');
 });
 
 // ── Mobile More Drawer ────────────────────────────────────────────────────────
 function openMobMore(){
-    document.getElementById('mobMoreDrawer').classList.add('open');
-    document.getElementById('mobMoreOverlay').classList.add('open');
+    const d=document.getElementById('mobMoreDrawer');
+    const o=document.getElementById('mobMoreOverlay');
+    d.classList.add('open');
+    o.classList.add('open');
+    document.body.style.overflow='hidden';
+    // Swipe down to close
+    let startY=0;
+    d.ontouchstart=e=>{startY=e.touches[0].clientY;};
+    d.ontouchmove=e=>{
+        const dy=e.touches[0].clientY-startY;
+        if(dy>0){e.preventDefault();d.style.transform=`translateY(${dy}px)`;d.style.transition='none';}
+    };
+    d.ontouchend=e=>{
+        const dy=e.changedTouches[0].clientY-startY;
+        d.style.transform='';d.style.transition='';
+        if(dy>80) closeMobMore();
+    };
 }
 function closeMobMore(){
     document.getElementById('mobMoreDrawer').classList.remove('open');
     document.getElementById('mobMoreOverlay').classList.remove('open');
+    document.body.style.overflow='';
 }
 let user=null,view=localStorage.getItem('lastView')||'marketplace',propTypes={},linesCache=[],propsCache=[],gamesCache=[];
+// Persist view state across page reloads
 let _liveScores={};
 let _liveScoreInterval=null;
 
@@ -742,11 +824,17 @@ function stopLiveScores(){
 }
 let _betResolve=null,_confirmResolve=null;
 
-function toast(msg,type='info'){
+function toast(msg,type='info',dur=3000){
     const ct=document.getElementById('toastContainer');
     const t=document.createElement('div');
-    t.className='toast '+type;t.textContent=msg;t.onclick=()=>t.remove();
-    ct.appendChild(t);setTimeout(()=>t.remove(),3000);
+    t.className='toast '+type;
+    const ICON={success:'✅',error:'❌',info:'ℹ️',warning:'⚠️'};
+    const icon=ICON[type]||'';
+    t.innerHTML=(icon?`<span style="flex-shrink:0;font-size:16px;">${icon}</span>`:'')
+        +`<span style="flex:1;">${msg}</span>`
+        +`<span onclick="this.parentElement.remove()" style="cursor:pointer;opacity:.5;font-size:12px;flex-shrink:0;padding-left:4px;">✕</span>`;
+    ct.appendChild(t);
+    setTimeout(()=>{if(t.parentElement)t.remove();},dur);
 }
 let _betCalcOdds = -110; // stored so calculator can use it
 
@@ -759,7 +847,7 @@ function promptBetAmount(info, max, _unused){
 
         // Balance display
         const balEl=document.getElementById('betModalBalance');
-        if(balEl&&user) balEl.textContent='Balance: $'+user.balance.toFixed(2);
+        if(balEl&&user) balEl.textContent='Balance: $'+Math.floor(user.balance);
 
         // Extract odds from the info HTML (looks for +NNN or -NNN pattern near odds context)
         let extractedOdds=-110;
@@ -854,6 +942,7 @@ document.addEventListener('click',e=>{
         e.target.classList.remove('open');
         if(_betResolve){_betResolve(null);_betResolve=null;}
         if(_confirmResolve){_confirmResolve(false);_confirmResolve=null;}
+        if(_confirmResolve){_confirmResolve(false);_confirmResolve=null;}
     }
 });
 function skeletonCards(n=3){
@@ -910,12 +999,20 @@ async function logout(){
 }
 function updateSidebarBalance(){
     if(!user)return;
+    const fmt=n=>'$'+Math.floor(n).toLocaleString();
     const b=document.getElementById('sidebarBalance');
-    if(b)b.textContent='$'+user.balance.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});
+    if(b)b.textContent=fmt(user.balance);
     const pl=document.getElementById('sidebarPL');
-    if(pl){pl.textContent=(user.profit>=0?'+':'')+'$'+user.profit.toLocaleString()+' P/L';pl.className='bal-pl '+(user.profit>=0?'pos':'neg');}
+    if(pl){pl.textContent=(user.profit>=0?'+':'-')+'$'+Math.abs(user.profit).toLocaleString()+' P/L';pl.className='bal-pl '+(user.profit>=0?'pos':'neg');}
     const tb=document.getElementById('topbarBalance');
-    if(tb)tb.textContent='$'+user.balance.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});
+    if(tb)tb.textContent=fmt(user.balance);
+    const ta=document.getElementById('topbarAvatar');
+    if(ta){
+        if(user.avatar)ta.innerHTML=`<img src="${user.avatar}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border-radius:50%;">`;
+        else ta.textContent=user.username.slice(0,2).toUpperCase();
+    }
+    const tr=document.getElementById('topbarRecord');
+    if(tr)tr.textContent=`${user.wins}W — ${user.losses}L`;
 }
 async function loadLines(){
     document.getElementById('content').innerHTML=skeletonCards(4);
@@ -952,7 +1049,7 @@ async function loadLines(){
         if(!lines.length)return`
             <div class="page-header"><div class="page-title">Marketplace</div></div>
             ${scoreTicker}
-            <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Available</div><div class="empty-desc">Be the first to set a line</div></div>`;
+            <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No Lines Yet</div><div class="empty-desc">Be the first bookie — post a line and get the action started</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('create')">⚡ Post First Line</button></div>`;
 
         // Group by sport
         const SPORT_ORDER=['NBA','NCAA Basketball','NFL','MLB','NHL','Premier League','La Liga','Champions League','MLS'];
@@ -968,14 +1065,25 @@ async function loadLines(){
         });
 
         const SPORT_EMOJI={NBA:'🏀','NCAA Basketball':'🏀',NFL:'🏈',MLB:'⚾',NHL:'🏒','Premier League':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','La Liga':'🇪🇸','Champions League':'🏆',MLS:'🇺🇸',Other:'🎯'};
-        let html=`<div class="page-header"><div class="page-title">Marketplace</div><div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''}</div></div>${scoreTicker}`;
+        let _filteredLines=lines;
+        let html=`<div class="page-header" style="margin-bottom:12px;">
+            <div class="page-title">Marketplace</div>
+            <div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''} · ${sports.length} sport${sports.length!==1?'s':''}</div>
+        </div>
+        <div style="margin-bottom:12px;position:relative;">
+            <input id="marketplaceSearch" type="text" placeholder="🔍  Search teams, games..." oninput="filterMarketplace()"
+                style="width:100%;padding:10px 14px;font-size:14px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
+        </div>
+        ${scoreTicker}`;
 
+        // Render lines wrapped in filterable container
+        html+=`<div id="marketplaceLinesWrapper">`;
         for(const sp of sports){
             const sportLines=bySport[sp];
             html+=`<div style="display:flex;align-items:center;gap:8px;margin:16px 0 8px;">
                 <span style="font-size:18px;">${SPORT_EMOJI[sp]||'🎯'}</span>
                 <span style="font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:1px;">${sp}</span>
-                <span style="font-size:12px;color:var(--text-dim);background:var(--bg-secondary);padding:2px 8px;border-radius:20px;">${sportLines.length}</span>
+                <span style="font-size:11px;color:var(--text-dim);background:var(--bg-secondary,#0f1826);padding:2px 10px;border-radius:20px;border:1px solid var(--border);">${sportLines.length}</span>
             </div>`;
 
             for(const line of sportLines){
@@ -1018,7 +1126,7 @@ async function loadLines(){
                     bettorPick=line.side==='home'?_away:_home;
                 }
 
-                html+=`<div class="card" style="padding:12px 16px;margin-bottom:8px;${isFull?'opacity:.7':''}${!isFull&&!isOwn?';border-color:rgba(255,255,255,.08)':''}">
+                html+=`<div class="card" style="padding:12px 16px;margin-bottom:8px;${isFull?'opacity:.7':''}${!isFull&&!isOwn?';border-color:rgba(255,255,255,.08)':''}${!isFull&&!isOwn&&!isGameStarted?';cursor:pointer':''}" onclick="${!isFull&&!isOwn&&!isGameStarted?'takeLine('+line.id+')':''}">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                         <div style="flex:1;min-width:0;">
                             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
@@ -1026,7 +1134,7 @@ async function loadLines(){
                                 ${scoreBadge}
                                 ${line.is_private?'<span class="badge badge-private" style="font-size:10px;">Private</span>':''}
                             </div>
-                            <div style="font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px;">${line.game}</div>
+                            <div style="font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 4px);margin-bottom:5px;" title="${line.game}">${line.game}</div>
                             ${isOwn
                                 ?`<div style="font-size:13px;font-weight:800;color:var(--orange);">You back: ${bookiePick} <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;color:${oddsColor};">${oddsStr}</span></div>`
                                 :`<div style="background:rgba(0,200,100,.08);border:1px solid rgba(0,200,100,.25);border-radius:8px;padding:6px 10px;margin-bottom:5px;">
@@ -1034,12 +1142,12 @@ async function loadLines(){
                                     <div style="font-size:17px;font-weight:800;color:#fff;">${bettorPick} <span style="font-family:'Barlow Condensed',sans-serif;font-size:22px;color:${oddsColor};">${oddsStr}</span></div>
                                 </div>`
                             }
-                            <div style="font-size:11px;color:var(--text-dim);">@${line.bookie_name} backs ${bookiePick} &middot; ${pct}% filled &middot; ${isFull?'Full':'$'+availBettor.toFixed(0)+' avail'}</div>
+                            <div style="font-size:11px;color:var(--text-dim);"><span style="cursor:pointer;color:var(--text-muted);" onclick="event.stopPropagation();viewProfile('${line.bookie_name}')">@${line.bookie_name}</span> backs ${bookiePick} &middot; ${pct}% filled &middot; ${isFull?'Full':'$'+availBettor.toFixed(0)+' avail'}</div>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
                             <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green);">+$${avail.toFixed(0)}</div>
                             <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">risk $${availBettor.toFixed(0)}</div>
-                            <button class="btn ${isOwn||isGameStarted?'btn-secondary':'btn-primary'} btn-sm" onclick="takeLine(${line.id})" ${(isFull||isOwn||isGameStarted)?'disabled':''} style="font-size:12px;padding:5px 12px;">
+                            <button class="btn ${isOwn||isGameStarted?'btn-secondary':'btn-primary'} btn-sm" onclick="event.stopPropagation();takeLine(${line.id})" ${(isFull||isOwn||isGameStarted)?'disabled':''} style="font-size:12px;padding:7px 14px;min-width:80px;">
                                 ${isFull?'Full ✓':isOwn?'Yours':isGameStarted?'🔒 Started':'Take Bet'}
                             </button>
                         </div>
@@ -1048,6 +1156,10 @@ async function loadLines(){
                 </div>`;
             }
         }
+        html+=`</div>`; // close marketplaceLinesWrapper
+        window._cachedLines=lines;
+        window._cachedBySport=bySport;
+        window._cachedSportEmoji=SPORT_EMOJI;
         return html;
     }catch(e){
         console.error('loadLines error:',e);
@@ -1161,19 +1273,19 @@ async function renderCreateLine(){
         <div class="card" style="max-width:680px;">
 
             <!-- Step 1: League -->
-            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">① PICK A LEAGUE</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">1</span>PICK A LEAGUE</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;" id="sportTabs">
                 ${sportTabs}
             </div>
 
             <!-- Step 2: Game -->
-            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">② SELECT GAME</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">2</span>SELECT GAME</div>
             <div class="form-group" style="margin-bottom:20px;" id="gameSelectWrap">
                 ${gameSelects}
             </div>
 
             <!-- Step 3: Bet Type -->
-            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">③ BET DETAILS</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">3</span>BET DETAILS</div>
             <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;" id="betTypeTabs">
                 <button type="button" class="bet-type-btn active" onclick="selectBetType('spread')" id="btnSpread" style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--orange);background:rgba(255,140,0,.1);font-weight:800;font-size:13px;cursor:pointer;color:var(--text);">📊 Spread</button>
                 <button type="button" class="bet-type-btn" onclick="selectBetType('moneyline')" id="btnMoneyline" style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--bg);font-weight:800;font-size:13px;cursor:pointer;color:var(--text);">🏆 Moneyline</button>
@@ -1193,7 +1305,7 @@ async function renderCreateLine(){
             </div>
 
             <!-- Step 4: Odds & Amount -->
-            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">④ ODDS & LIABILITY</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">4</span>ODDS & LIABILITY</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                 <div>
                     <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;">Your Odds</label>
@@ -1209,7 +1321,7 @@ async function renderCreateLine(){
                         <button type="button" onclick="document.getElementById('amount').value=Math.floor(user.balance);checkLineBalance();calcOddsPreview();" style="padding:0 12px;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;">MAX</button>
                     </div>
                     <div id="lineBalanceHint" style="font-size:11px;margin-top:6px;color:var(--text-dim);">
-                        Available: <strong style="color:var(--green)">$${user.balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
+                        Available: <strong style="color:var(--green)">$${Math.floor(user.balance).toLocaleString()}</strong>
                     </div>
                 </div>
             </div>
@@ -1481,7 +1593,7 @@ async function createLine(){
     if(!gameId||!type||!side){toast('Fill in all required fields','error');return;}
     if(type!=='moneyline'&&isNaN(value)){toast('Enter a line value for spread / total','error');return;}
     if(isNaN(amount)||amount<=0){toast('Enter your max liability amount','error');return;}
-    if(amount>user.balance){toast(`Insufficient funds — you have $${user.balance.toFixed(2)}, need $${amount.toFixed(2)}`,'error');return;}
+    if(amount>user.balance){toast(`Insufficient funds — you have $${Math.floor(user.balance)}, need $${amount.toFixed(2)}`,'error');return;}
     if(isNaN(odds)||odds===0||(odds>-100&&odds<100)){toast('Odds must be -100 or lower, or +100 or higher (e.g. -110, +150)','error');return;}
     const body={game_id:gameId,type,side,value,odds,amount};
     const mb=document.getElementById('maxBettors')?.value,mbu=document.getElementById('maxBetPerUser')?.value,
@@ -1512,7 +1624,12 @@ async function renderProps(){
             <div class="form-group"><label>Game</label>
                 <select id="propGame" onchange="onPropGameChange()">
                     <option value="">Choose a game...</option>
-                    ${games.map(g=>{const time=g.commence_time?new Date(g.commence_time).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;return`<option value="${g.id}" data-sport="${g.sport}">[${g.sport}] ${g.away} @ ${g.home} — ${time}</option>`;}).join('')}
+                    ${games.map(g=>{const rawTime=g.commence_time?new Date(g.commence_time):null;
+                const now=Date.now();
+                const diffH=rawTime?(rawTime-now)/3600000:null;
+                const timeStr=rawTime?rawTime.toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):g.date;
+                const timeLabel=diffH!==null&&diffH<1&&diffH>0?'🔴 LIVE — ':diffH!==null&&diffH<24?`🟡 Today — `:``;
+                const time=timeLabel+timeStr;return`<option value="${g.id}" data-sport="${g.sport}">[${g.sport}] ${g.away} @ ${g.home} — ${time}</option>`;}).join('')}
                 </select>
             </div>
             <div class="form-grid-2">
@@ -1539,22 +1656,43 @@ async function renderProps(){
                         style="padding:8px 14px;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;">MAX</button>
                 </div>
                 <div id="propBalanceHint" style="font-size:12px;margin-top:6px;color:var(--text-dim);">
-                    Available: <strong style="color:var(--green)">$${user.balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>
+                    Available: <strong style="color:var(--green)">$${Math.floor(user.balance).toLocaleString()}</strong>
                 </div>
             </div>
             <button class="btn btn-primary btn-full" onclick="createProp()">Post Prop</button>
         </div>`;
+    propsCache=props;
+    html+=`<div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:.5px;margin:28px 0 10px;display:flex;align-items:center;justify-content:space-between;"><span>Open Props</span><span style="font-size:13px;color:var(--text-dim);font-weight:500;font-family:'Barlow',sans-serif;">${props.length} available</span></div>`;
     if(props.length>0){
-        propsCache=props;
-        html+=`<div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;margin:28px 0 14px;">Open Props</div>`;
         props.forEach(p=>{
             const odds=p.odds||-110;
             const oddsStr=odds>0?'+'+odds:String(odds);
             const oddsColor=odds>0?'var(--green)':'var(--text-muted)';
             let bettorRisk;
             bettorRisk=(p.amount*(100/Math.abs(odds))).toFixed(0);
-            html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;"><div><span class="badge badge-prop">${p.sport}</span><span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:${oddsColor};margin-left:8px;">${oddsStr}</span><div style="font-size:19px;font-weight:700;margin-top:8px;">${p.player_name} — ${p.prop_type}</div><div style="color:var(--text-muted);margin-top:4px;font-size:14px;">${p.side.toUpperCase()} <strong style="color:var(--text)">${p.line}</strong></div>${p.game?`<div style="color:var(--text-muted);font-size:13px;margin-top:4px;">📅 ${p.game}</div>`:''}<div style="color:var(--text-dim);font-size:12px;margin-top:4px;">by @${p.bookie_name}</div></div><div style="text-align:right;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;color:var(--green);">$${p.amount}</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px;">risk $${bettorRisk}</div><button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="takeProp(${p.id})">Take Prop</button></div></div></div>`;
+            html+=`<div class="card" style="padding:14px 18px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+                <span class="badge badge-prop">${p.sport}</span>
+                <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:${oddsColor};">${oddsStr}</span>
+                ${p.game?`<span style="font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">${p.game}</span>`:''}
+            </div>
+            <div style="font-size:18px;font-weight:800;margin-bottom:4px;">${p.player_name}</div>
+            <div style="font-size:13px;color:var(--text-muted);">${p.prop_type} · <strong style="color:var(--text);">${p.side.toUpperCase()} ${p.line}</strong></div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:6px;cursor:pointer;" onclick="event.stopPropagation();viewProfile('${p.bookie_name}')">by @${p.bookie_name}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:800;color:var(--green);line-height:1;">$${p.amount}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">you risk $${bettorRisk}</div>
+            <button class="btn btn-primary btn-sm" onclick="takeProp(${p.id})">Take It</button>
+        </div>
+    </div>
+</div>`;
         });
+    }
+    if(!props.length){
+        html+=`<div class="empty-state" style="padding:40px 20px;"><div class="empty-icon">🏀</div><div class="empty-title">No open props yet</div><div class="empty-desc">Post the first player prop above to get it started</div></div>`;
     }
     return html;
     }catch(e){
@@ -1600,9 +1738,16 @@ async function createProp(){
         side=document.getElementById('propSide').value,
         odds=parseInt(document.getElementById('propOdds').value||'-110'),
         amount=parseFloat(document.getElementById('propAmount').value);
-    if(!gameId||!sport||!player||!propType||isNaN(line)||isNaN(amount)){toast('Fill all fields including Game','error');return;}
-    if(amount>user.balance){toast(`Insufficient funds — you have $${user.balance.toFixed(2)}, need $${amount.toFixed(2)}`,'error');return;}
-    if(isNaN(odds)||odds===0||(-100<odds&&odds<100)){toast('Odds must be ≤ -100 or ≥ +100','error');return;}
+    if(!gameId||!sport||!player||!propType||isNaN(line)||isNaN(amount)){
+    if(!gameId) toast('Select a game first','error');
+    else if(!player) toast('Enter the player name','error');
+    else if(!propType) toast('Choose a prop type','error');
+    else if(isNaN(line)) toast('Enter a valid line value','error');
+    else toast('Fill in all required fields','error');
+    return;
+}
+    if(amount>user.balance){toast(`Insufficient funds — you have $${Math.floor(user.balance)}, need $${amount.toFixed(2)}`,'error');return;}
+    if(isNaN(odds)||odds===0||(-100<odds&&odds<100)){toast('Enter valid American odds (e.g. -110 or +150)','error');return;}
     try{
         const res=await fetch(API+'/props?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game_id:gameId,sport,player_name:player,prop_type:propType,line,side,odds,amount})});
         if(res.ok){toast('Prop posted!','success');await loadUser();updateSidebarBalance();renderApp();}
@@ -1635,11 +1780,16 @@ async function takeProp(propId){
 }
 async function renderFutures(){
     document.getElementById('content').innerHTML=skeletonCards(2);
-    const futures=await fetch(API+'/futures').then(r=>r.json());
+    let futures=[];
+    try{futures=await fetch(API+'/futures').then(r=>r.json());}catch(e){futures=[];}
+    if(!Array.isArray(futures))futures=[];
     let html=`<div class="page-header"><div class="page-title">Futures</div><div class="page-subtitle">Season-long markets — bet on who wins it all</div></div>
     <div class="card" style="border-color:rgba(255,179,0,.2);padding:12px 16px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
         ⚠️ Futures are peer-to-peer — post your pick and wait for someone to take the other side. Settled manually when the season ends.
     </div>`;
+    if(!futures.length){
+        html+=`<div class="empty-state"><div class="empty-icon">🔮</div><div class="empty-title">No futures markets</div><div class="empty-desc">Season-long markets aren't available right now — check back once the season is underway</div></div>`;
+    }
     futures.forEach(f=>{
         html+=`<div class="card"><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:.5px;">${f.market_name}</div>
         <div style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">${f.sport}</div>
@@ -1698,15 +1848,15 @@ async function renderMyBets(){
         const bets=betsData.single_bets||[], props=betsData.prop_bets||[];
 
     // Tab switcher
-    let html=`<div class="page-header"><div class="page-title">My Action</div></div>
-    <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;max-width:500px;">
-        <button class="tab-btn ${_myBetsTab==='lines'?'active':''}" onclick="switchMyBetsTab('lines')" style="flex:1;padding:12px 0;font-size:14px;font-weight:700;background:${_myBetsTab==='lines'?'var(--green)':'transparent'};color:${_myBetsTab==='lines'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;">
-            📋 My Lines <span style="background:${_myBetsTab==='lines'?'rgba(0,0,0,.2)':'var(--border)'};padding:1px 8px;border-radius:20px;font-size:11px;margin-left:4px;">${myLines.length}</span>
+    let html=`<div class="page-header"><div class="page-title">My Action</div><div class="page-subtitle">${myLines.length} open line${myLines.length!==1?'s':''} · ${bets.length+props.length} bet${bets.length+props.length!==1?'s':''}</div></div>
+    <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;">
+        <button onclick="switchMyBetsTab('lines')" style="flex:1;padding:11px 4px;font-size:13px;font-weight:700;background:${_myBetsTab==='lines'?'var(--green)':'transparent'};color:${_myBetsTab==='lines'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;white-space:nowrap;">
+            📋 Lines <span style="background:${_myBetsTab==='lines'?'rgba(0,0,0,.2)':'var(--border)'};padding:1px 7px;border-radius:20px;font-size:10px;margin-left:3px;">${myLines.length}</span>
         </button>
-        <button class="tab-btn ${_myBetsTab==='bets'?'active':''}" onclick="switchMyBetsTab('bets')" style="flex:1;padding:12px 0;font-size:14px;font-weight:700;background:${_myBetsTab==='bets'?'var(--green)':'transparent'};color:${_myBetsTab==='bets'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;">
-            🎲 Bet History <span style="background:${_myBetsTab==='bets'?'rgba(0,0,0,.2)':'var(--border)'};padding:1px 8px;border-radius:20px;font-size:11px;margin-left:4px;">${bets.length+props.length}</span>
+        <button onclick="switchMyBetsTab('bets')" style="flex:1;padding:11px 4px;font-size:13px;font-weight:700;background:${_myBetsTab==='bets'?'var(--green)':'transparent'};color:${_myBetsTab==='bets'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;white-space:nowrap;">
+            🎲 Bets <span style="background:${_myBetsTab==='bets'?'rgba(0,0,0,.2)':'var(--border)'};padding:1px 7px;border-radius:20px;font-size:10px;margin-left:3px;">${bets.length+props.length}</span>
         </button>
-        <button class="tab-btn ${_myBetsTab==='parlays'?'active':''}" onclick="switchMyBetsTab('parlays')" style="flex:1;padding:12px 0;font-size:14px;font-weight:700;background:${_myBetsTab==='parlays'?'var(--green)':'transparent'};color:${_myBetsTab==='parlays'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;">
+        <button onclick="switchMyBetsTab('parlays')" style="flex:1;padding:11px 4px;font-size:13px;font-weight:700;background:${_myBetsTab==='parlays'?'var(--green)':'transparent'};color:${_myBetsTab==='parlays'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;white-space:nowrap;">
             🎰 Parlays
         </button>
     </div>`;
@@ -1714,7 +1864,7 @@ async function renderMyBets(){
     if(_myBetsTab==='lines'){
         // ── MY LINES: bookie management panel ────────────────────────────────
         if(!myLines.length){
-            html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No open lines</div><div class="empty-desc">Head to Set Lines to post your first line</div></div>`;
+            html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No open lines</div><div class="empty-desc">Post a line and become the bookie</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('create')">⚡ Set a Line</button></div>`;
         } else {
             myLines.forEach(l=>{
                 const oddsStr=l.odds>0?'+'+l.odds:String(l.odds);
@@ -1735,7 +1885,7 @@ async function renderMyBets(){
                             </div>
                             <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">$${l.unmatched.toFixed(2)} unmatched liability · bettor needs $${l.available_for_bettor.toFixed(2)} to fill</div>
                         </div>
-                        <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
+                        <div style="display:flex;flex-direction:column;gap:8px;min-width:140px;max-width:180px;">
                             <!-- Odds adjustment -->
                             <div style="display:flex;gap:6px;align-items:center;">
                                 <input type="number" id="odds-input-${l.id}" value="${l.odds}" step="1"
@@ -1766,7 +1916,7 @@ async function renderMyBets(){
             ...parlayData.taken.map(p=>({...p,role:'bettor'}))
         ].sort((a,b)=>0);
         if(!allParlays.length){
-            html+=`<div class="empty-state"><div class="empty-icon">🎰</div><div class="empty-title">No parlay history</div><div class="empty-desc">Post or take a parlay to get started</div></div>`;
+            html+=`<div class="empty-state"><div class="empty-icon">🎰</div><div class="empty-title">No parlays yet</div><div class="empty-desc">Head to the Parlays page to build a multi-leg bet</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('parlays')">Build a Parlay 🎰</button></div>`;
         } else {
             allParlays.forEach(p=>{
                 const isBookie=p.role==='bookie';
@@ -1813,7 +1963,7 @@ async function renderMyBets(){
     } else {
         // ── BET HISTORY ───────────────────────────────────────────────────────
         if(!bets.length&&!props.length){
-            html+=`<div class="empty-state"><div class="empty-icon">🎲</div><div class="empty-title">No bet history</div><div class="empty-desc">Place a bet on the marketplace to get started</div></div>`;
+            html+=`<div class="empty-state"><div class="empty-icon">🎲</div><div class="empty-title">No bet history yet</div><div class="empty-desc">Head to the marketplace and take a line</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('marketplace')">Browse Lines</button></div>`;
         } else {
             const all=[...bets.map(b=>({...b,_type:'line'})),...props.map(p=>({...p,_type:'prop'}))];
             all.forEach(b=>{
@@ -1879,7 +2029,7 @@ async function addStake(lineId){
     const inp=document.getElementById('stake-input-'+lineId);
     if(!inp)return;
     const amt=parseFloat(inp.value);
-    if(isNaN(amt)||amt<=0){toast('Enter a valid amount','error');return;}
+    if(isNaN(amt)||amt<=0){toast('Enter a valid dollar amount (e.g. 50)','error');return;}
     try{
         const res=await fetch(API+'/lines/'+lineId+'?token='+token,{
             method:'PATCH',headers:{'Content-Type':'application/json'},
@@ -1907,22 +2057,44 @@ async function pullLine(lineId, gameLabel){
 
 async function renderLeaderboard(){
     document.getElementById('content').innerHTML=skeletonCards(5);
-    const res=await fetch(API+'/leaderboard');const leaders=await res.json();
+    let leaders=[];
+    try{const res=await fetch(API+'/leaderboard');if(res.ok)leaders=await res.json();}catch(e){}
+    if(!Array.isArray(leaders))leaders=[];
     const medals=['🥇','🥈','🥉'];
     let html=`<div class="page-header"><div class="page-title">Leaderboard</div><div class="page-subtitle">Top bookies by P&L</div></div>`;
     leaders.forEach((l,i)=>{
         const pos=l.profit>=0;
-        html+=`<div class="card"><div class="lb-row"><div class="lb-rank" style="color:${i===0?'var(--gold)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text-dim)'}">${medals[i]||(i+1)}</div><div style="flex:1;"><div class="lb-name" style="cursor:pointer;" onclick="viewProfile('${l.username}')">@${l.username}${user&&l.id===user.id?' <span style="color:var(--green);font-size:12px;">(you)</span>':''}</div><div class="lb-record">${l.wins}W — ${l.losses}L</div><div class="wr-bar" style="width:120px;margin-top:6px;"><div class="wr-fill" style="width:${l.wins+l.losses>0?Math.round(l.wins/(l.wins+l.losses)*100):0}%"></div></div></div><div class="lb-profit" style="color:${pos?'var(--green)':'var(--red)'};">${pos?'+':''}$${l.profit.toLocaleString()}</div></div></div>`;
+        const total=l.wins+l.losses;
+        const wr=total>0?Math.round(l.wins/total*100):0;
+        const isMe=user&&l.id===user.id;
+        html+=`<div class="card" style="padding:14px 18px;cursor:pointer;${isMe?'border-color:rgba(0,214,122,.3);':''}" onclick="viewProfile('${l.username}')">
+            <div class="lb-row">
+                <div class="lb-rank" style="color:${i===0?'var(--gold)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text-dim)'};">${medals[i]||(i+1)}</div>
+                <div style="flex:1;min-width:0;">
+                    <div class="lb-name" style="cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="event.stopPropagation();viewProfile('${l.username}')">
+                        @${l.username}${isMe?' <span style="color:var(--green);font-size:11px;font-weight:800;background:rgba(0,214,122,.1);padding:1px 6px;border-radius:4px;">YOU</span>':''}
+                    </div>
+                    <div class="lb-record" style="margin-top:3px;">${l.wins}W — ${l.losses}L · ${wr}% win rate</div>
+                    <div class="wr-bar" style="width:min(140px,100%);margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="lb-profit" style="color:${pos?'var(--green)':'var(--red)'};">${pos?'+':'-'}$${Math.abs(l.profit).toLocaleString()}</div>
+                    ${l.lines_created!==undefined?`<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${l.lines_created} lines posted</div>`:""}
+                </div>
+            </div>
+        </div>`;
     });
     return html;
 }
 async function renderGroups(){
     document.getElementById('content').innerHTML=skeletonCards(2);
-    const res=await fetch(API+'/groups?token='+token);const groups=await res.json();
+    let groups=[];
+    try{const res=await fetch(API+'/groups?token='+token);if(res.ok)groups=await res.json();}catch(e){}
+    if(!Array.isArray(groups))groups=[];
     let html=`<div class="page-header"><div class="page-title">Private Groups</div><div class="page-subtitle">Share lines with your crew</div></div>
-    <button class="btn btn-primary" style="margin-bottom:20px;" onclick="openModal('createGroupModal')">+ Create Group</button>`;
+    <button class="btn btn-primary" style="margin-bottom:24px;" onclick="openModal('createGroupModal')">+ Create Group</button>`;
     if(!groups.length){
-        html+=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No groups yet</div><div class="empty-desc">Create a group and invite friends to share private lines</div></div>`;
+        html+=`<div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No groups yet</div><div class="empty-desc">Create a crew and share private lines only your group can see</div><button class="btn btn-primary" style="margin-top:16px;" onclick="openModal('createGroupModal')">+ Create Group</button></div>`;
     } else {
         groups.forEach(g=>{
             html+=`<div class="card">
@@ -1999,11 +2171,19 @@ async function deleteGroup(groupId, groupName){
 }
 async function renderUserSearch(){
     document.getElementById('content').innerHTML=skeletonCards(5);
-    const res=await fetch(API+'/users/search?token='+token);
-    const users=await res.json();
-    let html=`<div class="page-header"><div class="page-title">Find Bookies</div><div class="page-subtitle">Follow bookies, send friend requests, or send a challenge</div></div>`;
-    if(!users.length)return html+`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No users found</div></div>`;
-    users.slice(0,30).forEach(u=>{
+    let users=[];
+    try{const res=await fetch(API+'/users/search?token='+token);if(res.ok)users=await res.json();}catch(e){}
+    if(!Array.isArray(users))users=[];
+    let html=`<div class="page-header"><div class="page-title">Find Bookies</div><div class="page-subtitle">Follow bookies, send friend requests, or challenge them</div></div>
+    <div style="margin-bottom:16px;position:relative;">
+        <input id="searchFilter" type="text" placeholder="🔍  Search by username..." oninput="filterBookieSearch()"
+            style="width:100%;padding:12px 16px 12px 16px;font-size:15px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
+    </div>
+    <div id="searchResults">`;
+    if(!users.length)return html+`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No users found</div></div></div>`;
+    window._allSearchUsers = users;
+    const toShow=users.slice(0,50);
+    toShow.forEach(u=>{
         const wr=u.wins+u.losses>0?Math.round(u.wins/(u.wins+u.losses)*100):0;
         const plColor=u.profit>=0?'var(--green)':'var(--red)';
         let friendBtn='';
@@ -2037,7 +2217,58 @@ async function renderUserSearch(){
                 </div>
             </div></div></div>`;
     });
+    if(users.length>50) html+=`<div style="text-align:center;padding:12px;font-size:12px;color:var(--text-dim);">Showing top 50 results — use search to narrow down</div>`;
+    html += `</div>`; // close #searchResults
     return html;
+}
+
+function filterMarketplace(){
+    const q=(document.getElementById('marketplaceSearch')?.value||'').toLowerCase().trim();
+    const wrapper=document.getElementById('marketplaceLinesWrapper');
+    if(!wrapper||!window._cachedLines)return;
+    const lines=window._cachedLines;
+    const SPORT_EMOJI=window._cachedSportEmoji||{};
+    const bySport=window._cachedBySport||{};
+    const SPORT_ORDER=['NBA','NCAA Basketball','NFL','MLB','NHL','Premier League','La Liga','Champions League','MLS'];
+    if(!q){
+        // Restore all — find all card wrappers and show them
+        wrapper.querySelectorAll('.card,.sport-section-header').forEach(el=>el.style.display='');
+        wrapper.querySelectorAll('[data-sp-header]').forEach(el=>el.style.display='');
+        return;
+    }
+    // Filter each card by data attributes
+    const sports=Object.keys(bySport).sort((a,b)=>{const ai=SPORT_ORDER.indexOf(a),bi=SPORT_ORDER.indexOf(b);return(ai===-1?99:ai)-(bi===-1?99:bi);});
+    let newHtml='';
+    let total=0;
+    for(const sp of sports){
+        const filtered=bySport[sp].filter(l=>(l.game||'').toLowerCase().includes(q)||(l.sport||'').toLowerCase().includes(q)||(l.bookie_name||'').toLowerCase().includes(q));
+        if(!filtered.length)continue;
+        total+=filtered.length;
+    }
+    const sub=document.querySelector('.page-subtitle');
+    if(sub) sub.textContent=q?`${total} line${total!==1?'s':''} matching "${q}"`:`${lines.length} open line${lines.length!==1?'s':''}`;
+}
+function filterBookieSearch(){
+    const q=document.getElementById('searchFilter')?.value.toLowerCase().trim()||'';
+    const users=window._allSearchUsers||[];
+    const filtered=q?users.filter(u=>u.username.toLowerCase().includes(q)):users;
+    // Re-render just the results list
+    const container=document.getElementById('searchResults');
+    if(!container)return;
+    if(!filtered.length){container.innerHTML=`<div class='empty-state' style='padding:40px 20px;'><div class='empty-icon'>🔍</div><div class='empty-title'>No matches</div></div>`;return;}
+    let html='';
+    filtered.slice(0,30).forEach(u=>{
+        const wr=u.wins+u.losses>0?Math.round(u.wins/(u.wins+u.losses)*100):0;
+        const plColor=u.profit>=0?'var(--green)':'var(--red)';
+        let friendBtn='';
+        if(u.friend_status==='friends'){friendBtn=`<button class="btn btn-secondary btn-sm" onclick="removeFriend('${u.username}',this)">Friends ✓</button>`;}
+        else if(u.friend_status==='outgoing'){friendBtn=`<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;">Pending...</button>`;}
+        else if(u.friend_status==='incoming'){friendBtn=`<button class="btn btn-primary btn-sm" onclick="acceptFriendFromSearch(${u.request_id},this,'${u.username}')">Accept 🤝</button>`;}
+        else{friendBtn=`<button class="btn btn-outline btn-sm" onclick="sendFriendRequest('${u.username}',this)">+ Add Friend</button>`;}
+        const avatarEl=u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid ${u.is_following?'var(--green)':'var(--border)'};flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid ${u.is_following?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;flex-shrink:0;font-weight:800;color:var(--green);">${u.username.slice(0,2).toUpperCase()}</div>`;
+        html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')"><div style="display:flex;align-items:center;gap:16px;">${avatarEl}<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;">@${u.username}${u.is_following?' <span style="font-size:10px;color:var(--green);font-weight:800;">FOLLOWING</span>':''}</div><div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% win rate</div><div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':'-'}$${Math.abs(u.profit)}</div><div style="display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation()">${friendBtn}<button class="btn ${u.is_following?'btn-secondary':'btn-outline'} btn-sm" id="fb-${u.username}" onclick="event.stopPropagation();${u.is_following?'unfollow':'follow'}User('${u.username}',this)">${u.is_following?'Following ✓':'+ Follow'}</button><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openChallengeModal('${u.username}')">⚔️</button></div></div></div></div>`;
+    });
+    container.innerHTML=html;
 }
 
 async function sendFriendRequest(username, btn){
@@ -2076,7 +2307,8 @@ async function removeFriend(username, btn){
 
 async function renderFriends(){
     document.getElementById('content').innerHTML=skeletonCards(3);
-    const data=await fetch(API+'/friends?token='+token).then(r=>r.json());
+    let data={friends:[],incoming:[],outgoing:[]};
+    try{const r=await fetch(API+'/friends?token='+token);if(r.ok)data=await r.json();}catch(e){}
     const {friends=[],incoming=[],outgoing=[]}=data;
     let html=`<div class="page-header"><div class="page-title">Friends</div><div class="page-subtitle">${friends.length} friend${friends.length!==1?'s':''}</div></div>`;
 
@@ -2086,7 +2318,7 @@ async function renderFriends(){
         incoming.forEach(u=>{
             html+=`<div class="card" style="border-color:rgba(255,107,0,.3);">
                 <div style="display:flex;align-items:center;gap:16px;">
-                    <div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;">${u.username.charAt(0).toUpperCase()}</div>
+                    ${u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--orange);flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--gold);flex-shrink:0;">${u.username.slice(0,2).toUpperCase()}</div>`}
                     <div style="flex:1;"><div style="font-weight:700;font-size:16px;">@${u.username}</div>
                     <div style="color:var(--text-muted);font-size:13px;">${u.wins}W — ${u.losses}L · ${u.win_rate}% win rate</div></div>
                     <div style="display:flex;gap:8px;">
@@ -2118,9 +2350,9 @@ async function renderFriends(){
         friends.forEach(u=>{
             const wr=u.win_rate||0;
             const plColor=u.profit>=0?'var(--green)':'var(--red)';
-            html+=`<div class="card">
+            html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')">
                 <div style="display:flex;align-items:center;gap:16px;">
-                    <div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;">${u.username.charAt(0).toUpperCase()}</div>
+                    ${u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--green);flex-shrink:0;">${u.username.slice(0,2).toUpperCase()}</div>`}
                     <div style="flex:1;"><div style="font-weight:700;font-size:16px;">@${u.username}</div>
                     <div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% win rate</div>
                     <div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div>
@@ -2135,7 +2367,7 @@ async function renderFriends(){
             </div>`;
         });
     } else if(!incoming.length){
-        html+=`<div class="empty-state"><div class="empty-icon">🤝</div><div class="empty-title">No friends yet</div><div class="empty-desc">Go to Find Bookies and send friend requests</div></div>`;
+        html+=`<div class="empty-state"><div class="empty-icon">🤝</div><div class="empty-title">No friends yet</div><div class="empty-desc">Find bookies to add as friends and get notified of their bets</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('search')">Find Bookies</button></div>`;
     }
     return html;
 }
@@ -2186,14 +2418,16 @@ async function unfollowUser(username, btn) {
 
 async function renderFollowing(){
     document.getElementById('content').innerHTML=skeletonCards(3);
-    const users=await fetch(API+'/following?token='+token).then(r=>r.json());
+    let users=[];
+    try{users=await fetch(API+'/following?token='+token).then(r=>r.json());}catch(e){}
+    if(!Array.isArray(users))users=[];
     let html=`<div class="page-header"><div class="page-title">Following</div><div class="page-subtitle">${users.length} player${users.length!==1?'s':''} you follow</div></div>`;
-    if(!users.length)return html+`<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No one followed yet</div><div class="empty-desc">Go to Find Bookies and hit + Follow on any player</div></div>`;
+    if(!users.length)return html+`<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No one followed yet</div><div class="empty-desc">Follow bookies to track their action in your feed</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('search')">Find Bookies</button></div>`;
     users.forEach(u=>{
         const wr=u.win_rate||0;
         const plColor=u.profit>=0?'var(--green)':'var(--red)';
-        html+=`<div class="card"><div style="display:flex;align-items:center;gap:16px;">
-            <div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0;">${u.username.charAt(0).toUpperCase()}</div>
+        html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')"><div style="display:flex;align-items:center;gap:16px;">
+            ${u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();viewProfile('${u.username}')">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--green);flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();viewProfile('${u.username}')">${u.username.slice(0,2).toUpperCase()}</div>`}
             <div style="flex:1;"><div style="font-weight:700;font-size:16px;">@${u.username}</div>
             <div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% · ${u.open_lines} open line${u.open_lines!==1?'s':''}</div>
             <div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div>
@@ -2399,14 +2633,13 @@ function renderLiveCards(bets, scores){
             <button class="btn btn-primary" onclick="changeView('marketplace')">Browse Lines</button>
         </div>`;
     } else {
+        const maxW='max-width:680px;';
         if(liveSection.length){
-            // Desktop: wrap in max-width container so cards don't stretch 960px wide
-    const maxW='max-width:680px;';
-    html+=`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;letter-spacing:2px;color:var(--red);margin-bottom:10px;display:flex;align-items:center;gap:6px;${maxW}"><div class="live-dot"></div>LIVE NOW · ${liveSection.length} bet${liveSection.length!==1?'s':''}</div>`;
+            html+=`<div style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;letter-spacing:2px;color:var(--red);margin-bottom:10px;display:flex;align-items:center;gap:6px;${maxW}"><div class="live-dot"></div>LIVE NOW · ${liveSection.length} bet${liveSection.length!==1?'s':''}</div>`;
             liveSection.forEach((b,i)=>html+=buildLiveCard(b,scores[b.game_id],i));
         }
         if(upcomingSection.length){
-            html+=`<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin:${liveSection.length?'20px':0} 0 10px;max-width:680px;">⏳ UPCOMING · ${upcomingSection.length}</div>`;
+            html+=`<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin:${liveSection.length?'20px':0} 0 10px;${maxW}">⏳ UPCOMING · ${upcomingSection.length}</div>`;
             upcomingSection.forEach((b,i)=>html+=buildLiveCard(b,scores[b.game_id]||null,i));
         }
         if(recentSettled.length){
@@ -2423,9 +2656,25 @@ function renderLiveCards(bets, scores){
         return sum+calcLivePL(b,s).val;
     },0);
     const plEl=document.getElementById('liveTotalPL');
-    if(plEl&&liveSection.length){
-        plEl.textContent=(livePL>=0?'+':'')+`$${livePL.toFixed(2)}`;
-        plEl.className='live-pl '+(livePL>0?'winning':livePL<0?'losing':'push');
+    if(plEl){
+        if(!bets.length){plEl.textContent='—';plEl.className='live-pl push';}
+        else{
+            // Show overall P/L including settled bets
+            const allPL=bets.reduce((sum,b)=>{
+                if(b.status==='settled'){
+                    const isBookie=user&&b.bookie_id===user.id;
+                    const won=b.winner===(isBookie?'bookie':'bettor');
+                    const push=b.winner==='push';
+                    const myStake=isBookie?(b.bookie_amount||b.amount):(b.bettor_amount||b.amount);
+                    const oppStake=isBookie?(b.bettor_amount||b.amount):(b.bookie_amount||b.amount);
+                    return sum+(push?0:won?oppStake:-myStake);
+                }
+                const sc=scores[b.game_id];
+                return sum+calcLivePL(b,determineLiveBetStatus(b,sc)).val;
+            },0);
+            plEl.textContent=(allPL>=0?'+':'')+`$${allPL.toFixed(2)}`;
+            plEl.className='live-pl '+(allPL>0?'winning':allPL<0?'losing':'push');
+        }
     }
 }
 
@@ -2455,9 +2704,13 @@ async function renderLive(){
         </div>`;
 
     stopLiveTracking();
-    await refreshLiveView();
-    _liveInterval=setInterval(refreshLiveView,60000);
-
+    try {
+        await refreshLiveView();
+    } catch(e) {
+        const ct = document.getElementById('liveCardsContainer');
+        if(ct) ct.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load live bets</div><div class="empty-desc">${e.message||'Connection error'} — <button class="btn btn-outline btn-sm" onclick="refreshLiveView()">Retry</button></div></div>`;
+    }
+    _liveInterval = setInterval(refreshLiveView, 60000);
     return '';
 }
 
@@ -2473,7 +2726,7 @@ async function renderReferral(){
         return `<div style="max-width:600px;">
             <div class="page-header">
                 <div class="page-title">🎁 Refer & Earn</div>
-                <div class="page-subtitle">Share BookieVerse — you both get $250 bonus coins</div>
+                <div class="page-subtitle">Share your code — you <em>and</em> your friend both get <strong style="color:var(--green);">$250 free coins</strong> 🎉</div>
             </div>
 
             <!-- Stats -->
@@ -2531,7 +2784,7 @@ async function renderReferral(){
             </div>
         </div>`;
     } catch(e){
-        return `<div class="empty-state"><div class="empty-icon">😕</div><div class="empty-title">${e.message}</div></div>`;
+        return `<div class="empty-state"><div class="empty-icon">😕</div><div class="empty-title">Couldn't load referral info</div><div class="empty-desc">${e.message}</div><button class="btn btn-outline btn-sm" style="margin-top:16px;" onclick="changeView('referral')">Retry</button></div>`;
     }
 }
 
@@ -2711,8 +2964,16 @@ const ALL_TEAMS = {
 
 function viewProfile(username){
     _profileUsername = username;
+    try{history.pushState({view:'profile',profileUsername:username},'','?u='+encodeURIComponent(username));}catch(e){}
     changeView('profile');
 }
+window.addEventListener('popstate', e=>{
+    if(e.state&&e.state.view){
+        if(e.state.view==='profile'&&e.state.profileUsername) _profileUsername=e.state.profileUsername;
+        view=e.state.view;
+        renderApp();
+    }
+});
 
 function avatarHtml(u, size=68, fontSize=26){
     if(u && u.avatar){
@@ -2782,21 +3043,22 @@ async function renderProfile(username){
                         <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game}</div>
                         <div style="font-size:11px;color:var(--text-muted);">${l.type.toUpperCase()} · ${l.side} · <span style="color:${oddsColor};font-weight:700;">${odds}</span></div>
                     </div>
-                    <button class="btn btn-primary btn-sm" onclick="changeView('marketplace')" style="font-size:11px;white-space:nowrap;">
-                        +$${avail.toFixed(0)} avail
-                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="changeView('marketplace')" style="font-size:11px;white-space:nowrap;">View in Market →</button>
                 </div>`;
             });
         } else {
             linesHtml = `<div style="padding:16px 0;color:var(--text-dim);font-size:13px;">No open lines right now</div>`;
         }
 
-        const followBtn = !isMe ? `<button class="btn ${p.is_following?'btn-secondary':'btn-primary'} btn-sm"
+        const followBtn = !isMe ? `<button class="btn ${p.is_following?'btn-secondary':'btn-outline'} btn-sm"
             onclick="toggleFollow('${p.username}',this)" style="font-size:12px;">
             ${p.is_following ? 'Following ✓' : '+ Follow'}</button>` : '';
+        const challengeBtn = !isMe ? `<button class="btn btn-primary btn-sm" onclick="openChallengeModal('${p.username}')" style="font-size:12px;">⚔️ Challenge</button>` : '';
         const editBtn = isMe ? `<button class="btn btn-secondary btn-sm" onclick="changeView('settings')" style="font-size:12px;">✏️ Edit Profile</button>` : '';
 
+        const backBtn = !isOwnProfile ? `<button class="btn btn-secondary btn-sm" style="margin-bottom:12px;" onclick="history.back()">← Back</button>` : '';
         return `<div>
+            ${backBtn}
             <!-- Profile Card -->
             <div class="profile-card">
                 <!-- Banner -->
@@ -2817,11 +3079,11 @@ async function renderProfile(username){
                                 ${p.member_since ? `<span>📅 Since ${p.member_since}</span>` : ''}
                             </div>
                             <div style="display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--text-muted);">
-                                <span><strong style="color:var(--text);">${p.followers}</strong> Followers</span>
-                                <span><strong style="color:var(--text);">${p.following}</strong> Following</span>
+                                <span style="cursor:pointer;" onclick="changeView('following')"><strong style="color:var(--text);">${p.followers}</strong> Followers</span>
+                                <span style="cursor:pointer;" onclick="changeView('following')"><strong style="color:var(--text);">${p.following}</strong> Following</span>
                             </div>
                         </div>
-                        <div style="display:flex;gap:6px;">${followBtn}${editBtn}</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">${followBtn||''}${challengeBtn||''}${editBtn||''}</div>
                     </div>
                 </div>
                 <!-- Stats grid -->
@@ -2867,13 +3129,14 @@ async function renderProfile(username){
             <div class="empty-icon">😕</div>
             <div class="empty-title">Profile not found</div>
             <div class="empty-desc">${e.message}</div>
+            <button class="btn btn-secondary" style="margin-top:16px;" onclick="history.back()">← Go Back</button>
         </div>`;
     }
 }
 
 async function renderSettings(){
     // Use current user data
-    await loadUser();
+    try { await loadUser(); } catch(e) { /* use cached user */ }
     const u = user || {};
     const bannerColor = u.banner_color || '#0f2744';
 
@@ -2967,11 +3230,39 @@ async function renderSettings(){
                 </div>
             </div>
 
+            <!-- Referral Code -->
+            <div class="settings-section" style="border-color:rgba(0,214,122,.2);">
+                <div class="settings-section-title">🎁 Your Referral Code</div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--green);background:rgba(0,214,122,.08);border:1px solid rgba(0,214,122,.25);border-radius:8px;padding:8px 18px;">${u.referral_code||'—'}</div>
+                    ${u.referral_code?`<button class="btn btn-secondary btn-sm" onclick="async()=>{
+    const code='${u.referral_code}';
+    if(navigator.share){
+        try{await navigator.share({title:'Join BookieVerse',text:'Use my referral code '+code+' to get \$250 free coins!',url:window.location.origin+'?ref='+code});}
+        catch(e){await navigator.clipboard.writeText(code);toast('Code copied!','success');}
+    }else{await navigator.clipboard.writeText(code);toast('Code copied!','success');}
+}()">Share Code 🎁</button>`:''}
+                    <div style="font-size:12px;color:var(--text-muted);flex:1;min-width:120px;">Share your code — you both get <strong style="color:var(--green);">+$250</strong> when they sign up</div>
+                </div>
+            </div>
+
             <!-- Save -->
             <button class="btn btn-primary btn-full" onclick="saveSettings()" style="margin-bottom:40px;">
                 Save Profile
             </button>
         </div>`;
+    // Load referral code async
+    fetch(API+'/referral?token='+token).then(r=>r.ok?r.json():null).then(r=>{
+        const el=document.getElementById('settingsRefCodeBlock');
+        if(!el)return;
+        if(!r||!r.referral_code){el.innerHTML='<div style="color:var(--text-dim);font-size:13px;">No referral code yet</div>';return;}
+        const code=r.referral_code;
+        el.innerHTML=`
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--green);background:rgba(0,214,122,.08);border:1px solid rgba(0,214,122,.25);border-radius:8px;padding:8px 18px;">${code}</div>
+            <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${code}').then(()=>toast('Referral code copied!','success'))">Copy</button>
+            <button class="btn btn-primary btn-sm" onclick="changeView('referral')">View Stats →</button>
+            <div style="font-size:12px;color:var(--text-muted);flex:1;min-width:120px;">You both get <strong style="color:var(--green);">+$250</strong> on sign up</div>`;
+    }).catch(()=>{});
     return '';
 }
 
@@ -3017,6 +3308,25 @@ function removeAvatar(){
     if(preview) preview.innerHTML = `<div style="text-align:center;"><div style="font-size:28px;">📷</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px;">UPLOAD</div></div>`;
 }
 
+async function changePassword(){
+    const newPw=document.getElementById('settingsNewPw')?.value;
+    const confirmPw=document.getElementById('settingsConfirmPw')?.value;
+    if(!newPw||!confirmPw){toast('Enter and confirm your new password','error');return;}
+    if(newPw.length<6){toast('Password must be at least 6 characters','error');return;}
+    if(newPw!==confirmPw){toast('Passwords do not match','error');return;}
+    const ok=await showConfirm('Change password?','You will need to log back in afterwards.');
+    if(!ok)return;
+    try{
+        const res=await fetch(`${API}/user/change-password?token=${token}`,{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({new_password:newPw})
+        });
+        if(res.ok){
+            toast('Password changed! Logging you out...','success');
+            setTimeout(()=>{localStorage.removeItem('token');location.reload();},2000);
+        } else {const e=await res.json();toast(e.detail||'Could not change password','error');}
+    }catch(e){toast('Connection error','error');}
+}
 async function saveSettings(){
     const bio = document.getElementById('settingsBio')?.value?.trim() || '';
     const location = document.getElementById('settingsLocation')?.value?.trim() || '';
@@ -3177,7 +3487,7 @@ async function renderChat(){
 
             <!-- Input -->
             <div class="chat-input-row">
-                <textarea class="chat-input" id="chatInput" placeholder="Say something..." rows="1"
+                <textarea class="chat-input" id="chatInput" placeholder="Say something..." rows="1" maxlength="500"
                     onkeydown="chatKeyDown(event)"
                     oninput="chatAutoResize(this)"></textarea>
                 <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
@@ -3193,8 +3503,15 @@ async function renderChat(){
             const data = await res.json();
             _chatLastId = data.last_id || 0;
             renderChatMessages(data.messages || [], false);
-        }
-    } catch(e){ console.error('chat load:', e); }
+        } else throw new Error('Server error');
+    } catch(e){
+        const box = document.getElementById('chatMessages');
+        if(box) box.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
+            <div style="font-size:32px;margin-bottom:10px;">💬</div>
+            <div style="font-weight:700;">Couldn't load messages</div>
+            <div style="font-size:12px;margin-top:6px;">Check your connection</div>
+        </div>`;
+    }
 
     // Start polling every 3 seconds
     _chatPollInterval = setInterval(pollChat, 3000);
@@ -3202,7 +3519,7 @@ async function renderChat(){
     // Focus input
     setTimeout(() => {
         const inp = document.getElementById('chatInput');
-        if(inp) inp.focus();
+        if(inp && window.innerWidth > 768) inp.focus();
     }, 150);
 }
 
@@ -3448,9 +3765,13 @@ async function loadFeedEvents(){
                 else                   bucket = 'This Week';
             }
             if(bucket && bucket !== lastBucket){
-                html += `<div style="font-size:10px;font-weight:800;letter-spacing:2px;
-                    color:var(--text-dim);padding:${i===0?'0':'16px'} 0 8px;
-                    border-top:${i===0?'none':'1px solid var(--border)'};">${bucket}</div>`;
+                const isFirst = i===0;
+                html += `<div style="font-size:9px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+                    color:var(--text-dim);padding:${isFirst?'8':'20'}px 0 6px;
+                    ${!isFirst?'border-top:1px solid rgba(255,255,255,.04);':''}
+                    display:flex;align-items:center;gap:8px;">
+                    ${bucket==='🔴 Last Hour'?'<span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;animation:blink 1s infinite;"></span>':''}
+                    ${bucket.replace('🔴 ','')}</div>`;
                 lastBucket = bucket;
             }
             html += buildFeedItem(ev, i);
@@ -3504,7 +3825,7 @@ function renderParlayLegsBuilder(){
 
     document.getElementById('parlayLegsDisplay').innerHTML=`
         <div style="margin-bottom:8px;">${legsHtml}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-secondary);border-radius:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-secondary,#0f1826);border-radius:8px;">
             <span style="font-size:12px;color:var(--text-dim);">${_parlayLegs.length} leg${_parlayLegs.length!==1?'s':''} · Combined Odds</span>
             <span style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:${coColor};">${coStr}</span>
         </div>`;
@@ -3598,7 +3919,7 @@ async function postParlay(){
     if(_parlayLegs.length<2){toast('Add at least 2 legs','error');return;}
     const amount=parseFloat(document.getElementById('parlayAmount').value);
     if(isNaN(amount)||amount<=0){toast('Enter your max liability','error');return;}
-    if(amount>user.balance){toast(`Insufficient funds — balance: $${user.balance.toFixed(2)}`,'error');return;}
+    if(amount>user.balance){toast(`Insufficient funds — balance: $${Math.floor(user.balance)}`,'error');return;}
     try{
         const res=await fetch(API+'/parlays?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({legs:_parlayLegs,amount})});
@@ -3687,11 +4008,11 @@ async function renderParlays(){
 
         <!-- Builder -->
         <div class="card" style="max-width:680px;margin-bottom:24px;">
-            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:12px;">① PICK LEAGUE & GAME</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">1</span>PICK LEAGUE & GAME</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">${sportTabs}</div>
             <div class="form-group" style="margin-bottom:0;">${gameSelects}</div>
 
-            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin:16px 0 10px;">② LEG DETAILS</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin:16px 0 10px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">2</span>LEG DETAILS</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
                 <div class="form-group" style="margin:0;">
                     <label>Bet Type</label>
@@ -3718,16 +4039,16 @@ async function renderParlays(){
             </div>
             <button class="btn btn-secondary btn-full" onclick="addParlayLeg()" style="margin-bottom:16px;">+ Add Leg</button>
 
-            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">③ YOUR LEGS <span style="color:var(--text-dim);font-weight:400;">(min 2, max 12)</span></div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">3</span>YOUR LEGS <span style="color:var(--text-dim);font-weight:400;font-size:9px;">(min 2, max 12)</span></div>
             <div id="parlayLegsDisplay" style="margin-bottom:16px;">
                 <div style="color:var(--text-dim);font-size:13px;text-align:center;padding:12px;">No legs added yet</div>
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-secondary);border-radius:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg-secondary,#0f1826);border-radius:8px;">
                     <span style="font-size:12px;color:var(--text-dim);">0 legs · Combined Odds</span>
                     <span style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;color:var(--text-dim);">—</span>
                 </div>
             </div>
 
-            <div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--text-dim);margin-bottom:10px;">④ YOUR MAX LIABILITY</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">4</span>YOUR MAX LIABILITY</div>
             <div style="display:flex;gap:8px;margin-bottom:8px;">
                 <input id="parlayAmount" type="number" placeholder="100" oninput="renderParlayLegsBuilder()" style="flex:1;padding:12px;font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text);text-align:center;">
                 <button type="button" onclick="document.getElementById('parlayAmount').value=Math.floor(user.balance);renderParlayLegsBuilder();" style="padding:0 14px;background:var(--bg);border:2px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:11px;font-weight:700;cursor:pointer;">MAX</button>
@@ -3792,9 +4113,10 @@ async function renderShop(){
         const ICONS=['🎯','🔥','💎','👑'];
         const COLORS=['var(--text-muted)','var(--orange)','var(--green)','var(--gold)'];
         let html=`<div class="page-header"><div class="page-title">💰 Coin Shop</div><div class="page-subtitle">Your balance: <strong style="color:var(--gold)">${(user?.balance||0).toLocaleString()} coins</strong></div></div>
+        <div class="card" style="border-color:rgba(255,179,0,.2);padding:11px 16px;margin-bottom:16px;font-size:13px;color:var(--text-muted);">💡 Coins are play money for practice & bragging rights. Real money mode coming soon via Stripe.</div>
         <div class="card" style="margin-bottom:16px;background:rgba(245,166,35,.07);border-color:rgba(245,166,35,.2);">
             <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">
-                💡 Coins are used to place bets on BookieVerse. New accounts start with 1,000 free coins.
+                💡 BookieVerse coins are <strong>virtual currency</strong> for fun. No real money involved — new accounts start with 1,000 free coins to play with.
             </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">`;
@@ -3816,7 +4138,7 @@ async function renderShop(){
         html+=`</div>`;
         return html;
     }catch(e){
-        return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Shop unavailable</div><div class="empty-desc">${e.message}</div></div>`;
+        return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Shop unavailable</div><div class="empty-desc">${e.message||'Connection error'}</div><button class="btn btn-outline btn-sm" style="margin-top:16px;" onclick="changeView('shop')">Retry</button></div>`;
     }
 }
 async function buyCoins(packageId){
@@ -3829,7 +4151,7 @@ async function buyCoins(packageId){
     }catch(e){toast('Error: '+e.message,'error');}
 }
 async function renderAdmin(){
-    if(!user.is_admin)return`<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Admin Access Required</div></div>`;
+    if(!user.is_admin)return`<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Admin Access Required</div><div class="empty-desc">This section is only accessible to platform administrators</div><button class="btn btn-secondary" style="margin-top:16px;" onclick="changeView('marketplace')">← Back to Marketplace</button></div>`;
     document.getElementById('content').innerHTML=skeletonCards(2);
     try{
         const res=await fetch(API+'/admin/pending-bets?token='+token);
@@ -3837,8 +4159,11 @@ async function renderAdmin(){
         let html=`<div class="page-header"><div class="page-title">⚙️ Admin Panel</div></div>
         <div class="card" style="border-color:rgba(255,69,96,.3);margin-bottom:16px;">
             <div style="font-weight:700;font-size:15px;margin-bottom:12px;color:var(--orange);">🔧 Settlement Controls</div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                <button class="btn btn-primary" onclick="adminRunScores()">▶ Run Score Check Now</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="adminRunScores()">▶ Run Scores</button>
+                <button class="btn btn-secondary" onclick="changeView('analytics')">📊 Analytics</button>
+                <button class="btn btn-secondary" onclick="adminUserSearch()">🔍 User Lookup</button>
+                <button class="btn btn-secondary" onclick="adminAddBalance()">💰 Add Balance</button>
             </div>
             <div id="adminMsg" style="margin-top:10px;font-size:13px;color:var(--text-muted);"></div>
         </div>
@@ -3867,6 +4192,28 @@ async function renderAdmin(){
     }catch(e){
         return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Admin error</div><div class="empty-desc">${e.message}</div></div>`;
     }
+}
+async function adminUserSearch(){
+    const u=prompt('Enter username to look up:');
+    if(!u)return;
+    try{
+        const res=await fetch(`${API}/users/${encodeURIComponent(u)}?token=${token}`);
+        const d=await res.json();
+        if(!res.ok){toast(d.detail||'User not found','error');return;}
+        const info=`@${d.username}\nID: ${d.id}\nBalance: $${d.balance}\nEmail: ${d.email||'—'}\nP/L: $${d.profit}\nW/L: ${d.wins}/${d.losses}\nAdmin: ${d.is_admin?'Yes':'No'}`;
+        alert(info);
+    }catch(e){toast('Error: '+e.message,'error');}
+}
+async function adminAddBalance(){
+    const u=prompt('Username to credit:');if(!u)return;
+    const amt=parseFloat(prompt('Amount to add:'));if(isNaN(amt)||amt<=0){toast('Invalid amount','error');return;}
+    const ok=await showConfirm('Add balance?',`Add $${amt} to @${u}?`);if(!ok)return;
+    try{
+        const res=await fetch(`${API}/admin/add-balance?token=${token}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,amount:amt})});
+        const d=await res.json();
+        if(res.ok)toast(d.message||`Added $${amt} to @${u}`,'success');
+        else toast(d.detail||'Error','error');
+    }catch(e){toast('Error: '+e.message,'error');}
 }
 async function adminRunScores(){
     const msg=document.getElementById('adminMsg');
@@ -3906,21 +4253,47 @@ async function renderApp(){
     if(!user){await loadUser();}if(!user)return;
     refreshBadges(); // async, non-blocking — updates badge count for next render cycle
     const NAV=[
-        {id:'marketplace',icon:'📊',label:'Marketplace'},{id:'live',icon:'🔴',label:'Live'},{id:'feed',icon:'📡',label:'Feed'},{id:'chat',icon:'💬',label:'Chat'},{id:'create',icon:'⚡',label:'Set Lines'},{id:'settings',icon:'⚙️',label:'Settings'},{id:'referral',icon:'🎁',label:'Refer & Earn'},
-        {id:'props',icon:'🎲',label:'Props'},{id:'futures',icon:'🔮',label:'Futures'},
-        {id:'bets',icon:'📋',label:'My Bets'},{id:'challenges',icon:'⚔️',label:'Challenges',badgeKey:'challengeCount'},
+        {id:'marketplace',icon:'📊',label:'Marketplace'},
+        {id:'live',icon:'🔴',label:'Live'},
+        {id:'create',icon:'⚡',label:'Set Lines'},
+        {id:'bets',icon:'📋',label:'My Bets'},
+        {id:'feed',icon:'📡',label:'Feed'},
+        {id:'chat',icon:'💬',label:'Chat'},
+        {id:'props',icon:'🎲',label:'Props'},
+        {id:'futures',icon:'🔮',label:'Futures'},
+        {id:'challenges',icon:'⚔️',label:'Challenges',badgeKey:'challengeCount'},
         {id:'friends',icon:'🤝',label:'Friends',badgeKey:'friendRequestCount'},
         {id:'leaderboard',icon:'🏆',label:'Leaderboard'},
-        {id:'groups',icon:'👥',label:'Groups'},{id:'following',icon:'⭐',label:'Following'},
-        {id:'search',icon:'🔍',label:'Find Bookies'},{id:'parlays',icon:'🎰',label:'Parlays'},{id:'shop',icon:'💰',label:'Shop'},
-        {id:'settings',icon:'⚙️',label:'Settings'},{id:'referral',icon:'🎁',label:'Refer & Earn'},
-        ...(user.is_admin?[{id:'admin',icon:'⚙',label:'Admin'},{id:'analytics',icon:'📊',label:'Analytics'}]:[])
+        {id:'following',icon:'⭐',label:'Following'},
+        {id:'search',icon:'🔍',label:'Find Bookies'},
+        {id:'referral',icon:'🎁',label:'Refer & Earn'},
+        {id:'settings',icon:'⚙️',label:'Settings'},
+        ...(user.is_admin?[{id:'analytics',icon:'📊',label:'Analytics'}]:[])
     ];
-    const sidebarNav=NAV.map(n=>{
+    const SIDEBAR_SECTIONS=[
+        {label:'Betting',ids:['marketplace','live','create','bets','props','futures','parlays','challenges']},
+        {label:'Social',ids:['feed','chat','friends','following','search','leaderboard']},
+        {label:'Account',ids:['referral','settings','analytics','admin']},
+    ];
+    let sidebarNav='';
+    const addedSidebar=new Set();
+    for(const sec of SIDEBAR_SECTIONS){
+        const items=sec.ids.map(id=>NAV.find(n=>n.id===id)).filter(n=>n);
+        if(!items.length)continue;
+        sidebarNav+=`<div class="nav-section-label">${sec.label}</div>`;
+        items.forEach(n=>{
+            addedSidebar.add(n.id);
+            const cnt=(n.badgeKey&&window._badges&&window._badges[n.badgeKey])||0;
+            const badge=cnt?`<span style="margin-left:auto;background:var(--orange);color:#000;font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;">${cnt}</span>`:'';
+            sidebarNav+=`<div class="nav-item ${view===n.id?'active':''}" onclick="changeView('${n.id}')" role="button" tabindex="0"><span class="nav-icon">${n.icon}</span>${n.label}${badge}</div>`;
+        });
+    }
+    // Add any unlisted items
+    NAV.filter(n=>!addedSidebar.has(n.id)).forEach(n=>{
         const cnt=(n.badgeKey&&window._badges&&window._badges[n.badgeKey])||0;
         const badge=cnt?`<span style="margin-left:auto;background:var(--orange);color:#000;font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;">${cnt}</span>`:'';
-        return`<div class="nav-item ${view===n.id?'active':''}" onclick="changeView('${n.id}')"><span class="nav-icon">${n.icon}</span>${n.label}${badge}</div>`;
-    }).join('');
+        sidebarNav+=`<div class="nav-item ${view===n.id?'active':''}" onclick="changeView('${n.id}')" role="button" tabindex="0"><span class="nav-icon">${n.icon}</span>${n.label}${badge}</div>`;
+    });
     // Bottom tab bar — 5 primary tabs + "More" button
     const PRIMARY_TABS=[
         {id:'marketplace',icon:'📊',label:'Market'},
@@ -3943,23 +4316,60 @@ async function renderApp(){
     }).join('');
     // Build "More" drawer items (all non-primary tabs)
     const PRIMARY_IDS=new Set(['marketplace','create','parlays','bets','_more']);
-    const moreItems=NAV.filter(n=>!PRIMARY_IDS.has(n.id)).map(n=>{
-        const cnt=(n.badgeKey&&window._badges&&window._badges[n.badgeKey])||0;
-        const badge=cnt?`<span style="position:absolute;top:8px;right:8px;background:var(--red);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;">${cnt}</span>`:'';
+    // Group drawer items into sections
+    const DRAWER_SECTIONS = [
+        {label:'Betting', ids:['feed','chat','props','futures','challenges','parlays']},
+        {label:'Social', ids:['friends','following','search','leaderboard']},
+        {label:'Account', ids:['referral','settings','analytics']},
+    ];
+    let moreItemsHtml = '';
+    const addedIds = new Set(PRIMARY_IDS);
+    for(const section of DRAWER_SECTIONS){
+        const sectionItems = section.ids
+            .map(id => NAV.find(n => n.id === id))
+            .filter(n => n && !addedIds.has(n.id));
+        if(!sectionItems.length) continue;
+        // Add admin analytics if admin
+        sectionItems.forEach(n => addedIds.add(n.id));
+        moreItemsHtml += `<div style="grid-column:1/-1;padding:6px 16px 2px;font-size:9px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;">${section.label}</div>`;
+        moreItemsHtml += sectionItems.map(n => {
+            const cnt=(n.badgeKey&&window._badges&&window._badges[n.badgeKey])||0;
+            const badge=cnt?`<span style="position:absolute;top:8px;right:8px;background:var(--red);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;">${cnt}</span>`:'';
+            return`<div class="mob-drawer-item" onclick="changeView('${n.id}');closeMobMore();" style="position:relative;">
+                ${badge}<span class="di-icon">${n.icon}</span>${n.label}
+            </div>`;
+        }).join('');
+    }
+    // Any remaining items not in sections
+    const remainingItems = NAV.filter(n=>!addedIds.has(n.id)).map(n=>{
+        addedIds.add(n.id);
         return`<div class="mob-drawer-item" onclick="changeView('${n.id}');closeMobMore();" style="position:relative;">
-            ${badge}<span class="di-icon">${n.icon}</span>${n.label}
+            <span class="di-icon">${n.icon}</span>${n.label}
         </div>`;
     }).join('');
+    const moreItems = moreItemsHtml + remainingItems;
     document.getElementById('mobMoreGrid').innerHTML=moreItems;
 
+    // ── Smart render: only rebuild shell on first load or user change ──────
+    const alreadyMounted = document.getElementById('content');
+    if(!alreadyMounted){
     document.getElementById('root').innerHTML=`
         <div class="topbar">
-            <div class="topbar-logo">BV</div>
-            <div style="display:flex;align-items:center;gap:10px;">
-                <div onclick="openNotifDrawer()" style="cursor:pointer;font-size:20px;position:relative;" id="mobNotifBtn">
-                    🔔<span class="mob-badge" id="mobNotifBadge" style="display:none;top:-2px;right:-4px;"></span>
+            <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="changeView('marketplace')">
+                <div class="topbar-logo">BV</div>
+                <div style="display:flex;flex-direction:column;line-height:1.2;">
+                    <span style="font-size:12px;font-weight:800;color:var(--text);letter-spacing:.5px;">BookieVerse</span>
+                    <span id="topbarRecord" style="font-size:9px;color:var(--text-dim);">${user.wins}W — ${user.losses}L</span>
                 </div>
-                <div id="topbarBalance" class="topbar-bal">$${user.balance.toLocaleString()}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div onclick="openNotifDrawer()" style="cursor:pointer;font-size:20px;position:relative;padding:4px;" id="mobNotifBtn">
+                    🔔<span class="mob-badge" id="mobNotifBadge" style="display:none;top:0px;right:0px;"></span>
+                </div>
+                <div id="topbarBalance" class="topbar-bal" onclick="changeView('bets')" title="Tap to go to My Bets" style="cursor:pointer;">$${Math.floor(user.balance).toLocaleString()}</div>
+                <div onclick="changeView('settings')" style="cursor:pointer;width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:var(--green);overflow:hidden;" id="topbarAvatar">
+                    ${user.username.slice(0,2).toUpperCase()}
+                </div>
             </div>
         </div>
         <div class="mob-bottom-bar">
@@ -3969,25 +4379,55 @@ async function renderApp(){
             <div class="sidebar">
                 <div class="sidebar-logo"><div class="logo-text">BookieVerse</div><div class="logo-sub">PvP Sportsbook</div></div>
                 <div class="sidebar-user">
-                    <div class="sidebar-username" style="cursor:pointer;" onclick="viewProfile(user.username)">@${user.username}${user.is_admin?' 👑':''}</div>
-                    <div class="sidebar-stats">${user.wins}W — ${user.losses}L</div>
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;cursor:pointer;" onclick="viewProfile(user.username)">
+                        ${user.avatar?`<img src="${user.avatar}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;">`:`<div style="width:34px;height:34px;border-radius:50%;background:var(--card);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:var(--green);flex-shrink:0;">${user.username.slice(0,2).toUpperCase()}</div>`}
+                        <div>
+                            <div class="sidebar-username">@${user.username}${user.is_admin?' 👑':''}</div>
+                            <div class="sidebar-stats">${user.wins}W — ${user.losses}L</div>
+                        </div>
+                    </div>
                     <div class="sidebar-balance">
                         <div class="bal-label">Balance</div>
-                        <div class="bal-amount" id="sidebarBalance">$${user.balance.toLocaleString()}</div>
-                        <div class="bal-pl ${user.profit>=0?'pos':'neg'}" id="sidebarPL">${user.profit>=0?'+':''}$${user.profit.toLocaleString()} P/L</div>
+                        <div class="bal-amount" id="sidebarBalance">$${Math.floor(user.balance).toLocaleString()}</div>
+                        <div class="bal-pl ${user.profit>=0?'pos':'neg'}" id="sidebarPL">${user.profit>=0?'+':'-'}$${Math.abs(user.profit||0).toLocaleString()} P/L</div>
                     </div>
                 </div>
                 <div class="sidebar-nav">${sidebarNav}</div>
                 <div class="sidebar-bottom">
-                    <div class="notif-bell" onclick="openNotifDrawer()" id="notifBell">
-                        🔔 <span style="font-size:13px;font-weight:600;color:var(--muted);">Notifications</span>
+                    <div class="notif-bell" onclick="openNotifDrawer()" id="notifBell" style="border-radius:8px;margin:4px 8px;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background='none'">
+                        🔔 <span style="font-size:13px;font-weight:600;color:var(--text-muted);">Notifications</span>
                         <span class="notif-badge" id="notifBadge" style="display:none;">0</span>
                     </div>
                     <button class="logout-btn" onclick="logout()">Log Out</button>
                 </div>
             </div>
-            <div class="main"><div class="content-area"><div id="content">${skeletonCards(3)}</div></div></div>
+            <div class="main" role="main"><div class="content-area"><div id="content" aria-live="polite">${skeletonCards(3)}</div></div></div>
         </div>`;
+    } // end if(!alreadyMounted)
+    // ── Always update dynamic elements ──────────────────────────────────────
+    // Update nav active state
+    document.querySelectorAll('.nav-item').forEach(el=>{
+        const id=el.getAttribute('onclick')?.match(/changeView\('(\w+)'\)/)?.[1];
+        if(id) el.classList.toggle('active', id===view);
+    });
+    // Update bottom tabs
+    document.querySelectorAll('.mob-tab').forEach(el=>{
+        const clickFn=el.getAttribute('onclick')||'';
+        const id=clickFn.match(/changeView\('(\w+)'\)/)?.[1];
+        if(id){
+            const PRIMARY_IDS_CHECK=['marketplace','live','create','bets'];
+            el.classList.toggle('active',id===view);
+        } else if(clickFn.includes('openMobMore')){
+            // More tab is active when current view isn't a primary tab
+            const isPrimary=['marketplace','live','create','bets'].includes(view);
+            el.classList.toggle('active',!isPrimary);
+        }
+    });
+    updateSidebarBalance();
+    // Update More drawer (badges may have changed)
+    const mgrid=document.getElementById('mobMoreGrid');
+    if(mgrid) mgrid.innerHTML=moreItems;
+
     let content='';
     if(view==='marketplace')content=await loadLines();
     else if(view==='live')content=await renderLive();
@@ -4010,6 +4450,7 @@ async function renderApp(){
     else if(view==='referral')content=await renderReferral();
     else if(view==='analytics')content=await renderAdminAnalytics();
     else if(view==='admin')content=await renderAdmin();
+    else content=await loadLines(); // fallback to marketplace
     const ct=document.getElementById('content');if(ct&&content)ct.innerHTML=content;
 }
 // ─── CHALLENGES ───────────────────────────────────────────────────────────────
@@ -4129,29 +4570,27 @@ async function cancelChallenge(id) {
 
 async function renderChallenges() {
     document.getElementById('content').innerHTML = skeletonCards(3);
-    const res = await fetch(API + '/challenges?token=' + token);
-    const data = await res.json();
+    let data={incoming:[],outgoing:[]};
+    try{const res=await fetch(API+'/challenges?token='+token);if(res.ok)data=await res.json();}catch(e){}
     const incoming = data.incoming || [];
     const outgoing = data.outgoing || [];
 
     let html = `<div class="page-header"><div class="page-title">Challenges</div><div class="page-subtitle">Direct PvP — your inbox and sent challenges</div></div>`;
 
     // Incoming
-    html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;margin-bottom:12px;color:var(--orange);">
-        ⚔️ Incoming <span style="font-size:16px;background:var(--orange);color:#000;padding:2px 10px;border-radius:20px;margin-left:8px;">${incoming.length}</span>
-    </div>`;
-    if (!incoming.length) {
-        html += `<div class="card" style="text-align:center;padding:32px;color:var(--muted);">No incoming challenges</div>`;
-    } else {
+    if(incoming.length) {
+        html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;margin-bottom:12px;color:var(--orange);display:flex;align-items:center;gap:10px;">
+            ⚔️ Incoming <span style="font-size:14px;background:var(--orange);color:#000;padding:2px 10px;border-radius:20px;">${incoming.length}</span>
+        </div>`;
         incoming.forEach(c => {
             const oddsStr = c.odds > 0 ? '+' + c.odds : c.odds;
             html += `<div class="card" style="border-color:rgba(255,107,0,.3);">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;">
                     <div style="flex:1;">
                         <div style="font-size:17px;font-weight:700;">@${c.challenger_name} challenges you</div>
-                        <div style="font-size:14px;color:var(--text-muted);margin-top:4px;">${c.game}</div>
-                        <div style="font-size:14px;color:var(--text-muted);margin-top:2px;">
-                            ${c.type.toUpperCase()} · Their side: <strong style="color:var(--text)">${c.side}</strong>
+                        <div style="font-size:13px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.game}</div>
+                        <div style="font-size:13px;color:var(--text-muted);margin-top:3px;">
+                            <span class="badge badge-${c.type==="spread"?"spread":c.type==="moneyline"?"moneyline":"total"}" style="font-size:10px;">${c.type.toUpperCase()}</span> Their side: <strong style="color:var(--text)">${c.side}</strong>
                             ${c.type !== 'moneyline' ? `<strong style="color:var(--text)"> ${c.value > 0 ? '+' : ''}${c.value}</strong>` : ''}
                             · <span style="color:${c.odds > 0 ? 'var(--green)' : 'var(--text-muted)'};">${oddsStr}</span>
                         </div>
@@ -4159,32 +4598,34 @@ async function renderChallenges() {
                             They risk <strong style="color:var(--orange)">$${c.amount}</strong> · You risk <strong style="color:var(--green)">$${c.bettor_stake}</strong>
                             · Pot: <strong style="color:var(--gold)">$${(c.amount + c.bettor_stake).toFixed(2)}</strong>
                         </div>
-                        ${c.message ? `<div style="margin-top:8px;font-style:italic;color:var(--text-muted);font-size:13px;">"${c.message}"</div>` : ''}
+                        ${c.message ? `<div style="margin-top:8px;font-style:italic;color:var(--text-muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c.message}">"${c.message.slice(0,80)}${c.message.length>80?'…':''}"</div>` : ''}
                     </div>
                     <div style="display:flex;flex-direction:column;gap:8px;">
-                        <button class="btn btn-primary btn-sm" onclick="acceptChallenge(${c.id})">Accept ✅</button>
+                        <button class="btn btn-primary btn-sm" onclick="this.disabled=true;this.innerHTML='<span class=\"spinner\"></span>';acceptChallenge(${c.id})">Accept ✅</button>
                         <button class="btn btn-danger btn-sm" onclick="declineChallenge(${c.id})">Decline</button>
                     </div>
                 </div>
             </div>`;
         });
+    } else {
+        html += `<div class="empty-state" style="padding:32px 20px;"><div class="empty-icon">📬</div><div class="empty-title">No incoming challenges</div><div class="empty-desc">When someone challenges you, it'll appear here</div></div>`;
     }
 
     // Outgoing
     html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;margin:28px 0 12px;color:var(--text-muted);">Sent Challenges</div>`;
     if (!outgoing.length) {
-        html += `<div class="card" style="text-align:center;padding:32px;color:var(--muted);">No sent challenges yet — find a bookie to challenge!</div>`;
+        html += `<div class="empty-state" style="padding:32px 20px;"><div class="empty-icon">⚔️</div><div class="empty-title">No sent challenges</div><div class="empty-desc">Go to Find Bookies or Friends and tap ⚔️ to challenge someone</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('friends')">Find Someone to Challenge</button></div>`;
     } else {
         outgoing.forEach(c => {
             const oddsStr = c.odds > 0 ? '+' + c.odds : c.odds;
-            const statusColors = { pending:'var(--gold)', accepted:'var(--green)', declined:'var(--red)', cancelled:'var(--muted)' };
+            const statusColors = { pending:'var(--gold)', accepted:'var(--green)', declined:'var(--red)', cancelled:'var(--text-muted)' };
             const statusIcons  = { pending:'⏳', accepted:'✅', declined:'❌', cancelled:'🚫' };
             html += `<div class="card">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;">
                     <div style="flex:1;">
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                             <span style="font-size:17px;font-weight:700;">→ @${c.challenged_name}</span>
-                            <span style="font-size:12px;font-weight:700;color:${statusColors[c.status]||'var(--muted)'};">${statusIcons[c.status]||''} ${c.status.toUpperCase()}</span>
+                            <span style="font-size:12px;font-weight:700;color:${statusColors[c.status]||'var(--text-muted)'};">${statusIcons[c.status]||''} ${c.status.toUpperCase()}</span>
                         </div>
                         <div style="font-size:14px;color:var(--text-muted);margin-top:4px;">${c.game}</div>
                         <div style="font-size:14px;color:var(--text-muted);margin-top:2px;">
@@ -4235,29 +4676,52 @@ async function fetchNotifications(silent = false) {
 }
 
 function updateNotifBadge(count) {
-    const badge = document.getElementById('notifBadge');
-    if (!badge) return;
-    if (count > 0) {
-        badge.textContent = count > 99 ? '99+' : count;
-        badge.style.display = 'flex';
-    } else {
-        badge.style.display = 'none';
-    }
+    const val = count > 99 ? '99+' : String(count);
+    ['notifBadge','mobNotifBadge'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.textContent = val;
+        el.style.display = count > 0 ? 'flex' : 'none';
+    });
 }
 
+async function markAllNotifsRead(){
+    try{
+        await fetch(API+'/notifications/read-all?token='+token,{method:'POST'});
+        _notifications = (_notifications||[]).map(n=>({...n,is_read:true}));
+        renderNotifList();
+        const badge = document.getElementById('notifBadge');
+        if(badge) badge.style.display='none';
+        const mobBadge = document.getElementById('mobNotifBadge');
+        if(mobBadge) mobBadge.style.display='none';
+        toast('All notifications marked as read','info');
+    }catch(e){}
+}
 function renderNotifList() {
     const list = document.getElementById('notifList');
     if (!list) return;
     if (!_notifications.length) {
-        list.innerHTML = '<div class="notif-empty"><div class="notif-empty-icon">🔔</div>No notifications yet</div>';
+        list.innerHTML = `<div class="notif-empty" style="text-align:center;padding:48px 20px;color:var(--text-muted);">
+    <div style="font-size:40px;margin-bottom:12px;opacity:.5;">🔔</div>
+    <div style="font-weight:700;font-size:15px;">You're all caught up</div>
+    <div style="font-size:12px;margin-top:4px;color:var(--text-dim);">No new notifications</div>
+</div>`;
         return;
     }
+    const NOTIF_EMOJI={challenge_received:'⚔️',challenge_accepted:'🔥',challenge_declined:'😤',bet_matched:'🤝',bet_settled:'💰',friend_request:'🤝',friend_accepted:'🎉',bet_won:'🏆',bet_lost:'💸',line_taken:'📊',new_follower:'⭐'};
     list.innerHTML = _notifications.map(n => {
         const ago = timeAgo(n.created_at);
+        const emoji = NOTIF_EMOJI[n.type] || '🔔';
         return `<div class="notif-item ${n.is_read ? '' : 'unread'}" onclick="clickNotif(${n.id}, '${n.type}', ${n.ref_id || 'null'})">
-            <div class="notif-item-title">${n.title}</div>
-            <div class="notif-item-body">${n.body}</div>
-            <div class="notif-item-time">${ago}</div>
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+                <div style="font-size:22px;flex-shrink:0;line-height:1.2;">${emoji}</div>
+                <div style="flex:1;min-width:0;">
+                    <div class="notif-item-title">${n.title}</div>
+                    <div class="notif-item-body">${n.body}</div>
+                    <div class="notif-item-time">${ago}</div>
+                </div>
+                ${!n.is_read?'<div style="width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:4px;"></div>':''}
+            </div>
         </div>`;
     }).join('');
 }
@@ -4280,29 +4744,34 @@ async function clickNotif(id, type, refId) {
 
     // Deep-link based on type
     closeNotifDrawer();
-    if (type === 'challenge_received' || type === 'challenge_accepted' || type === 'challenge_declined') {
+    if (['challenge_received','challenge_accepted','challenge_declined'].includes(type)) {
         changeView('challenges');
-    } else if (type === 'bet_matched' || type === 'bet_settled') {
+    } else if (['bet_matched','bet_settled','bet_won','bet_lost','line_taken'].includes(type)) {
         changeView('bets');
-    } else if (type === 'friend_request' || type === 'friend_accepted') {
+    } else if (['friend_request','friend_accepted'].includes(type)) {
         changeView('friends');
+    } else if (type === 'new_follower') {
+        changeView('following');
     }
 }
 
-async function markAllRead() {
-    await fetch(API + '/notifications/read?token=' + token, { method: 'POST' });
-    _notifications = _notifications.map(n => ({...n, is_read: true}));
-    _lastNotifCount = 0;
-    updateNotifBadge(0);
-    renderNotifList();
-}
+// markAllRead consolidated into markAllNotifsRead above
 
 function openNotifDrawer() {
-    document.getElementById('notifDrawer').classList.add('open');
-    document.getElementById('notifOverlay').classList.add('open');
+    const drawer = document.getElementById('notifDrawer');
+    const overlay = document.getElementById('notifOverlay');
+    drawer.classList.add('open');
+    overlay.classList.add('open');
     renderNotifList();
     // Mark all read silently after a moment
-    setTimeout(markAllRead, 1500);
+    setTimeout(markAllNotifsRead, 2000); // auto-mark as read after viewing
+    // Swipe right to close on mobile
+    let startX = 0;
+    drawer.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, {once:false, passive:true});
+    drawer.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - startX;
+        if(dx > 80) closeNotifDrawer();
+    }, {once:false, passive:true});
 }
 
 function closeNotifDrawer() {
@@ -4324,59 +4793,73 @@ function changeView(v){
     view=v;
     localStorage.setItem('lastView',v);
     renderApp();
+    // Scroll to top after render
+    requestAnimationFrame(()=>{
+        window.scrollTo({top:0,behavior:'instant'});
+        const ca = document.querySelector('.content-area');
+        if(ca) ca.scrollTop = 0;
+    });
     if(v==='marketplace')startLiveScores();
+}
+function showForgotPassword(){
+    const email = prompt('Enter the email address you registered with:');
+    if(!email) return;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Enter a valid email address','error');return;}
+    fetch(API+'/auth/forgot-password',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email})
+    }).then(r=>{
+        if(r.ok) toast('Check your email — reset link sent! (Check spam if not there)','success');
+        else toast('No account found with that email','error');
+    }).catch(()=>toast('Could not reach server — try again','error'));
 }
 function renderLogin(){
     document.getElementById('root').innerHTML=`
         <div class="login-screen"><div class="login-box">
             <div class="login-logo">BookieVerse</div>
-            <div class="login-tagline">PvP Sportsbook</div>
+            <div class="login-tagline">Post lines. Take action. Settle up. 💰</div>
 
             <!-- Tabs -->
-            <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:20px;">
-                <button id="tabLogin" onclick="switchLoginTab(true)"
-                    style="flex:1;background:none;border:none;padding:10px;font-size:14px;font-weight:700;
-                    cursor:pointer;color:var(--green);border-bottom:2px solid var(--green);transition:.15s;">
-                    Login</button>
-                <button id="tabRegister" onclick="switchLoginTab(false)"
-                    style="flex:1;background:none;border:none;padding:10px;font-size:14px;font-weight:700;
-                    cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:.15s;">
-                    Register</button>
+            <div class="login-tabs" style="margin-bottom:20px;">
+                <div id="tabLogin" class="login-tab active" onclick="switchLoginTab(true)">Log In</div>
+                <div id="tabRegister" class="login-tab" onclick="switchLoginTab(false)">Register</div>
             </div>
 
             <!-- Login form -->
             <div id="formLogin">
                 <div class="form-group">
                     <label>Username or Email</label>
-                    <input id="loginUsername" placeholder="Enter username or email" autofocus autocomplete="username">
+                    <input id="loginUsername" placeholder="Enter username or email" autofocus autocomplete="username" spellcheck="false" autocorrect="off" autocapitalize="off" onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()">
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password">
+                    <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
                 </div>
-                <button id="loginBtn" class="btn btn-primary btn-lg btn-full" style="margin-top:20px;" onclick="doLogin()">Login</button>
+                <button id="loginBtn" class="btn btn-primary btn-lg btn-full" style="margin-top:4px;" onclick="doLogin()">Log In</button>
+                <div style="text-align:center;margin-top:12px;"><span style="font-size:12px;color:var(--text-dim);">Forgot password? <span style="color:var(--green);cursor:pointer;font-weight:700;" onclick="showForgotPassword()">Reset it →</span></span></div>
             </div>
 
             <!-- Register form -->
             <div id="formRegister" style="display:none;">
                 <div class="form-group">
                     <label>Username</label>
-                    <input id="regUsername" placeholder="Choose a username" autocomplete="username">
+                    <input id="regUsername" placeholder="Choose a username" autocomplete="username" spellcheck="false" autocorrect="off" autocapitalize="off" onkeydown="if(event.key==='Enter')document.getElementById('regEmail').focus()">
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input id="regEmail" type="email" placeholder="your@email.com" autocomplete="email">
+                    <input id="regEmail" type="email" placeholder="your@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('regPassword').focus()">
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input id="regPassword" type="password" placeholder="6+ characters" autocomplete="new-password">
+                    <input id="regPassword" type="password" placeholder="6+ characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()">
                 </div>
                 <div class="form-group">
                     <label>Referral Code <span style="color:var(--text-dim);font-weight:400;">(optional)</span></label>
                     <input id="regReferral" placeholder="e.g. BV-MIKE7X" style="text-transform:uppercase;"
                         oninput="this.value=this.value.toUpperCase()">
                 </div>
-                <button id="registerBtn" class="btn btn-primary btn-lg btn-full" style="margin-top:20px;" onclick="doRegister()">
+                <button id="registerBtn" class="btn btn-primary btn-lg btn-full" style="margin-top:4px;" onclick="doRegister()">
                     Create Account
                 </button>
                 <div style="font-size:11px;color:var(--text-dim);text-align:center;margin-top:10px;">
@@ -4385,12 +4868,7 @@ function renderLogin(){
             </div>
         </div></div>`;
 
-    // Enter key handlers
-    document.getElementById('loginUsername')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('loginPassword').focus();});
-    document.getElementById('loginPassword')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('loginBtn').click();});
-    document.getElementById('regUsername')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('regEmail').focus();});
-    document.getElementById('regEmail')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('regPassword').focus();});
-    document.getElementById('regPassword')?.addEventListener('keypress',e=>{if(e.key==='Enter')document.getElementById('registerBtn').click();});
+    // Enter key navigation — handled by onkeydown attrs on inputs
 
     // Pre-fill referral code from URL ?ref=XXX
     const urlRef = new URLSearchParams(window.location.search).get('ref');
@@ -4398,12 +4876,14 @@ function renderLogin(){
 }
 
 function switchLoginTab(isLogin){
-    document.getElementById('tabLogin').style.color = isLogin?'var(--green)':'var(--text-muted)';
-    document.getElementById('tabLogin').style.borderBottomColor = isLogin?'var(--green)':'transparent';
-    document.getElementById('tabRegister').style.color = isLogin?'var(--text-muted)':'var(--green)';
-    document.getElementById('tabRegister').style.borderBottomColor = isLogin?'transparent':'var(--green)';
-    document.getElementById('formLogin').style.display = isLogin?'block':'none';
-    document.getElementById('formRegister').style.display = isLogin?'none':'block';
+    const tl=document.getElementById('tabLogin'),tr=document.getElementById('tabRegister');
+    if(!tl||!tr)return;
+    tl.className='login-tab'+(isLogin?' active':'');
+    tr.className='login-tab'+(!isLogin?' active':'');
+    document.getElementById('formLogin').style.display=isLogin?'block':'none';
+    document.getElementById('formRegister').style.display=isLogin?'none':'block';
+    if(!isLogin) setTimeout(()=>document.getElementById('regUsername')?.focus(),100);
+    else setTimeout(()=>document.getElementById('loginUsername')?.focus(),100);
 }
 if(!token){renderLogin();}else{(async()=>{await loadPropTypes();renderApp();startNotifPolling();})();}
 </script>
