@@ -69,7 +69,11 @@
             color:var(--text-muted);border-radius:8px;cursor:pointer;font-family:'Barlow',sans-serif;
             font-size:13px;font-weight:600;transition:all .15s;}
         .logout-btn:hover{border-color:var(--red);color:var(--red);background:rgba(255,69,96,.05);}
-        .topbar{display:none;align-items:center;justify-content:space-between;padding:12px 16px;
+        .topbar{display:none;align-items:center;justify-content:space-between;
+            padding:12px 16px;
+            padding-top:calc(12px + env(safe-area-inset-top));
+            padding-left:calc(16px + env(safe-area-inset-left));
+            padding-right:calc(16px + env(safe-area-inset-right));
             background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
         .topbar-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--green);}
         .topbar-bal{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green);}
@@ -1009,7 +1013,9 @@ function promptBetAmount(info, max, oddsOverride){
             if(!flatAmts.includes(Math.floor(max))) flatAmts.push(Math.floor(max));
             quickBtns.innerHTML=flatAmts.slice(0,5).map(amt=>{
                 const isMax=amt===Math.floor(max);
-                return`<button type="button" onclick="setQuickBet(${amt})" style="flex:1;padding:7px 4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:${isMax?'var(--green)':'var(--text-muted)'};font-size:12px;font-weight:700;cursor:pointer;min-width:40px;transition:.15s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">${isMax?'MAX':'$'+amt}</button>`;
+                const odds=_betCalcOdds||(-110);
+                const toWin=odds>0?+(amt*(odds/100)).toFixed(0):+(amt*(100/Math.abs(odds))).toFixed(0);
+                return`<button type="button" onclick="setQuickBet(${amt})" style="flex:1;padding:7px 4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:${isMax?'var(--green)':'var(--text-muted)'};font-size:11px;font-weight:700;cursor:pointer;min-width:40px;transition:.15s;line-height:1.3;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">${isMax?'MAX':'$'+amt}<br><span style="font-size:9px;color:var(--green);font-weight:600;opacity:.7;">+$${toWin}</span></button>`;
             }).join('');
         }
 
@@ -1021,6 +1027,10 @@ function promptBetAmount(info, max, oddsOverride){
 }
 function setQuickBet(amt){
     const inp=document.getElementById('betAmountInput');
+    if(user && amt > user.balance){
+        toast(`Insufficient balance — you have $${Math.floor(user.balance)}`,'error');
+        amt=Math.floor(user.balance);
+    }
     inp.value=amt;
     updateBetCalc();
 }
@@ -1182,7 +1192,10 @@ function updateSidebarBalance(){
         else ta.textContent=user.username.slice(0,2).toUpperCase();
     }
     const tr=document.getElementById('topbarRecord');
-    if(tr)tr.textContent=`${user.wins}W — ${user.losses}L`;
+    if(tr){
+        const pendingHtml=user.pending_bets>0?` · <span style="color:var(--gold);font-weight:800;">⏳${user.pending_bets} live</span>`:'';
+        tr.innerHTML=`${user.wins}W — ${user.losses}L${pendingHtml}`;
+    }
 }
 async function loadLines(){
     document.getElementById('content').innerHTML=skeletonCards(4);
@@ -1356,6 +1369,7 @@ async function loadLines(){
         }
         html+=`</div>`; // close marketplaceLinesWrapper
         window._cachedLines=lines;
+        linesCache=lines; // Bug fix: takeLine() reads linesCache, not window._cachedLines
         window._cachedBySport=bySport;
         window._cachedSportEmoji=SPORT_EMOJI;
         return html;
@@ -2012,7 +2026,6 @@ async function takeProp(propId){
         }
         else{const e=await res.json();toast(e.detail||'Error','error');}
     }catch(e){toast('Connection error','error');}
-    finally{if(_futureBtn){_futureBtn.disabled=false;_futureBtn.textContent='Post to Marketplace';}}
 }
 async function renderFutures(){
     document.getElementById('content').innerHTML=skeletonCards(2);
@@ -2143,8 +2156,10 @@ async function renderMyBets(){
                                 <span>Matched: <strong>$${(l.total_action||0).toFixed(0)}</strong> / <span style="color:var(--text-dim)">$${(l.amount||0).toFixed(0)} max liability</span></span>
                                 <span>${l.current_bettors} bettor${l.current_bettors!==1?'s':''}</span>
                             </div>
-                            <div style="margin-top:8px;width:100%;max-width:240px;height:4px;background:var(--border);border-radius:4px;">
-                                <div style="height:100%;width:${pct}%;background:${pct===100?'var(--red)':'var(--orange)'};border-radius:4px;transition:.3s;"></div>
+                            <div style="margin-top:8px;width:100%;max-width:240px;height:6px;background:var(--border);border-radius:4px;position:relative;overflow:visible;">
+                                <div style="height:100%;width:${pct}%;background:${pct===100?'var(--red)':'var(--orange)'};border-radius:4px;transition:.3s;position:relative;">
+                                    ${pct>0?`<span style="position:absolute;right:0;top:-14px;transform:translateX(50%);font-size:9px;font-weight:800;color:${pct===100?'var(--red)':'var(--orange)'};white-space:nowrap;">${pct}%</span>`:''}
+                                </div>
                             </div>
                             <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">$${(l.unmatched||0).toFixed(2)} unmatched liability · bettor needs $${(l.available_for_bettor||0).toFixed(2)} to fill</div>
                         </div>
@@ -2191,8 +2206,9 @@ async function renderMyBets(){
                 let statusLabel,statusClass,displayAmt,displayColor;
                 if(isBookie){
                     const taken=p.total_action||0;
-                    statusLabel=p.status==='open'?`Open · $${taken.toFixed(0)} taken`:'Closed';
-                    statusClass='pending';
+                    const isClosed=p.status==='settled'||p.status==='closed';
+                    statusLabel=p.status==='open'?`Open · $${taken.toFixed(0)} taken`:isClosed?'Closed ✓':'Closed';
+                    statusClass=isClosed?'pending':'pending'; // bookie never wins/loses directly; keep neutral
                     displayAmt=`$${(p.amount||0).toFixed(0)}`;
                     displayColor='var(--gold)';
                 } else {
@@ -3575,7 +3591,7 @@ async function renderProfile(username){
                                 ${p.member_since ? `<span>📅 Since ${p.member_since}</span>` : ''}
                             </div>
                             <div style="display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--text-muted);">
-                                <span style="cursor:pointer;" onclick="changeView('following')"><strong style="color:var(--text);">${p.followers}</strong> Followers</span>
+                                <span style="cursor:pointer;" onclick="changeView('search')"><strong style="color:var(--text);">${p.followers}</strong> Followers</span>
                                 <span style="cursor:pointer;" onclick="changeView('following')"><strong style="color:var(--text);">${p.following}</strong> Following</span>
                                 ${p.followers>0&&!isMe?`<span style="cursor:pointer;color:var(--green);font-size:11px;font-weight:700;" onclick="toggleFollow('${p.username}',this)" id="quickFollowBtn">${p.is_following?'✓ Following':'+ Follow'}</span>`:''}
                             </div>
@@ -4427,7 +4443,8 @@ async function loadFeedEvents(){
                 if(diff < 3600)        bucket = '🔴 Last Hour';
                 else if(diff < 86400)  bucket = 'Today';
                 else if(diff < 172800) bucket = 'Yesterday';
-                else                   bucket = 'This Week';
+                else if(diff < 604800) bucket = 'This Week';
+                else                   bucket = 'Older';
             }
             if(bucket && bucket !== lastBucket){
                 const isFirst = i===0;
@@ -4648,7 +4665,7 @@ async function renderParlays(){
                         <div style="font-size:40px;margin-bottom:12px;">📡</div>
                         <div style="font-size:18px;font-weight:700;margin-bottom:8px;">No games available right now</div>
                         <div style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">ESPN hasn't published today's schedule yet, or all games have started. Check back soon.</div>
-                        <button class="btn btn-primary" onclick="changeView('create')">Refresh</button>
+                        <button class="btn btn-primary" onclick="changeView('parlays')">Refresh</button>
                     </div>
                 </div>`;
             return '';
@@ -4943,7 +4960,7 @@ async function adminMarkOnly(betId, winner){
     try{
         const res=await fetch(`${API}/admin/mark-settled?bet_id=${betId}&winner=${winner}&token=${token}`,{method:'POST'});
         const d=await res.json();
-        toast(d.message||d.detail,'success');
+        toast(d.message||d.detail, res.ok?'success':'error');
         changeView('admin');
     }catch(e){toast('Error: '+e.message,'error');}
 }
@@ -5619,7 +5636,7 @@ function startNotifPolling() {
 }
 // ─── NOTIFICATIONS END ────────────────────────────────────────────────────────
 
-function changeView(v){
+async function changeView(v){
     if(v!=='marketplace')stopLiveScores();
     if(v!=='live')stopLiveTracking();
     if(v!=='chat')stopChat();
@@ -5635,19 +5652,17 @@ function changeView(v){
             history.pushState({view:v},'',url.toString());
         }
     }catch(e){}
-    renderApp();
-    // Scroll to top after render
+    // Scroll to top before render
     requestAnimationFrame(()=>{
         window.scrollTo({top:0,behavior:'instant'});
         const ca = document.querySelector('.content-area');
         if(ca) ca.scrollTop = 0;
     });
+    await renderApp();
+    // Fade-in AFTER content is rendered, not before
+    const ct=document.getElementById('content');
+    if(ct){ct.classList.remove('content-fade');void ct.offsetWidth;ct.classList.add('content-fade');}
     if(v==='marketplace')startLiveScores();
-    // Trigger fade-in on content area
-    requestAnimationFrame(()=>{
-        const ct=document.getElementById('content');
-        if(ct){ct.classList.remove('content-fade');void ct.offsetWidth;ct.classList.add('content-fade');}
-    });
 }
 function updatePwStrength(pw){
     const bar=document.getElementById('pwStrength');
