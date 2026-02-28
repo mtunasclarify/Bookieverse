@@ -247,6 +247,29 @@
         .lb-name{font-size:17px;font-weight:700;}
         .lb-record{font-size:13px;color:var(--text-muted);margin-top:2px;}
         .lb-profit{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;margin-left:auto;}
+        /* ── UI Upgrade 9: Active nav left-bar indicator ── */
+        .nav-item.active{position:relative;}
+        .nav-item.active::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);
+            width:3px;height:55%;background:var(--green);border-radius:0 3px 3px 0;
+            box-shadow:0 0 8px rgba(0,214,122,.6);}
+        /* ── UI Upgrade 7: Profile stat hover glow ── */
+        .profile-stat{transition:background .15s,transform .12s;}
+        .profile-stat:hover{background:rgba(0,214,122,.05);transform:translateY(-1px);}
+        .profile-stat:hover .profile-stat-num.green{text-shadow:0 0 14px rgba(0,214,122,.5);}
+        .profile-stat:hover .profile-stat-num.gold{text-shadow:0 0 14px rgba(245,166,35,.5);}
+        /* ── UI Upgrade 2: View content fade-in ── */
+        @keyframes viewFadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+        .content-fade{animation:viewFadeIn .16s ease both;}
+        /* ── UI Upgrade 6: Confirm button ready pulse ── */
+        @keyframes readyPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,214,122,.5)}60%{box-shadow:0 0 0 6px rgba(0,214,122,0)}}
+        .btn-ready{animation:readyPulse 1.4s ease-in-out infinite;}
+        /* ── UI Upgrade 8: Toast left accent bar ── */
+        .toast{position:relative;overflow:hidden;}
+        .toast::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;}
+        .toast.success::before{background:var(--green);}
+        .toast.error::before{background:var(--red);}
+        .toast.info::before{background:var(--blue);}
+        .toast.warning::before{background:var(--gold);}
         .bet-status{padding:4px 12px;border-radius:6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
         .bet-status.pending{background:rgba(245,166,35,.15);color:var(--gold);border:1px solid rgba(245,166,35,.3);}
         .bet-status.won{background:rgba(0,214,122,.15);color:var(--green);border:1px solid rgba(0,214,122,.3);}
@@ -420,7 +443,7 @@
             .feed-actor,.feed-action{font-size:12px;}
         }
         /* ── Global Chat ─────────────────────────────── */
-        .chat-shell{display:flex;flex-direction:column;height:calc(100vh - 120px);max-width:680px;}
+        .chat-shell{display:flex;flex-direction:column;height:calc(100vh - 120px);max-width:680px;position:relative;}
         .chat-header{display:flex;align-items:center;justify-content:space-between;
             padding-bottom:12px;border-bottom:1px solid var(--border);flex-shrink:0;}
         .chat-messages{flex:1;overflow-y:auto;padding:12px 0;display:flex;
@@ -475,6 +498,107 @@
             .chat-input{font-size:16px!important;} /* prevent iOS zoom */
             .chat-msg-avatar{width:26px;height:26px;font-size:9px;}
         }
+        /* ── Chat new-messages pill ──────────────────── */
+        .chat-new-pill{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);
+            background:var(--green);color:#000;border:none;border-radius:20px;
+            padding:6px 16px;font-size:12px;font-weight:800;letter-spacing:.5px;cursor:pointer;
+            box-shadow:0 4px 16px rgba(0,214,122,.4);animation:slideUp .2s ease both;
+            white-space:nowrap;z-index:10;}
+        .chat-new-pill:hover{transform:translateX(-50%) translateY(-2px);box-shadow:0 6px 20px rgba(0,214,122,.5);}
+        /* ── Send button glow when active ───────────── */
+        .chat-send.has-text{background:var(--green);box-shadow:0 0 12px rgba(0,214,122,.5);transform:scale(1.05);}
+        /* ── Marketplace almost-full glow ───────────── */
+        .line-hot{border-color:rgba(255,140,66,.5)!important;box-shadow:0 0 0 1px rgba(255,140,66,.15),0 4px 20px rgba(255,140,66,.1)!important;}
+        .badge-hot{background:rgba(255,140,66,.15);color:var(--orange);border:1px solid rgba(255,140,66,.3);
+            font-size:9px;font-weight:800;letter-spacing:.5px;padding:2px 7px;border-radius:4px;animation:blink 1.5s ease infinite;}
+        /* ══════════════════════════════════════════════
+           UI UPGRADE BATCH 2
+        ══════════════════════════════════════════════ */
+
+        /* 1 — Sidebar balance card gradient border */
+        .sidebar-balance{
+            background:var(--card);border-radius:10px;
+            position:relative;overflow:hidden;
+            border:1px solid var(--border);
+        }
+        .sidebar-balance::before{
+            content:'';position:absolute;top:0;left:0;right:0;height:2px;
+            background:linear-gradient(90deg,transparent,var(--green),var(--blue),transparent);
+            opacity:.7;
+        }
+
+        /* 2 — Page title accent underline */
+        .page-title{position:relative;display:inline-block;}
+        .page-title::after{
+            content:'';display:block;
+            height:2px;width:32px;margin-top:4px;
+            background:linear-gradient(90deg,var(--green),transparent);
+            border-radius:2px;
+        }
+
+        /* 3 — Empty state icon radial glow */
+        .empty-icon{
+            display:inline-block;
+            filter:drop-shadow(0 0 18px rgba(0,214,122,.25));
+        }
+
+        /* 4 — Marketplace line-amount-num text shadow */
+        .line-amount-num{
+            text-shadow:0 0 20px rgba(0,214,122,.3);
+        }
+
+        /* 5 — Profile banner bottom fade overlay */
+        .profile-banner::after{
+            content:'';position:absolute;bottom:0;left:0;right:0;height:40px;
+            background:linear-gradient(to bottom,transparent,var(--card));
+            pointer-events:none;
+        }
+
+        /* 6 — Nav section labels with leading dot */
+        .nav-section-label{
+            display:flex;align-items:center;gap:5px;
+        }
+        .nav-section-label::before{
+            content:'';width:4px;height:4px;border-radius:50%;
+            background:var(--border-hi);flex-shrink:0;
+        }
+
+        /* 8 — Settings section title left-bar */
+        .settings-section-title{
+            display:flex;align-items:center;gap:8px;
+        }
+        .settings-section-title::before{
+            content:'';width:3px;height:14px;border-radius:2px;
+            background:var(--green);flex-shrink:0;
+        }
+
+        /* 9 — Mobile tab active pip above icon */
+        .mob-tab.active::before{
+            content:'';position:absolute;top:4px;left:50%;transform:translateX(-50%);
+            width:20px;height:2px;border-radius:2px;
+            background:var(--green);
+        }
+
+        /* 10 — Skeleton shimmer with brand tint */
+        .skeleton{
+            background:linear-gradient(
+                90deg,
+                var(--card) 25%,
+                rgba(74,158,255,.06) 50%,
+                var(--card) 75%
+            );
+            background-size:200% 100%;
+            animation:shimmer 1.4s infinite;
+        }
+
+        /* 7 — Bet card left-bar accent (won / lost / pending) */
+        .bet-card-won{border-color:rgba(0,214,122,.2)!important;position:relative;overflow:hidden;}
+        .bet-card-won::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green);border-radius:0;}
+        .bet-card-lost{border-color:rgba(255,69,96,.15)!important;position:relative;overflow:hidden;}
+        .bet-card-lost::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red);}
+        .bet-card-pending{border-color:rgba(245,166,35,.1)!important;position:relative;overflow:hidden;}
+        .bet-card-pending::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--gold);}
+
         /* ── Profile & Settings ──────────────────────── */
         .profile-banner{height:120px;border-radius:16px 16px 0 0;position:relative;
             background:linear-gradient(135deg,#0f2744,#1a3a5c);}
@@ -904,7 +1028,12 @@ function updateBetCalc(){
     const inp=document.getElementById('betAmountInput');
     const stake=parseFloat(inp.value);
     const calc=document.getElementById('betCalc');
-    if(isNaN(stake)||stake<=0){calc.style.display='none';return;}
+    if(isNaN(stake)||stake<=0){
+        calc.style.display='none';
+        const btn=document.getElementById('confirmBetBtn');
+        if(btn){btn.classList.remove('btn-ready');btn.textContent='Confirm Bet';}
+        return;
+    }
     calc.style.display='block';
     const odds=_betCalcOdds||(-110);
     let profit;
@@ -917,7 +1046,10 @@ function updateBetCalc(){
     document.getElementById('calcPayout').textContent='$'+payout.toFixed(2);
     // Color confirm button green when ready
     const btn=document.getElementById('confirmBetBtn');
-    if(btn) btn.textContent=`Confirm — Win $${profit.toFixed(2)} ✓`;
+    if(btn){
+        btn.textContent=`Confirm — Win $${profit.toFixed(2)} ✓`;
+        btn.classList.add('btn-ready');
+    }
 }
 function confirmBetAmount(){
     const val=parseFloat(document.getElementById('betAmountInput').value);
@@ -929,14 +1061,14 @@ function confirmBetAmount(){
     document.getElementById('betAmountModal').classList.remove('open');
     document.getElementById('betCalc').style.display='none';
     const btn=document.getElementById('confirmBetBtn');
-    if(btn) btn.textContent='Confirm Bet';
+    if(btn){btn.textContent='Confirm Bet';btn.classList.remove('btn-ready');}
     if(resolve)resolve(val);
 }
 function closeBetModal(){
     document.getElementById('betAmountModal').classList.remove('open');
     document.getElementById('betCalc').style.display='none';
     const btn=document.getElementById('confirmBetBtn');
-    if(btn) btn.textContent='Confirm Bet';
+    if(btn){btn.textContent='Confirm Bet';btn.classList.remove('btn-ready');}
     if(_betResolve){_betResolve(null);_betResolve=null;}
 }
 document.getElementById('betAmountInput').addEventListener('keydown',e=>{if(e.key==='Enter')confirmBetAmount();});
@@ -1021,15 +1153,29 @@ async function logout(){
     if(!ok)return;
     localStorage.removeItem('token');token=null;user=null;location.reload();
 }
+function animateCounter(el, toVal, prefix='$', duration=600){
+    if(!el) return;
+    const from = parseFloat(el.textContent.replace(/[^0-9.]/g,'')) || 0;
+    const diff = toVal - from;
+    if(Math.abs(diff) < 0.5){ el.textContent = prefix + Math.floor(toVal).toLocaleString(); return; }
+    const start = performance.now();
+    function step(now){
+        const p = Math.min((now-start)/duration, 1);
+        const ease = p<.5 ? 2*p*p : -1+(4-2*p)*p; // ease-in-out
+        el.textContent = prefix + Math.floor(from + diff*ease).toLocaleString();
+        if(p<1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
 function updateSidebarBalance(){
     if(!user)return;
     const fmt=n=>'$'+Math.floor(n).toLocaleString();
     const b=document.getElementById('sidebarBalance');
-    if(b)b.textContent=fmt(user.balance);
+    if(b) animateCounter(b, user.balance, '$', 500);
     const pl=document.getElementById('sidebarPL');
     if(pl){pl.textContent=(user.profit>=0?'+':'-')+'$'+Math.abs(user.profit).toLocaleString()+' P/L';pl.className='bal-pl '+(user.profit>=0?'pos':'neg');}
     const tb=document.getElementById('topbarBalance');
-    if(tb)tb.textContent=fmt(user.balance);
+    if(tb) animateCounter(tb, user.balance, '$', 500);
     const ta=document.getElementById('topbarAvatar');
     if(ta){
         if(user.avatar)ta.innerHTML=`<img src="${user.avatar}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border-radius:50%;">`;
@@ -1094,7 +1240,7 @@ async function loadLines(){
             <div class="page-title">Marketplace</div>
             <div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''} · ${sports.length} sport${sports.length!==1?'s':''}</div>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;position:sticky;top:0;z-index:20;background:var(--bg);padding:8px 0 6px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.04);">
             <div style="flex:1;position:relative;">
                 <input id="marketplaceSearch" type="text" placeholder="Search teams, games, bookies..." oninput="filterMarketplace()"
                     style="width:100%;padding:10px 14px;font-size:14px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
@@ -1168,12 +1314,14 @@ async function loadLines(){
                 }
 
                 const isNewLine = line.created_at && (Date.now()-new Date(line.created_at).getTime())<3600000;
-                html+=`<div class="card" data-line-id="${line.id}" style="padding:12px 16px;margin-bottom:8px;${isFull?'opacity:.7':''}${!isFull&&!isOwn?';border-color:rgba(255,255,255,.08)':''}${!isFull&&!isOwn&&!isGameStarted?';cursor:pointer':''}" onclick="${!isFull&&!isOwn&&!isGameStarted?'takeLine('+line.id+')':''}">
+                const isHot = !isFull && pct >= 80;
+                html+=`<div class="card${isHot?' line-hot':''}" data-line-id="${line.id}" style="padding:12px 16px;margin-bottom:8px;${isFull?'opacity:.7':''}${!isFull&&!isOwn?';border-color:rgba(255,255,255,.08)':''}${!isFull&&!isOwn&&!isGameStarted?';cursor:pointer':''}" onclick="${!isFull&&!isOwn&&!isGameStarted?'takeLine('+line.id+')':''}">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                         <div style="flex:1;min-width:0;">
                             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
                                 <span class="badge ${tBadge}" style="font-size:10px;">${line.type.toUpperCase()}</span>
                                 ${isNewLine?'<span style="background:rgba(0,214,122,.15);color:var(--green);border:1px solid rgba(0,214,122,.3);border-radius:4px;font-size:9px;font-weight:800;padding:1px 6px;letter-spacing:.5px;">🆕 NEW</span>':''}
+                                ${isHot?'<span class="badge-hot">🔥 ALMOST FULL</span>':''}
                                 ${scoreBadge}
                                 ${line.is_private?'<span class="badge badge-private" style="font-size:10px;">Private</span>':''}
                             </div>
@@ -1275,7 +1423,7 @@ async function takeLine(lineId){
     );
     if(!amount)return;
 
-    const toWin=(amount*(Math.abs(odds)/100)).toFixed(2);
+    const toWin=(odds>0?(amount*(100/odds)):(amount*(Math.abs(odds)/100))).toFixed(2);
 
     try{
         const res=await fetch(API+'/lines/take?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_id:lineId,amount:parseFloat(amount)})});
@@ -1942,13 +2090,13 @@ async function renderMyBets(){
     // Tab switcher
     let html=`<div class="page-header"><div class="page-title">My Action</div><div class="page-subtitle">${myLines.length} open line${myLines.length!==1?'s':''} · ${bets.length+props.length} bet${bets.length+props.length!==1?'s':''}</div></div>
     <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;">
-        <button onclick="switchMyBetsTab('lines')" style="flex:1;padding:11px 4px;font-size:13px;font-weight:700;background:${_myBetsTab==='lines'?'var(--green)':'transparent'};color:${_myBetsTab==='lines'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;white-space:nowrap;">
-            📋 Lines <span style="background:${_myBetsTab==='lines'?'rgba(0,0,0,.2)':'var(--border)'};padding:1px 7px;border-radius:20px;font-size:10px;margin-left:3px;">${myLines.length}</span>
+        <button onclick="switchMyBetsTab('lines')" style="flex:1;padding:11px 4px;font-size:13px;font-weight:700;background:${_myBetsTab==='lines'?'var(--green)':'transparent'};color:${_myBetsTab==='lines'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;white-space:nowrap;${_myBetsTab==='lines'?'box-shadow:inset 0 -2px 0 rgba(0,0,0,.15);':''}">
+            📋 Lines <span style="background:${_myBetsTab==='lines'?'rgba(0,0,0,.2)':'var(--border)'};padding:1px 7px;border-radius:20px;font-size:10px;margin-left:3px;${_myBetsTab==='lines'&&myLines.length?'color:#000;':'color:var(--text-muted);'}">${myLines.length}</span>
         </button>
-        <button onclick="switchMyBetsTab('bets')" style="flex:1;padding:11px 4px;font-size:13px;font-weight:700;background:${_myBetsTab==='bets'?'var(--green)':'transparent'};color:${_myBetsTab==='bets'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;white-space:nowrap;">
-            🎲 Bets <span style="background:${_myBetsTab==='bets'?'rgba(0,0,0,.2)':'var(--border)'};padding:1px 7px;border-radius:20px;font-size:10px;margin-left:3px;">${bets.length+props.length}</span>
+        <button onclick="switchMyBetsTab('bets')" style="flex:1;padding:11px 4px;font-size:13px;font-weight:700;background:${_myBetsTab==='bets'?'var(--green)':'transparent'};color:${_myBetsTab==='bets'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;white-space:nowrap;border-left:1px solid var(--border);border-right:1px solid var(--border);${_myBetsTab==='bets'?'box-shadow:inset 0 -2px 0 rgba(0,0,0,.15);':''}">
+            🎲 Bets <span style="background:${_myBetsTab==='bets'?'rgba(0,0,0,.2)':'var(--border)'};padding:1px 7px;border-radius:20px;font-size:10px;margin-left:3px;${_myBetsTab==='bets'&&(bets.length+props.length)?'color:#000;':'color:var(--text-muted);'}">${bets.length+props.length}</span>
         </button>
-        <button onclick="switchMyBetsTab('parlays')" style="flex:1;padding:11px 4px;font-size:13px;font-weight:700;background:${_myBetsTab==='parlays'?'var(--green)':'transparent'};color:${_myBetsTab==='parlays'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;white-space:nowrap;">
+        <button onclick="switchMyBetsTab('parlays')" style="flex:1;padding:11px 4px;font-size:13px;font-weight:700;background:${_myBetsTab==='parlays'?'var(--green)':'transparent'};color:${_myBetsTab==='parlays'?'#000':'var(--text-muted)'};border:none;cursor:pointer;transition:.15s;white-space:nowrap;${_myBetsTab==='parlays'?'box-shadow:inset 0 -2px 0 rgba(0,0,0,.15);':''}">
             🎰 Parlays
         </button>
     </div>`;
@@ -2153,8 +2301,8 @@ async function renderMyBets(){
                     else{displayAmt='-$'+myStake.toFixed(2);displayColor='var(--red)';}
                 }else{displayAmt='$'+myStake.toFixed(2);displayColor='var(--gold)';}
                 const betAge=b.created_at?timeAgo(b.created_at):'';
-                const cardBorderColor=sc==='won'?'rgba(0,214,122,.2)':sc==='lost'?'rgba(255,69,96,.15)':sc==='pending'&&b.status==='pending'?'rgba(245,166,35,.1)':'';
-                html+=`<div class="card" style="${cardBorderColor?'border-color:'+cardBorderColor+';':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
+                const cardClass=sc==='won'?'bet-card-won':sc==='lost'?'bet-card-lost':'bet-card-pending';
+                html+=`<div class="card ${cardClass}"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;padding-left:8px;">
                     <div style="flex:1;min-width:0;">
                         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
                             <span class="badge ${b._type==='line'?'badge-'+b.type:'badge-prop'}" style="font-size:9px;">${b._type==='line'?(b.type||"").toUpperCase():'PROP'}</span>
@@ -2288,7 +2436,10 @@ async function renderLeaderboard(){
                 const isMe=user&&l.id===user.id;
                 const total=l.wins+l.losses;
                 const wr=total>0?Math.round(l.wins/total*100):0;
+                const avatarBg=pi===1?'rgba(245,166,35,.15)':pi===0?'rgba(192,192,192,.1)':'rgba(205,127,50,.1)';
+                const avatarBorder=pi===1?'2px solid var(--gold)':pi===0?'2px solid #c0c0c0':'2px solid #cd7f32';
                 return`<div onclick="viewProfile('${l.username}')" style="cursor:pointer;text-align:center;flex:1;max-width:130px;">
+                    <div style="width:52px;height:52px;border-radius:50%;background:${avatarBg};border:${avatarBorder};display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:${isMe?'var(--green)':'var(--text)'};">${(l.username||'??').slice(0,2).toUpperCase()}</div>
                     <div style="font-size:24px;margin-bottom:4px;">${medals[origI]}</div>
                     <div style="font-size:13px;font-weight:800;color:${isMe?'var(--green)':'var(--text)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@${l.username}</div>
                     <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">${wr}% WR</div>
@@ -2759,7 +2910,7 @@ async function renderFollowing(){
             <div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% · ${u.open_lines} open line${u.open_lines!==1?'s':''}</div>
             <div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':'-'}$${Math.abs(u.profit||0).toLocaleString()}</div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${(u.profit||0)>=0?'+':'-'}$${Math.abs(u.profit||0).toLocaleString()}</div>
                 <div style="display:flex;gap:6px;">
                     <button class="btn btn-secondary btn-sm" id="fb-${u.username}" onclick="unfollowUser('${u.username}',this)">Unfollow</button>
                     <button class="btn btn-primary btn-sm" onclick="openChallengeModal('${u.username}')">⚔️</button>
@@ -3040,11 +3191,11 @@ async function renderLive(){
     stopLiveTracking();
     try {
         await refreshLiveView();
+        _liveInterval = setInterval(refreshLiveView, 60000);
     } catch(e) {
         const ct = document.getElementById('liveCardsContainer');
         if(ct) ct.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load live bets</div><div class="empty-desc">${e.message||'Connection error'} — <button class="btn btn-outline btn-sm" onclick="refreshLiveView()">Retry</button></div></div>`;
     }
-    _liveInterval = setInterval(refreshLiveView, 60000);
     return '';
 }
 
@@ -3619,7 +3770,7 @@ async function renderSettings(){
                         <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
                             <div style="position:relative;width:40px;height:22px;flex-shrink:0;">
                                 <input type="checkbox" id="${key}" ${checked?'checked':''} style="opacity:0;width:0;height:0;position:absolute;">
-                                <div onclick="document.getElementById('${key}').checked=!document.getElementById('${key}').checked;this.style.background=document.getElementById('${key}').checked?'var(--green)':'var(--border)';" style="position:absolute;inset:0;border-radius:11px;background:${checked?'var(--green)':'var(--border)'};cursor:pointer;transition:.2s;"></div>
+                                <div onclick="const cb=document.getElementById('${key}');cb.checked=!cb.checked;this.style.background=cb.checked?'var(--green)':'var(--border)';document.getElementById('${key}-knob').style.left=cb.checked?'20px':'2px';" style="position:absolute;inset:0;border-radius:11px;background:${checked?'var(--green)':'var(--border)'};cursor:pointer;transition:.2s;"></div>
                                 <div onclick="document.getElementById('${key}').click();" style="position:absolute;left:${checked?'20':'2'}px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer;" id="${key}-knob"></div>
                             </div>
                             <span style="font-size:13px;color:var(--text-muted);">${label}</span>
@@ -3670,7 +3821,7 @@ async function renderSettings(){
             <!-- Save + Preview -->
             <div style="display:flex;gap:10px;margin-bottom:40px;">
                 <button class="btn btn-primary" onclick="saveSettings()" style="flex:2;font-size:16px;padding:14px;">💾 Save Profile</button>
-                <button class="btn btn-secondary" onclick="saveSettings().then?saveSettings().then(()=>changeView('profile')):changeView('profile')" style="flex:1;font-size:14px;padding:14px;">👁 Preview</button>
+                <button class="btn btn-secondary" onclick="saveSettings().then(()=>changeView('profile'))" style="flex:1;font-size:14px;padding:14px;">👁 Preview</button>
             </div>
         </div>`;
     // Load referral code async
@@ -3797,7 +3948,10 @@ async function saveSettings(){
             toast(e.detail || 'Could not save', 'error');
             if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='Save Profile';}
         }
-    } catch(e){ toast('Connection error', 'error'); }
+    } catch(e){
+        toast('Connection error', 'error');
+        if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='Save Profile';}
+    }
 }
 
 
@@ -3902,11 +4056,18 @@ function renderChatMessages(msgs, append=false){
         });
         if(wasAtBottom || (msgs.length && msgs[msgs.length-1].user_id === user?.id)){
             box.scrollTop = box.scrollHeight;
+            const pill = document.getElementById('chatNewPill');
+            if(pill) pill.style.display = 'none';
+        } else if(msgs.length) {
+            // User scrolled up — show the new messages pill
+            const pill = document.getElementById('chatNewPill');
+            if(pill){ pill.style.display = 'block'; pill.textContent = '↓ New messages'; }
         }
     }
 }
 
 async function pollChat(){
+    if(_chatSending) return; // skip poll while a send is in flight — prevents race duplicates
     try{
         const res = await fetch(`${API}/chat?room=${_chatRoom}&since_id=${_chatLastId}`);
         if(!res.ok) return;
@@ -3953,12 +4114,15 @@ async function renderChat(){
                 </div>
             </div>
 
+            <!-- New messages pill — shown when scrolled up and new messages arrive -->
+            <button class="chat-new-pill" id="chatNewPill" style="display:none;" onclick="chatScrollToBottom();document.getElementById('chatNewPill').style.display='none';">↓ New messages</button>
+
             <!-- Input -->
             <div class="chat-input-row" style="flex-direction:column;gap:4px;">
                 <div style="display:flex;gap:8px;align-items:flex-end;">
                     <textarea class="chat-input" id="chatInput" placeholder="Say something..." maxlength="280" rows="1"
                         onkeydown="chatKeyDown(event)"
-                        oninput="chatAutoResize(this);updateChatCounter(this)"></textarea>
+                        oninput="chatAutoResize(this);updateChatCounter(this);const sb=document.getElementById('chatSendBtn');if(sb)sb.classList.toggle('has-text',this.value.trim().length>0);"></textarea>
                     <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
                 </div>
                 <div style="text-align:right;padding-right:48px;"><span id="chatCounter" style="font-size:10px;color:var(--text-dim);"></span></div>
@@ -4033,9 +4197,10 @@ async function sendChat(){
     if(wasEmpty) box.innerHTML = '';
     if(box){
         const div = document.createElement('div');
-        div.id = 'optimistic-msg';
         div.innerHTML = buildChatMessage(optimistic, true);
-        box.appendChild(div.firstElementChild);
+        const optimisticEl = div.firstElementChild;
+        optimisticEl.id = 'optimistic-msg'; // set id on the actual DOM node, not wrapper
+        box.appendChild(optimisticEl);
         box.scrollTop = box.scrollHeight;
     }
 
@@ -5478,6 +5643,11 @@ function changeView(v){
         if(ca) ca.scrollTop = 0;
     });
     if(v==='marketplace')startLiveScores();
+    // Trigger fade-in on content area
+    requestAnimationFrame(()=>{
+        const ct=document.getElementById('content');
+        if(ct){ct.classList.remove('content-fade');void ct.offsetWidth;ct.classList.add('content-fade');}
+    });
 }
 function updatePwStrength(pw){
     const bar=document.getElementById('pwStrength');
