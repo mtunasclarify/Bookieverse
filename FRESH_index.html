@@ -40,6 +40,7 @@
         .main{flex:1;min-width:0;}
         .content-area{max-width:960px;margin:0 auto;padding:28px 24px;position:relative;}
         #content{animation:fadeIn .15s ease both;}
+        .main{scroll-behavior:smooth;}
         #content>*{animation:fadeIn .2s ease both;}
         .sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid var(--border);}
         .logo-text{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;
@@ -113,7 +114,7 @@
         @media(max-width:768px){.page-header{margin-bottom:18px;}.page-title{font-size:28px!important;}}
         .page-title{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;letter-spacing:.5px;line-height:1.05;}
         .page-subtitle{font-size:13px;color:var(--text-muted);margin-top:4px;line-height:1.4;}
-        .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;
+        .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;transition:border-color .15s;
             margin-bottom:14px;transition:border-color .18s,box-shadow .18s,background .18s,transform .1s;animation:fadeIn .25s ease both;}
         .card[onclick]:active{transform:scale(.99);}
         .card:hover{border-color:var(--border-hi);box-shadow:0 4px 24px rgba(0,0,0,.3);}
@@ -166,7 +167,7 @@
         select option{background:var(--surface);}
         .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
         .form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
             backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;}
         .modal-overlay.open{display:flex;}
         .modal-box{background:var(--surface);border:1px solid var(--border-hi);border-radius:20px;
@@ -349,6 +350,8 @@
         .live-status-badge.pending{background:rgba(107,144,184,.1);color:var(--text-muted);}
                 .live-pl{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;line-height:1;}
         @keyframes plFlash{0%{transform:scale(1)}30%{transform:scale(1.15)}100%{transform:scale(1)}}
+        @keyframes winPulse{0%{box-shadow:0 0 0 0 rgba(0,214,122,.5)}70%{box-shadow:0 0 0 12px rgba(0,214,122,0)}100%{box-shadow:0 0 0 0 rgba(0,214,122,0)}}
+        .win-pulse{animation:winPulse .8s ease-out;}
         .pl-flash{animation:plFlash .4s cubic-bezier(.34,1.56,.64,1);}
         .live-pl.winning{color:var(--green);}
         .live-pl.losing{color:var(--red);}
@@ -440,9 +443,10 @@
         .chat-username{font-size:10px;font-weight:800;color:var(--text-muted);letter-spacing:.3px;}
         .chat-username.mine{color:var(--green);}
         .chat-ts{font-size:9px;color:var(--text-dim);}
-        .chat-delete{font-size:10px;color:var(--text-dim);cursor:pointer;padding:2px 4px;
-            opacity:0;transition:opacity .15s;background:none;border:none;}
-        .chat-msg:hover .chat-delete{opacity:1;}
+        .chat-delete{font-size:10px;color:var(--text-dim);cursor:pointer;padding:2px 5px;
+            opacity:0;transition:opacity .15s;background:none;border:none;border-radius:4px;line-height:1;flex-shrink:0;}
+        .chat-msg:hover .chat-delete{opacity:.7;}
+        .chat-delete:hover{opacity:1!important;background:rgba(255,69,96,.15);color:var(--red);}
         .chat-input-row{display:flex;gap:8px;align-items:flex-end;padding-top:10px;
             border-top:1px solid var(--border);flex-shrink:0;}
         .chat-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:20px;
@@ -578,9 +582,13 @@
 <div class="notif-overlay" id="notifOverlay" onclick="closeNotifDrawer()"></div>
 <div class="notif-drawer" id="notifDrawer">
     <div class="notif-drawer-header">
-        <div class="notif-drawer-title">🔔 Notifications</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-            <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px;" onclick="markAllNotifsRead()">Mark all read</button>
+        <div>
+            <div class="notif-drawer-title">🔔 Notifications</div>
+            <div style="font-size:11px;color:var(--text-dim);margin-top:1px;" id="notifSubhead"></div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+            <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="markAllNotifsRead()" title="Mark all read">✓ Read</button>
+            <button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;" onclick="clearAllNotifs()" title="Clear all">🗑</button>
             <button class="notif-close" onclick="closeNotifDrawer()">✕</button>
         </div>
     </div>
@@ -621,8 +629,9 @@
             <div class="form-group"><label>Your Odds</label><input type="number" id="cOdds" value="-110" step="1"></div>
             <div class="form-group"><label>Your Stake ($)</label><input type="number" id="cAmount" placeholder="100"></div>
         </div>
-        <div id="cOddsPreview" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text-muted);margin-bottom:12px;">Enter odds and amount to preview</div>
+        <div id="cOddsPreview" style="background:var(--bg);border:1px solid rgba(0,214,122,.2);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text-muted);margin-bottom:12px;min-height:40px;">Enter odds and amount to preview</div>
         <div class="form-group"><label>Trash Talk (optional)</label><input type="text" id="cMessage" placeholder="You're going down 😤" maxlength="100"></div>
+        <div id="cGamePreview" style="background:rgba(0,214,122,.05);border:1px solid rgba(0,214,122,.15);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text-muted);margin-bottom:12px;display:none;"></div>
         <div class="modal-footer">
             <button class="btn btn-primary btn-full" onclick="submitChallenge()">Send Challenge ⚔️</button>
             <button class="btn btn-secondary" onclick="closeModal('challengeModal')">Cancel</button>
@@ -848,7 +857,7 @@ function toast(msg,type='info',dur=3000){
 }
 let _betCalcOdds = -110; // stored so calculator can use it
 
-function promptBetAmount(info, max, _unused){
+function promptBetAmount(info, max, oddsOverride){
     return new Promise(r=>{
         _betResolve=r;
         document.getElementById('betModalInfo').innerHTML=info;
@@ -859,11 +868,13 @@ function promptBetAmount(info, max, _unused){
         const balEl=document.getElementById('betModalBalance');
         if(balEl&&user) balEl.textContent='Balance: $'+Math.floor(user.balance);
 
-        // Extract odds from the info HTML (looks for +NNN or -NNN pattern near odds context)
-        let extractedOdds=-110;
-        const oddsMatch=info.match(/([+\-]\d{3,4})<\/strong>\s*<\/span>/);
-        if(oddsMatch) extractedOdds=parseInt(oddsMatch[1]);
-        else { const m2=info.match(/>([+\-]\d{3,4})<\/strong>/); if(m2) extractedOdds=parseInt(m2[1]); }
+        // Extract odds — use explicit param if provided, otherwise parse from HTML
+        let extractedOdds = oddsOverride != null && !isNaN(Number(oddsOverride)) ? Number(oddsOverride) : -110;
+        if(extractedOdds === -110 && !oddsOverride){
+            const oddsMatch=info.match(/([+\-]\d{3,4})<\/strong>\s*<\/span>/);
+            if(oddsMatch) extractedOdds=parseInt(oddsMatch[1]);
+            else { const m2=info.match(/>([+\-]\d{3,4})<\/strong>/); if(m2) extractedOdds=parseInt(m2[1]); }
+        }
         _betCalcOdds=isNaN(extractedOdds)?-110:extractedOdds;
 
         // Quick bet buttons: 25%, 50%, 75%, max
@@ -954,7 +965,6 @@ document.addEventListener('click',e=>{
         e.target.classList.remove('open');
         if(_betResolve){_betResolve(null);_betResolve=null;}
         if(_confirmResolve){_confirmResolve(false);_confirmResolve=null;}
-        if(_confirmResolve){_confirmResolve(false);_confirmResolve=null;}
     }
 });
 function skeletonCards(n=3){
@@ -965,15 +975,15 @@ async function doLogin(){
     if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Logging in...';}
     const u=document.getElementById('loginUsername').value.trim();
     const p=document.getElementById('loginPassword').value;
-    if(!u||!p){toast('Please enter your username/email and password','error');if(btn){btn.disabled=false;btn.innerHTML='Login';}return;}
+    if(!u||!p){toast('Please enter your username/email and password','error');if(btn){btn.disabled=false;btn.innerHTML='Log In';}return;}
     try{
         const res=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({username:u,password:p})});
-        if(!res.ok){const e=await res.json();toast(e.detail||'Invalid credentials','error');if(btn){btn.disabled=false;btn.innerHTML='Login';}return;}
+        if(!res.ok){const e=await res.json();toast(e.detail||'Invalid credentials','error');if(btn){btn.disabled=false;btn.innerHTML='Log In';}return;}
         const data=await res.json();
         token=data.token;localStorage.setItem('token',token);user=data.user;
         await loadPropTypes();renderApp();startNotifPolling();
-    }catch(e){toast('Connection error','error');if(btn){btn.disabled=false;btn.innerHTML='Login';}}
+    }catch(e){toast('Connection error','error');if(btn){btn.disabled=false;btn.innerHTML='Log In';}}
 }
 
 async function doRegister(){
@@ -982,7 +992,9 @@ async function doRegister(){
     const p=document.getElementById('regPassword').value;
     const ref=document.getElementById('regReferral')?.value.trim()||'';
     if(!u){toast('Username is required','error');return;}
-    if(!em||!em.includes('@')){toast('Please enter a valid email address','error');return;}
+    if(u.length < 3 || u.length > 20){toast('Username must be 3–20 characters','error');return;}
+    if(!/^[a-zA-Z0-9_]+$/.test(u)){toast('Username can only contain letters, numbers, and underscores','error');return;}
+    if(!em||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){toast('Please enter a valid email address','error');return;}
     if(p.length<6){toast('Password must be 6+ characters','error');return;}
     const btn=document.getElementById('registerBtn');btn.disabled=true;btn.textContent='Creating account...';
     try{
@@ -999,11 +1011,11 @@ async function doRegister(){
 async function loadUser(){
     try{
         const res=await fetch(API+'/user?token='+token);
-        if(!res.ok){localStorage.removeItem('token');token=null;user=null;location.reload();return;}
+        if(!res.ok){localStorage.removeItem('token');token=null;user=null;renderLogin();return;}
         user=await res.json();
-    }catch(e){localStorage.removeItem('token');token=null;user=null;location.reload();}
+    }catch(e){localStorage.removeItem('token');token=null;user=null;renderLogin();}
 }
-async function loadPropTypes(){const res=await fetch(API+'/prop-types');propTypes=await res.json();}
+async function loadPropTypes(){try{const res=await fetch(API+'/prop-types');if(res.ok)propTypes=await res.json();}catch(e){propTypes={};console.warn('Could not load prop types',e);}}
 async function logout(){
     const ok=await showConfirm('Log out?','You will need to log back in.');
     if(!ok)return;
@@ -1084,7 +1096,7 @@ async function loadLines(){
         </div>
         <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
             <div style="flex:1;position:relative;">
-                <input id="marketplaceSearch" type="text" placeholder="🔍  Search teams, games..." oninput="filterMarketplace()"
+                <input id="marketplaceSearch" type="text" placeholder="Search teams, games, bookies..." oninput="filterMarketplace()"
                     style="width:100%;padding:10px 14px;font-size:14px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
             </div>
             <select id="marketplaceSort" onchange="filterMarketplace()" title="Sort lines"
@@ -1155,11 +1167,13 @@ async function loadLines(){
                     bettorPick=line.side==='home'?_away:_home;
                 }
 
+                const isNewLine = line.created_at && (Date.now()-new Date(line.created_at).getTime())<3600000;
                 html+=`<div class="card" data-line-id="${line.id}" style="padding:12px 16px;margin-bottom:8px;${isFull?'opacity:.7':''}${!isFull&&!isOwn?';border-color:rgba(255,255,255,.08)':''}${!isFull&&!isOwn&&!isGameStarted?';cursor:pointer':''}" onclick="${!isFull&&!isOwn&&!isGameStarted?'takeLine('+line.id+')':''}">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                         <div style="flex:1;min-width:0;">
                             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
                                 <span class="badge ${tBadge}" style="font-size:10px;">${line.type.toUpperCase()}</span>
+                                ${isNewLine?'<span style="background:rgba(0,214,122,.15);color:var(--green);border:1px solid rgba(0,214,122,.3);border-radius:4px;font-size:9px;font-weight:800;padding:1px 6px;letter-spacing:.5px;">🆕 NEW</span>':''}
                                 ${scoreBadge}
                                 ${line.is_private?'<span class="badge badge-private" style="font-size:10px;">Private</span>':''}
                             </div>
@@ -1233,7 +1247,11 @@ async function takeLine(lineId){
 
     // Separate checks with clear messages
     if(availBettor<=0.01){toast('This line is fully matched','error');return;}
-    if(!user||user.balance<=0.01){toast(`Insufficient funds — your balance is $${(user?.balance||0).toFixed(2)}`,'error');return;}
+    if(!user||user.balance<=0.01){
+        const needed = (availBettor*Math.max(1,Math.abs(odds)/100)).toFixed(0);
+        toast(`Insufficient funds — you have $${(user?.balance||0).toFixed(0)} but need ~$${needed}`,'error');
+        return;
+    }
 
     const maxBettor=Math.min(availBettor, line.max_bet_per_user||availBettor, user.balance);
 
@@ -1252,7 +1270,8 @@ async function takeLine(lineId){
           <span style="font-size:12px;background:rgba(0,200,100,.1);border:1px solid rgba(0,200,100,.3);border-radius:5px;padding:2px 8px;color:var(--green);">🎯 You take: <strong>${_bettorLabel}</strong> <strong style="color:${odds>0?'var(--green)':'inherit'}">${oddsStr}</strong></span>
         </div>
         <span style="color:var(--text-dim);font-size:12px;">Enter your stake. Max you can win: <strong style="color:var(--green)">$${avail.toFixed(2)}</strong></span>`,
-        maxBettor
+        maxBettor,
+        odds // pass explicitly so bet calc doesn't rely on HTML regex
     );
     if(!amount)return;
 
@@ -1290,8 +1309,12 @@ async function renderCreateLine(){
                     <div style="text-align:center;padding:32px 20px;">
                         <div style="font-size:40px;margin-bottom:12px;">📡</div>
                         <div style="font-size:18px;font-weight:700;margin-bottom:8px;">No games available right now</div>
-                        <div style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">ESPN hasn't published today's schedule yet, or all games have started. Check back soon or try the Marketplace to take existing lines.</div>
-                        <button class="btn btn-primary" onclick="renderApp()">Refresh</button>
+                        <div style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">ESPN hasn't published today's schedule yet, or all games have already started. Check back soon.</div>
+                        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+                            <button class="btn btn-primary" onclick="renderApp()">🔄 Refresh</button>
+                            <button class="btn btn-secondary" onclick="changeView('marketplace')">Browse Marketplace</button>
+                            <button class="btn btn-secondary" onclick="changeView('props')">Try Props 🎲</button>
+                        </div>
                     </div>
                 </div>`;
             return '';
@@ -1331,7 +1354,7 @@ async function renderCreateLine(){
 
             <!-- Step 1: League -->
             <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">1</span>PICK A LEAGUE</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;" id="sportTabs">
+            <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:20px;-webkit-overflow-scrolling:touch;" id="sportTabs">
                 ${sportTabs}
             </div>
 
@@ -1362,7 +1385,10 @@ async function renderCreateLine(){
             </div>
 
             <!-- Step 4: Odds & Amount -->
-            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">4</span>ODDS & LIABILITY</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--green);color:#000;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;flex-shrink:0;">4</span>ODDS & LIABILITY</span>
+                <span style="font-size:10px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;">-110 = standard. Negative = favorite.</span>
+            </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                 <div>
                     <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;">Your Odds</label>
@@ -1664,7 +1690,7 @@ async function createLine(){
     if(ip){body.is_private=true;if(gi)body.group_id=parseInt(gi);}
     try{
         const res=await fetch(API+'/lines?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-        if(res.ok){toast('Line posted!','success');await loadUser();updateSidebarBalance();changeView('marketplace');}
+        if(res.ok){toast('Line posted! 🎉 Bettors can now take the other side.','success');await loadUser();updateSidebarBalance();changeView('marketplace');}
         else{const e=await res.json().catch(()=>({}));toast(e.detail||`Server error (${res.status})`,'error');}
     }catch(e){console.error('createLine:',e);toast('Connection error — check your internet and try again','error');}
 }
@@ -1739,8 +1765,8 @@ async function renderProps(){
                 <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:${oddsColor};">${oddsStr}</span>
                 ${p.game?`<span style="font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">${p.game}</span>`:''}
             </div>
-            <div style="font-size:18px;font-weight:800;margin-bottom:4px;">${p.player_name}</div>
-            <div style="font-size:13px;color:var(--text-muted);">${p.prop_type} · <strong style="color:var(--text);">${p.side.toUpperCase()} ${p.line}</strong></div>
+            <div style="font-size:18px;font-weight:800;margin-bottom:4px;">${escapeHtml(p.player_name||'')}</div>
+            <div style="font-size:13px;color:var(--text-muted);">${p.prop_type} · <strong style="color:var(--text);">${(p.side||'').toUpperCase()} ${p.line}</strong></div>
             <div style="font-size:11px;color:var(--text-dim);margin-top:6px;cursor:pointer;" onclick="event.stopPropagation();viewProfile('${p.bookie_name}')">by @${p.bookie_name}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
@@ -1811,7 +1837,7 @@ async function createProp(){
     if(isNaN(odds)||odds===0||(-100<odds&&odds<100)){toast('Enter valid American odds (e.g. -110 or +150)','error');return;}
     try{
         const res=await fetch(API+'/props?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game_id:gameId,sport,player_name:player,prop_type:propType,line,side,odds,amount})});
-        if(res.ok){toast('Prop posted!','success');await loadUser();updateSidebarBalance();renderApp();}
+        if(res.ok){toast('Prop posted! 🎲 Visible in the marketplace for bettors.','success');await loadUser();updateSidebarBalance();changeView('marketplace');}
         else{const e=await res.json();toast(e.detail||'Error','error');}
     }catch(e){toast('Connection error','error');}
 }
@@ -1838,6 +1864,7 @@ async function takeProp(propId){
         }
         else{const e=await res.json();toast(e.detail||'Error','error');}
     }catch(e){toast('Connection error','error');}
+    finally{if(_futureBtn){_futureBtn.disabled=false;_futureBtn.textContent='Post to Marketplace';}}
 }
 async function renderFutures(){
     document.getElementById('content').innerHTML=skeletonCards(2);
@@ -1855,7 +1882,7 @@ async function renderFutures(){
         html+=`<div class="card"><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:.5px;">${f.market_name}</div>
         <div style="color:var(--text-muted);font-size:13px;margin-bottom:16px;">${f.sport}</div>
         <div style="display:flex;flex-wrap:wrap;gap:10px;">
-            ${f.options.map(o=>`<button class="btn btn-secondary" style="font-weight:700;" onclick="openFutureBet('${f.id}','${f.market_name.replace(/'/g,"\\'")}','${o.replace(/'/g,"\\'")}','${f.sport}')">${o}</button>`).join('')}
+            ${(f.options||[]).map(o=>`<button class="btn btn-secondary" style="font-weight:700;" onclick="openFutureBet('${f.id}','${f.market_name.replace(/'/g,"\\'")}','${o.replace(/'/g,"\\'")}','${f.sport}')">${o}</button>`).join('')}
         </div></div>`;
     });
     return html;
@@ -1876,6 +1903,10 @@ async function submitFutureBet(){
     const amount=parseFloat(document.getElementById('futureAmount').value);
     if(isNaN(odds)||odds===0||(-100<odds&&odds<100)){toast('Odds must be ≤ -100 or ≥ +100','error');return;}
     if(isNaN(amount)||amount<=0){toast('Enter your stake','error');return;}
+    if(user && amount > user.balance){toast(`Insufficient funds — balance: $${Math.floor(user.balance)}`,'error');return;}
+    const _futureBtn=document.querySelector('[onclick="submitFutureBet()"]');
+    if(_futureBtn&&_futureBtn.disabled)return;
+    if(_futureBtn){_futureBtn.disabled=true;_futureBtn.textContent='Posting...';}
     // Post as a prop with the futures context
     try{
         const res=await fetch(API+'/props?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},
@@ -1925,7 +1956,7 @@ async function renderMyBets(){
     if(_myBetsTab==='lines'){
         // ── MY LINES: bookie management panel ────────────────────────────────
         if(!myLines.length){
-            html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No open lines</div><div class="empty-desc">Post a line and become the bookie</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('create')">⚡ Set a Line</button></div>`;
+            html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No open lines</div><div class="empty-desc">Set your first line as the bookie — pick a game, set your side and odds, and let bettors fill it.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;"><button class="btn btn-primary" onclick="changeView('create')">⚡ Set a Line</button><button class="btn btn-secondary" onclick="changeView('marketplace')">Browse Marketplace</button></div></div>`;
         } else {
             // Lines summary bar
             const totalLiability=myLines.reduce((s,l)=>s+l.amount,0);
@@ -1953,23 +1984,25 @@ async function renderMyBets(){
             myLines.forEach(l=>{
                 const oddsStr=l.odds>0?'+'+l.odds:String(l.odds);
                 const oddsColor=l.odds>0?'var(--green)':'var(--text-muted)';
-                const pct=l.amount>0?Math.min(100,Math.round((l.total_action||0)/l.amount*100)):0;
+                const pct=l.amount>0?Math.min(100,Math.round((l.total_action||0)/(l.amount||1)*100)):0;
                 html+=`<div class="card" id="line-card-${l.id}" style="border-color:rgba(255,107,0,.2);">
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
                         <div style="flex:1;min-width:0;">
                             <div style="font-size:15px;font-weight:700;">${l.game}</div>
-                            <div style="color:var(--text-muted);font-size:13px;margin-top:3px;">${l.type.toUpperCase()} · ${l.side.toUpperCase()}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}${l.commence_time?(()=>{const diff=(new Date(l.commence_time)-Date.now())/3600000;return diff>0&&diff<24?` · <span style="color:var(--gold);font-weight:700;">⏰ In ${Math.round(diff)}h</span>`:diff<=0&&diff>-24?' · <span style="color:var(--red);font-weight:700;">🔴 In Progress</span>':'';})():''}</div>
+                            <div style="color:var(--text-muted);font-size:13px;margin-top:3px;">${(l.type||"").toUpperCase()} · ${(l.side||"").toUpperCase()}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}${l.commence_time?(()=>{const diff=(new Date(l.commence_time)-Date.now())/3600000;return diff>0&&diff<24?` · <span style="color:var(--gold);font-weight:700;">⏰ In ${Math.round(diff)}h</span>`:diff<=0&&diff>-24?' · <span style="color:var(--red);font-weight:700;">🔴 In Progress</span>':'';})():''}</div>
                             <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;">
                                 <span>Odds: <strong style="color:${oddsColor}">${oddsStr}</strong></span>
-                                <span>Matched: <strong>$${(l.total_action||0).toFixed(0)}</strong> / <span style="color:var(--text-dim)">$${l.amount.toFixed(0)} max liability</span></span>
+                                <span>Matched: <strong>$${(l.total_action||0).toFixed(0)}</strong> / <span style="color:var(--text-dim)">$${(l.amount||0).toFixed(0)} max liability</span></span>
                                 <span>${l.current_bettors} bettor${l.current_bettors!==1?'s':''}</span>
                             </div>
                             <div style="margin-top:8px;width:100%;max-width:240px;height:4px;background:var(--border);border-radius:4px;">
                                 <div style="height:100%;width:${pct}%;background:${pct===100?'var(--red)':'var(--orange)'};border-radius:4px;transition:.3s;"></div>
                             </div>
-                            <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">$${l.unmatched.toFixed(2)} unmatched liability · bettor needs $${l.available_for_bettor.toFixed(2)} to fill</div>
+                            <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">$${(l.unmatched||0).toFixed(2)} unmatched liability · bettor needs $${(l.available_for_bettor||0).toFixed(2)} to fill</div>
                         </div>
                         <div style="display:flex;flex-direction:column;gap:8px;min-width:140px;max-width:180px;">
+                            <!-- Share line -->
+                            <button class="btn btn-secondary btn-sm" style="font-size:11px;" onclick="shareLineLink(${l.id},'${l.game.replace(/'/g,"\\'")}','${l.type}','${l.side}')">🔗 Share</button>
                             <!-- Odds adjustment -->
                             <div style="display:flex;gap:6px;align-items:center;">
                                 <input type="number" id="odds-input-${l.id}" value="${l.odds}" step="1"
@@ -1998,9 +2031,9 @@ async function renderMyBets(){
         const allParlays=[
             ...parlayData.posted.map(p=>({...p,role:'bookie'})),
             ...parlayData.taken.map(p=>({...p,role:'bettor'}))
-        ].sort((a,b)=>0);
+        ].sort((a,b)=>(b.id||0)-(a.id||0)); // newest first
         if(!allParlays.length){
-            html+=`<div class="empty-state"><div class="empty-icon">🎰</div><div class="empty-title">No parlays yet</div><div class="empty-desc">Head to the Parlays page to build a multi-leg bet</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('parlays')">Build a Parlay 🎰</button></div>`;
+            html+=`<div class="empty-state"><div class="empty-icon">🎰</div><div class="empty-title">No parlays yet</div><div class="empty-desc">Build a multi-leg parlay — pick 2+ games and combine the odds for a bigger payout.</div><div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap;"><button class="btn btn-primary" onclick="changeView('parlays')">Build a Parlay 🎰</button><button class="btn btn-secondary" onclick="changeView('marketplace')">Browse Lines</button></div></div>`;
         } else {
             allParlays.forEach(p=>{
                 const isBookie=p.role==='bookie';
@@ -2034,7 +2067,7 @@ async function renderMyBets(){
                             const lIcon=lr==='won'?'✅':lr==='lost'?'❌':lr==='push'?'🤝':'⏳';
                             return`<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;">
                                 <span>${lIcon}</span>
-                                <span style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game} · ${l.type.toUpperCase()} ${l.side}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}</span>
+                                <span style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game} · ${(l.type||"").toUpperCase()} ${l.side}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}</span>
                             </div>`;}).join('')}
                     </div>
                     <div style="text-align:right;flex-shrink:0;">
@@ -2047,7 +2080,7 @@ async function renderMyBets(){
     } else {
         // ── BET HISTORY ───────────────────────────────────────────────────────
         if(!bets.length&&!props.length){
-            html+=`<div class="empty-state"><div class="empty-icon">🎲</div><div class="empty-title">No bet history yet</div><div class="empty-desc">Head to the marketplace and take a line</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('marketplace')">Browse Lines</button></div>`;
+            html+=`<div class="empty-state"><div class="empty-icon">🎲</div><div class="empty-title">No bet history yet</div><div class="empty-desc">Browse the marketplace and take a line to place your first bet as a bettor.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;"><button class="btn btn-primary" onclick="changeView('marketplace')">Browse Lines</button><button class="btn btn-secondary" onclick="changeView('create')">⚡ Set a Line</button></div></div>`;
         } else {
             const all=[...bets.map(b=>({...b,_type:'line'})),...props.map(p=>({...p,_type:'prop'}))]
                 .sort((a,b)=>(b.id||0)-(a.id||0)); // newest first
@@ -2106,7 +2139,7 @@ async function renderMyBets(){
                 const isBookie=b.bookie_id===user.id,isWon=b.winner===(isBookie?'bookie':'bettor'),isPush=b.winner==='push';
                 let sc='pending',sl='Pending ⏳';
                 if(b.status==='settled'){if(isPush){sc='pending';sl='Push 🤝';}else if(isWon){sc='won';sl='Won ✅';}else{sc='lost';sl='Lost ❌';}}
-                const ml=b._type==='line'?`${b.game} · ${b.type.toUpperCase()}: ${isBookie?b.bookie_side:b.bettor_side} ${b.value>0?'+':''}${b.value!==0?b.value:''}`:`${b.player_name} ${b.prop_type} · ${(isBookie?b.bookie_side:b.bettor_side).toUpperCase()} ${b.line}`;
+                const ml=b._type==='line'?`${b.game} · ${(b.type||"").toUpperCase()}: ${isBookie?b.bookie_side:b.bettor_side} ${b.value>0?'+':''}${b.value!==0?b.value:''}`:`${b.player_name} ${b.prop_type} · ${(isBookie?b.bookie_side:b.bettor_side||"").toUpperCase()} ${b.line}`;
                 const vs=isBookie?'vs @'+(b.bettor_name||'Open'):'vs @'+b.bookie_name;
                 const myStake=isBookie?(b.bookie_amount||b.amount):(b.bettor_amount||b.amount);
                 const oppStake=isBookie?(b.bettor_amount||b.amount):(b.bookie_amount||b.amount);
@@ -2124,7 +2157,7 @@ async function renderMyBets(){
                 html+=`<div class="card" style="${cardBorderColor?'border-color:'+cardBorderColor+';':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
                     <div style="flex:1;min-width:0;">
                         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
-                            <span class="badge ${b._type==='line'?'badge-'+b.type:'badge-prop'}" style="font-size:9px;">${b._type==='line'?b.type.toUpperCase():'PROP'}</span>
+                            <span class="badge ${b._type==='line'?'badge-'+b.type:'badge-prop'}" style="font-size:9px;">${b._type==='line'?(b.type||"").toUpperCase():'PROP'}</span>
                             <span style="font-size:10px;color:var(--text-dim);">${isBookie?'📚 BOOKIE':'🎯 BETTOR'}</span>
                         </div>
                         <div style="font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ml}</div>
@@ -2188,6 +2221,9 @@ async function updateLineOdds(lineId){
     if(!inp)return;
     const odds=parseInt(inp.value);
     if(isNaN(odds)||odds===0||(-100<odds&&odds<100)){toast('Odds must be ≤ -100 or ≥ +100','error');return;}
+    const _oddsBtn=document.querySelector(`[onclick="updateLineOdds(${lineId})"]`);
+    if(_oddsBtn&&_oddsBtn.disabled)return;
+    if(_oddsBtn){_oddsBtn.disabled=true;_oddsBtn.textContent='Saving...';}
     try{
         const res=await fetch(API+'/lines/'+lineId+'?token='+token,{
             method:'PATCH',headers:{'Content-Type':'application/json'},
@@ -2200,6 +2236,7 @@ async function updateLineOdds(lineId){
             renderApp();
         } else {const e=await res.json();toast(e.detail||'Error','error');}
     }catch(e){toast('Connection error','error');}
+    finally{if(_oddsBtn){_oddsBtn.disabled=false;_oddsBtn.textContent='Update Odds';}}
 }
 
 async function addStake(lineId){
@@ -2238,7 +2275,8 @@ async function renderLeaderboard(){
     try{const res=await fetch(API+'/leaderboard');if(res.ok)leaders=await res.json();}catch(e){}
     if(!Array.isArray(leaders))leaders=[];
     const medals=['🥇','🥈','🥉'];
-    let html=`<div class="page-header"><div class="page-title">Leaderboard</div><div class="page-subtitle">Top ${leaders.length} bookies by all-time P&L</div></div>`;
+    const _hasUser = leaders.some(l=>user&&l.id===user.id);
+    let html=`<div class="page-header"><div class="page-title">🏆 Leaderboard</div><div class="page-subtitle">${leaders.length} players ranked · all-time P&L${_hasUser?"":" · Keep betting to climb!"}</div></div>`;
     // Top 3 podium
     if(leaders.length>=3){
         const podiumOrder=[leaders[1],leaders[0],leaders[2]]; // 2nd, 1st, 3rd visual order
@@ -2255,15 +2293,15 @@ async function renderLeaderboard(){
                     <div style="font-size:13px;font-weight:800;color:${isMe?'var(--green)':'var(--text)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@${l.username}</div>
                     <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">${wr}% WR</div>
                     <div style="background:${podiumColors[pi]};opacity:${pi===1?1:.8};border-radius:8px 8px 0 0;height:${heights[pi]};display:flex;align-items:center;justify-content:center;">
-                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:${pi===1?'22px':'18px'};font-weight:800;color:#000;">${(l.profit>=0?'+':'-')}$${Math.abs(l.profit).toLocaleString()}</div>
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:${pi===1?'22px':'18px'};font-weight:800;color:#000;">${(l.profit>=0?'+':'-')}$${Math.abs(l.profit||0).toLocaleString()}</div>
                     </div>
                 </div>`;
             }).join('')}
         </div>`;
     }
     leaders.forEach((l,i)=>{
-        const pos=l.profit>=0;
-        const total=l.wins+l.losses;
+        const pos=(l.profit||0)>=0;
+        const total=(l.wins||0)+(l.losses||0);
         const wr=total>0?Math.round(l.wins/total*100):0;
         const isMe=user&&l.id===user.id;
         const podiumStyle=i<3?`background:linear-gradient(135deg,${i===0?'rgba(245,166,35,.06)':i===1?'rgba(192,192,192,.04)':'rgba(205,127,50,.04)'},transparent);border-color:${i===0?'rgba(245,166,35,.2)':i===1?'rgba(192,192,192,.15)':'rgba(205,127,50,.12)'};`:'';
@@ -2274,12 +2312,13 @@ async function renderLeaderboard(){
                     <div class="lb-name" style="cursor:pointer;display:flex;align-items:center;gap:6px;" onclick="event.stopPropagation();viewProfile('${l.username}')">
                         @${l.username}${isMe?' <span style="color:var(--green);font-size:11px;font-weight:800;background:rgba(0,214,122,.1);padding:1px 6px;border-radius:4px;">YOU</span>':''}
                     </div>
-                    <div class="lb-record" style="margin-top:3px;">${l.wins}W — ${l.losses}L · ${wr}% win rate</div>
-                    <div class="wr-bar" style="width:min(140px,100%);margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div>
+                    <div class="lb-record" style="margin-top:3px;">${l.wins}W — ${l.losses}L · <span style="color:${wr>=55?'var(--green)':wr>=45?'var(--gold)':'var(--red)'};">${wr}%</span></div>
+                    <div class="wr-bar" style="width:min(140px,100%);margin-top:4px;"><div class="wr-fill" style="width:${wr}%;background:${wr>=55?'var(--green)':wr>=45?'var(--gold)':'var(--red)'};"></div></div>
                 </div>
                 <div style="text-align:right;">
-                    <div class="lb-profit" style="color:${pos?'var(--green)':'var(--red)'};">${pos?'+':'-'}$${Math.abs(l.profit).toLocaleString()}</div>
-                    ${l.lines_created!==undefined?`<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${l.lines_created} lines posted</div>`:""}
+                    <div class="lb-profit" style="color:${pos?'var(--green)':'var(--red)'};">${pos?'+':'-'}$${Math.abs(l.profit||0).toLocaleString()}</div>
+                    ${l.lines_created!==undefined?`<div style="font-size:10px;color:var(--text-dim);margin-top:2px;">${l.lines_created} line${l.lines_created!==1?'s':''} posted</div>`:""}
+                    ${(l.roi!==undefined&&l.roi!==0)?`<div style="font-size:10px;font-weight:700;color:${l.roi>0?'var(--green)':'var(--red)'};margin-top:2px;">${l.roi>0?'+':''}${l.roi}% ROI</div>`:""}
                 </div>
             </div>
         </div>`;
@@ -2312,13 +2351,18 @@ async function renderGroups(){
                     <div style="flex:1;">
                         <div style="font-size:19px;font-weight:700;">${g.name}${g.is_creator?' <span style="color:var(--green);font-size:12px;font-weight:700;">OWNER</span>':''}</div>
                         ${g.description?`<div style="color:var(--text-muted);margin-top:4px;font-size:14px;">${g.description}</div>`:''}
-                        <div style="color:var(--text-dim);font-size:12px;margin-top:8px;">👥 ${g.member_count} member${g.member_count!==1?'s':''} ${g.invite_code?'· Code: <strong style="color:var(--text-muted);letter-spacing:1px;">'+g.invite_code+'</strong>':''}</div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                        <span style="color:var(--text-dim);font-size:12px;">👥 ${g.member_count} member${g.member_count!==1?'s':''}</span>
+                        ${g.invite_code?`<span style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:2px;color:var(--gold);cursor:pointer;" onclick="navigator.clipboard.writeText('${g.invite_code}').then(()=>toast('Code copied!','success'))" title="Click to copy">${g.invite_code} 📋</span>`:''}
+                    </div>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:6px;min-width:120px;">
                         ${g.is_creator
-                            ?`<button class="btn btn-secondary btn-sm" onclick="openInviteModal(${g.id},'${g.name.replace(/'/g,"\\'")}')">+ Invite</button>
-                               <button class="btn btn-danger btn-sm" onclick="deleteGroup(${g.id},'${g.name.replace(/'/g,"\\'")}')">Delete</button>`
-                            :`<button class="btn btn-danger btn-sm" onclick="leaveGroup(${g.id},'${g.name.replace(/'/g,"\\'")}')">Leave</button>`
+                            ?`<button class="btn btn-secondary btn-sm" onclick="openInviteModal(${g.id},'${g.name.replace(/'/g,"\\'")}')">👥 Invite</button>
+                               <button class="btn btn-outline btn-sm" onclick="changeView('marketplace');setTimeout(()=>{const s=document.getElementById('marketplaceSearch');if(s){s.value='';filterMarketplace();}},200)" style="font-size:11px;">📊 Lines</button>
+                               <button class="btn btn-danger btn-sm" onclick="deleteGroup(${g.id},'${g.name.replace(/'/g,"\\'")}')">🗑</button>`
+                            :`<button class="btn btn-secondary btn-sm" onclick="changeView('marketplace')" style="font-size:11px;">📊 Lines</button>
+                               <button class="btn btn-danger btn-sm" onclick="leaveGroup(${g.id},'${g.name.replace(/'/g,"\\'")}')">Leave</button>`
                         }
                     </div>
                 </div>
@@ -2385,17 +2429,24 @@ async function renderUserSearch(){
     try{const res=await fetch(API+'/users/search?token='+token);if(res.ok)users=await res.json();}catch(e){}
     if(!Array.isArray(users))users=[];
     let html=`<div class="page-header"><div class="page-title">Find Bookies</div><div class="page-subtitle">${users.length} bookies · follow, challenge, or add as friend</div></div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
         <div style="flex:1;min-width:180px;position:relative;">
-            <input id="searchFilter" type="text" placeholder="🔍 Search by username..." oninput="filterBookieSearch()"
-                style="width:100%;padding:12px 16px;font-size:15px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
+            <input id="searchFilter" type="text" placeholder="Search by username..." oninput="filterBookieSearch()"
+                style="width:100%;padding:12px 16px 12px 42px;font-size:15px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none;">🔍</span>
         </div>
         <select id="searchSort" onchange="filterBookieSearch()" style="min-width:130px;padding:11px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;cursor:pointer;">
-            <option value="profit">By P/L</option>
-            <option value="winrate">By Win %</option>
-            <option value="bets">Most Bets</option>
+            <option value="profit">💰 By P/L</option>
+            <option value="winrate">🎯 By Win %</option>
+            <option value="bets">📊 Most Bets</option>
             <option value="username">A-Z</option>
         </select>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+        <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('searchFilter').value='';filterBookieSearch()">All</button>
+        <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('searchSort').value='profit';filterBookieSearch()">💰 Top Earners</button>
+        <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('searchSort').value='winrate';filterBookieSearch()">🎯 Best Win Rate</button>
+        <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('searchSort').value='bets';filterBookieSearch()">📊 Most Active</button>
     </div>
     <div id="searchResults">`;
     if(!users.length)return html+`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No users found</div></div></div>`;
@@ -2416,16 +2467,16 @@ async function renderUserSearch(){
         }
         const avatarEl = u.avatar
             ? `<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;">`
-            : `<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid ${u.is_following?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;flex-shrink:0;font-weight:800;color:var(--green);">${u.username.slice(0,2).toUpperCase()}</div>`;
+            : `<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid ${u.is_following?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;flex-shrink:0;font-weight:800;color:var(--green);">${(u.username||"??").slice(0,2).toUpperCase()}</div>`;
         html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')"><div style="display:flex;align-items:center;gap:16px;">
             ${avatarEl}
             <div style="flex:1;min-width:0;">
-                <div style="font-weight:700;font-size:15px;">@${u.username}${u.is_following?' <span style="font-size:10px;color:var(--green);font-weight:800;">FOLLOWING</span>':''}</div>
+                <div style="font-weight:700;font-size:15px;">@${u.username}${u.is_following?' <span style="font-size:10px;color:var(--green);font-weight:800;background:rgba(0,214,122,.1);padding:1px 6px;border-radius:4px;">✓ FOLLOWING</span>':''}</div>
                 <div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% win rate</div>
                 <div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':''}$${u.profit}</div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':''}$${(u.profit||0).toLocaleString()}</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation()">
                     ${friendBtn}
                     <button class="btn ${u.is_following?'btn-secondary':'btn-outline'} btn-sm" id="fb-${u.username}"
@@ -2457,8 +2508,8 @@ function filterMarketplace(){
 
     // Sort
     filtered=[...filtered];
-    if(sortBy==='amount') filtered.sort((a,b)=>b.amount-a.amount);
-    else if(sortBy==='pct') filtered.sort((a,b)=>{const pa=(a.total_action||0)/a.amount,pb=(b.total_action||0)/b.amount;return pb-pa;});
+    if(sortBy==='amount') filtered.sort((a,b)=>(b.amount||0)-(a.amount||0));
+    else if(sortBy==='pct') filtered.sort((a,b)=>{const pa=(a.total_action||0)/(a.amount||1),pb=(b.total_action||0)/(b.amount||1);return pb-pa;});
     else if(sortBy==='odds') filtered.sort((a,b)=>Math.abs(b.odds||110)-Math.abs(a.odds||110));
     else filtered.sort((a,b)=>(b.id||0)-(a.id||0)); // default: newest
 
@@ -2498,7 +2549,7 @@ function filterBookieSearch(){
     const q=document.getElementById('searchFilter')?.value.toLowerCase().trim()||'';
     const sortBy=document.getElementById('searchSort')?.value||'profit';
     const users=window._allSearchUsers||[];
-    let filtered=q?users.filter(u=>u.username.toLowerCase().includes(q)):users;
+    let filtered=q?users.filter(u=>(u.username||'').toLowerCase().includes(q)):users;
     // Sort
     filtered=[...filtered].sort((a,b)=>{
         if(sortBy==='profit') return (b.profit||0)-(a.profit||0);
@@ -2520,7 +2571,7 @@ function filterBookieSearch(){
         else if(u.friend_status==='outgoing'){friendBtn=`<button class="btn btn-secondary btn-sm" disabled style="opacity:.5;">Pending...</button>`;}
         else if(u.friend_status==='incoming'){friendBtn=`<button class="btn btn-primary btn-sm" onclick="acceptFriendFromSearch(${u.request_id},this,'${u.username}')">Accept 🤝</button>`;}
         else{friendBtn=`<button class="btn btn-outline btn-sm" onclick="sendFriendRequest('${u.username}',this)">+ Add Friend</button>`;}
-        const avatarEl=u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid ${u.is_following?'var(--green)':'var(--border)'};flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid ${u.is_following?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;flex-shrink:0;font-weight:800;color:var(--green);">${u.username.slice(0,2).toUpperCase()}</div>`;
+        const avatarEl=u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid ${u.is_following?'var(--green)':'var(--border)'};flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid ${u.is_following?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;flex-shrink:0;font-weight:800;color:var(--green);">${(u.username||"??").slice(0,2).toUpperCase()}</div>`;
         html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')"><div style="display:flex;align-items:center;gap:16px;">${avatarEl}<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;">@${u.username}${u.is_following?' <span style="font-size:10px;color:var(--green);font-weight:800;background:rgba(0,214,122,.1);padding:1px 5px;border-radius:4px;">FOLLOWING</span>':''}</div><div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L${(u.wins+u.losses)>0?' · '+wr+'%':''}</div><div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};line-height:1;">${u.profit>=0?'+':'-'}$${Math.abs(u.profit).toLocaleString()}</div><div style="font-size:10px;color:var(--text-dim);text-align:right;">${(u.wins+u.losses)} settled bets</div><div style="display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation()">${friendBtn}<button class="btn ${u.is_following?'btn-secondary':'btn-outline'} btn-sm" id="fb-${u.username}" onclick="event.stopPropagation();${u.is_following?'unfollow':'follow'}User('${u.username}',this)">${u.is_following?'Following ✓':'+ Follow'}</button><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openChallengeModal('${u.username}')">⚔️</button></div></div></div></div>`;
     });
     container.innerHTML=html;
@@ -2584,7 +2635,7 @@ async function renderFriends(){
         incoming.forEach(u=>{
             html+=`<div class="card" style="border-color:rgba(255,107,0,.3);">
                 <div style="display:flex;align-items:center;gap:16px;">
-                    ${u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--orange);flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--gold);flex-shrink:0;">${u.username.slice(0,2).toUpperCase()}</div>`}
+                    ${u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--orange);flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--orange);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--gold);flex-shrink:0;">${(u.username||"??").slice(0,2).toUpperCase()}</div>`}
                     <div style="flex:1;"><div style="font-weight:700;font-size:16px;">@${u.username}</div>
                     <div style="color:var(--text-muted);font-size:13px;">${u.wins}W — ${u.losses}L · ${u.win_rate}% win rate</div></div>
                     <div style="display:flex;gap:8px;">
@@ -2602,7 +2653,7 @@ async function renderFriends(){
         outgoing.forEach(u=>{
             html+=`<div class="card" style="opacity:.8;border-color:rgba(107,144,184,.2);">
                 <div style="display:flex;align-items:center;gap:16px;">
-                    <div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--text-muted);flex-shrink:0;">${u.username.slice(0,2).toUpperCase()}</div>
+                    <div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--text-muted);flex-shrink:0;">${(u.username||"??").slice(0,2).toUpperCase()}</div>
                     <div style="flex:1;min-width:0;">
                         <div style="font-weight:700;cursor:pointer;" onclick="viewProfile('${u.username}')">@${u.username}</div>
                         <div style="color:var(--text-dim);font-size:12px;margin-top:2px;">⏳ Request sent — waiting for response</div>
@@ -2621,12 +2672,12 @@ async function renderFriends(){
             const plColor=u.profit>=0?'var(--green)':'var(--red)';
             html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')">
                 <div style="display:flex;align-items:center;gap:16px;">
-                    ${u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--green);flex-shrink:0;">${u.username.slice(0,2).toUpperCase()}</div>`}
+                    ${u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--green);flex-shrink:0;">${(u.username||"??").slice(0,2).toUpperCase()}</div>`}
                     <div style="flex:1;"><div style="font-weight:700;font-size:16px;">@${u.username}</div>
                     <div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% win rate</div>
                     <div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div>
                     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':''}$${Math.abs(u.profit||0).toFixed(0)}</div>
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':'-'}$${Math.abs(u.profit||0).toLocaleString()}</div>
                         <div style="display:flex;gap:6px;">
                             <button class="btn btn-primary btn-sm" onclick="openChallengeModal('${u.username}')">⚔️ Challenge</button>
                             <button class="btn btn-danger btn-sm" onclick="removeFriend('${u.username}',this)">Remove</button>
@@ -2701,14 +2752,14 @@ async function renderFollowing(){
     if(!users.length)return html+`<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No one followed yet</div><div class="empty-desc">Follow bookies to track their action in your feed</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('search')">Find Bookies</button></div>`;
     users.forEach(u=>{
         const wr=u.win_rate||0;
-        const plColor=u.profit>=0?'var(--green)':'var(--red)';
+        const plColor=(u.profit||0)>=0?'var(--green)':'var(--red)';
         html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')"><div style="display:flex;align-items:center;gap:16px;">
-            ${u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();viewProfile('${u.username}')">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--green);flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();viewProfile('${u.username}')">${u.username.slice(0,2).toUpperCase()}</div>`}
+            ${u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();viewProfile('${u.username}')">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--green);flex-shrink:0;cursor:pointer;" onclick="event.stopPropagation();viewProfile('${u.username}')">${(u.username||"??").slice(0,2).toUpperCase()}</div>`}
             <div style="flex:1;"><div style="font-weight:700;font-size:16px;">@${u.username}</div>
             <div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% · ${u.open_lines} open line${u.open_lines!==1?'s':''}</div>
             <div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-                <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':''}$${u.profit}</div>
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':'-'}$${Math.abs(u.profit||0).toLocaleString()}</div>
                 <div style="display:flex;gap:6px;">
                     <button class="btn btn-secondary btn-sm" id="fb-${u.username}" onclick="unfollowUser('${u.username}',this)">Unfollow</button>
                     <button class="btn btn-primary btn-sm" onclick="openChallengeModal('${u.username}')">⚔️</button>
@@ -2802,7 +2853,7 @@ function buildLiveCard(bet, sc, idx){
             </div>
             <div class="live-score-sep">
                 ${isLive?'<div class="live-dot"></div>':''}
-                <div class="live-period">${isLive?sc.status||'LIVE':isFinal?'FINAL':''}</div>
+                <div class="live-period" style="font-weight:800;font-size:13px;color:${isLive?'var(--red)':'var(--text-dim)'};">${isLive?sc.status||'🔴 LIVE':isFinal?'FINAL':''}</div>
                 <div style="font-size:11px;color:var(--text-dim);">vs</div>
             </div>
             <div class="live-score-team">
@@ -2872,7 +2923,7 @@ async function refreshLiveView(){
         ]);
         const scores=scRes.ok?await scRes.json():{};
         const betsData=betsRes.ok?await betsRes.json():{};
-        const bets=(betsData.single_bets||[]);
+        const bets=[...(betsData.single_bets||[]),...(betsData.prop_bets||[])]; // include prop bets
         _liveScores=scores;
         _liveBetsCache=bets;
         renderLiveCards(bets,scores);
@@ -2969,7 +3020,7 @@ async function renderLive(){
                 <div class="live-dot" style="width:10px;height:10px;flex-shrink:0;"></div>
                 <div>
                     <div class="page-title" style="line-height:1;font-size:clamp(22px,5vw,36px);">Live Tracker</div>
-                    <div class="page-subtitle" style="margin-top:2px;">Scores refresh every 60s</div>
+                    <div class="page-subtitle" style="margin-top:2px;">Auto-refreshes every 60s · P&L updates live</div>
                 </div>
             </div>
             <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 14px;text-align:center;flex-shrink:0;min-width:80px;">
@@ -3094,8 +3145,9 @@ async function renderAdminAnalytics(){
         const d = await res.json();
 
         // Sparkline bar chart from daily signups
-        const maxDay = Math.max(...(d.users.daily_signups.map(s=>s.count)||[1]), 1);
-        const sparkBars = d.users.daily_signups.slice(-14).map(s=>{
+        const _signupCounts = (d.users.daily_signups||[]).map(s=>s.count||0);
+        const maxDay = _signupCounts.length ? Math.max(..._signupCounts, 1) : 1;
+        const sparkBars = (d.users.daily_signups||[]).slice(-14).map(s=>{
             const h = Math.max(4, Math.round((s.count/maxDay)*48));
             return `<div title="${s.day}: ${s.count} signups" style="flex:1;height:${h}px;background:var(--green);
                 border-radius:2px 2px 0 0;opacity:.85;min-width:4px;"></div>`;
@@ -3128,7 +3180,7 @@ async function renderAdminAnalytics(){
                 </div>
                 <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;
                     color:${u.profit>=0?'var(--green)':'var(--red)'};">
-                    ${u.profit>=0?'+':''}$${Math.abs(u.profit).toFixed(0)}</div>
+                    ${(u.profit||0)>=0?'+':''}$${Math.abs(u.profit||0).toLocaleString()}</div>
             </div>`
         ).join('');
 
@@ -3154,10 +3206,15 @@ async function renderAdminAnalytics(){
                 </div>
                 <!-- Signup sparkline -->
                 <div style="padding:16px 20px;">
-                    <div style="font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--text-dim);
-                        text-transform:uppercase;margin-bottom:8px;">Daily Signups (last 14 days)</div>
-                    <div style="display:flex;align-items:flex-end;gap:2px;height:52px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <div style="font-size:10px;font-weight:800;letter-spacing:1.5px;color:var(--text-dim);text-transform:uppercase;">Daily Signups (last 14 days)</div>
+                        <div style="font-size:11px;color:var(--text-muted);">Peak: ${maxDay} signups</div>
+                    </div>
+                    <div style="display:flex;align-items:flex-end;gap:2px;height:52px;border-bottom:1px solid var(--border);padding-bottom:4px;">
                         ${sparkBars||'<div style="color:var(--text-dim);font-size:12px;">No data yet</div>'}
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim);margin-top:4px;">
+                        <span>14d ago</span><span>Today</span>
                     </div>
                 </div>
             </div>
@@ -3255,6 +3312,11 @@ window.addEventListener('popstate', e=>{
         if(e.state.view==='profile'&&e.state.profileUsername) _profileUsername=e.state.profileUsername;
         view=e.state.view;
         renderApp();
+    } else {
+        // Null state = navigated back before any pushState (e.g. landed on profile from fresh load)
+        // Fall back to marketplace
+        view='marketplace';
+        renderApp();
     }
 });
 
@@ -3262,7 +3324,7 @@ function avatarHtml(u, size=68, fontSize=26){
     if(u && u.avatar){
         return `<img src="${u.avatar}" style="width:${size}px;height:${size}px;object-fit:cover;border-radius:50%;border:3px solid var(--bg);" alt="avatar">`;
     }
-    const initials = (u && u.username) ? u.username.slice(0,2).toUpperCase() : '?';
+    const initials = (u && u.username) ? (u.username||"??").slice(0,2).toUpperCase() : '?';
     return `<div style="width:${size}px;height:${size}px;border-radius:50%;border:3px solid var(--bg);
         background:var(--card2);display:flex;align-items:center;justify-content:center;
         font-family:'Barlow Condensed',sans-serif;font-size:${fontSize}px;font-weight:800;color:var(--green);">${initials}</div>`;
@@ -3285,7 +3347,7 @@ async function renderProfile(username){
         // Avatar
         const avatarInner = p.avatar
             ? `<img src="${p.avatar}" style="width:100%;height:100%;object-fit:cover;" alt="avatar">`
-            : `<span>${p.username.slice(0,2).toUpperCase()}</span>`;
+            : `<span>${(p.username||'??').slice(0,2).toUpperCase()}</span>`;
 
         // Recent bets
         let betsHtml = '';
@@ -3298,15 +3360,14 @@ async function renderProfile(username){
                     : b.type==='spread' ? `${b.side==='home'?home:away} ${b.value>0?'+':''}${b.value}`
                     : (b.side==='home'?home:away);
                 const pnlStr = (b.pnl||0) >= 0 ? `+$${Math.abs(b.pnl).toFixed(2)}` : `-$${Math.abs(b.pnl).toFixed(2)}`;
-                betsHtml += `<div style="display:flex;align-items:center;gap:8px;padding:10px 0;
-                    border-bottom:1px solid var(--border);flex-wrap:wrap;">
-                    <span class="bet-result-pill ${b.result}">${b.result.toUpperCase()}</span>
+                const resultIcon = b.result==='won'?'✅':b.result==='lost'?'❌':b.result==='push'?'🤝':'⏳';
+                betsHtml += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+                    <span style="font-size:18px;flex-shrink:0;">${resultIcon}</span>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.game}</div>
-                        <div style="font-size:11px;color:var(--text-muted);">${b.type.toUpperCase()} · ${pick} · ${odds} · <span style="color:var(--text-dim);">${b.role}</span></div>
+                        <div style="font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pick} <span style="color:${(b.odds||0)>0?'var(--green)':'var(--text-muted)'};font-weight:800;">${odds}</span></div>
+                        <div style="font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.game} · <span style="text-transform:uppercase;font-size:10px;">${b.type}</span></div>
                     </div>
-                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
-                        color:${(b.pnl||0)>=0?'var(--green)':'var(--red)'};">${pnlStr}</div>
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;flex-shrink:0;color:${(b.pnl||0)>=0?'var(--green)':'var(--red)'};">${pnlStr}</div>
                 </div>`;
             });
         } else {
@@ -3324,7 +3385,7 @@ async function renderProfile(username){
                     gap:8px;padding:10px 0;border-bottom:1px solid var(--border);">
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game}</div>
-                        <div style="font-size:11px;color:var(--text-muted);">${l.type.toUpperCase()} · ${l.side} · <span style="color:${oddsColor};font-weight:700;">${odds}</span></div>
+                        <div style="font-size:11px;color:var(--text-muted);">${(l.type||"").toUpperCase()} · ${l.side} · <span style="color:${oddsColor};font-weight:700;">${odds}</span></div>
                     </div>
                     <button class="btn btn-outline btn-sm" onclick="changeView('marketplace');setTimeout(()=>{const s=document.getElementById('marketplaceSearch');if(s){s.value='${p.username}';filterMarketplace();}},200)" style="font-size:11px;white-space:nowrap;">View in Market →</button>
                 </div>`;
@@ -3370,7 +3431,6 @@ async function renderProfile(username){
                         </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                             ${followBtn||''}${challengeBtn||''}${editBtn||''}${shareBtn||''}
-                            <button class="btn btn-secondary btn-sm" onclick="copyProfileLink('${p.username}')" title="Copy profile link" style="font-size:12px;padding:7px 10px;">🔗</button>
                         </div>
                     </div>
                 </div>
@@ -3401,6 +3461,19 @@ async function renderProfile(username){
                         <div class="profile-stat-label">Open Lines</div>
                     </div>
                 </div>
+                <!-- Win rate bar -->
+                ${(p.wins+p.losses)>0?`<div style="padding:10px 20px 16px;">
+                    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-bottom:4px;font-weight:700;letter-spacing:.5px;">
+                        <span>WIN RATE</span>
+                        <span style="color:${winRateColor};">${p.win_rate}%</span>
+                    </div>
+                    <div style="height:4px;background:var(--border);border-radius:4px;overflow:hidden;">
+                        <div style="height:100%;width:${p.win_rate}%;background:${winRateColor};border-radius:4px;transition:width .6s ease;"></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim);margin-top:3px;">
+                        <span>${p.wins}W</span><span>${p.losses}L${p.roi!==undefined?` · ROI: ${p.roi>0?'+':''}${p.roi}%`:''}</span>
+                    </div>
+                </div>`:''}
             </div>
 
             <!-- Recent Bets -->
@@ -3532,6 +3605,28 @@ async function renderSettings(){
                 </div>
             </div>
 
+            <!-- Notifications prefs -->
+            <div class="settings-section">
+                <div class="settings-section-title">🔔 Notification Preferences</div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    ${[
+                        ['notif_bet_matched', 'Bet matched (someone took your line)', user?.notif_bet_matched!==false],
+                        ['notif_challenge', 'Challenges received', user?.notif_challenge!==false],
+                        ['notif_friend_request', 'Friend requests', user?.notif_friend_request!==false],
+                        ['notif_new_follower', 'New followers', user?.notif_new_follower!==false],
+                        ['notif_game_start', 'Game starting soon', user?.notif_game_start!==false],
+                    ].map(([key, label, checked])=>`
+                        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;">
+                            <div style="position:relative;width:40px;height:22px;flex-shrink:0;">
+                                <input type="checkbox" id="${key}" ${checked?'checked':''} style="opacity:0;width:0;height:0;position:absolute;">
+                                <div onclick="document.getElementById('${key}').checked=!document.getElementById('${key}').checked;this.style.background=document.getElementById('${key}').checked?'var(--green)':'var(--border)';" style="position:absolute;inset:0;border-radius:11px;background:${checked?'var(--green)':'var(--border)'};cursor:pointer;transition:.2s;"></div>
+                                <div onclick="document.getElementById('${key}').click();" style="position:absolute;left:${checked?'20':'2'}px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer;" id="${key}-knob"></div>
+                            </div>
+                            <span style="font-size:13px;color:var(--text-muted);">${label}</span>
+                        </label>`).join('')}
+                </div>
+            </div>
+
             <!-- Referral Code (loaded async) -->
             <div class="settings-section" style="border-color:rgba(0,214,122,.2);">
                 <div class="settings-section-title">🎁 Your Referral Code</div>
@@ -3572,20 +3667,22 @@ async function renderSettings(){
                 </div>
             </div>
 
-            <!-- Save -->
-            <button class="btn btn-primary btn-full" onclick="saveSettings()" style="margin-bottom:40px;">
-                Save Profile
-            </button>
+            <!-- Save + Preview -->
+            <div style="display:flex;gap:10px;margin-bottom:40px;">
+                <button class="btn btn-primary" onclick="saveSettings()" style="flex:2;font-size:16px;padding:14px;">💾 Save Profile</button>
+                <button class="btn btn-secondary" onclick="saveSettings().then?saveSettings().then(()=>changeView('profile')):changeView('profile')" style="flex:1;font-size:14px;padding:14px;">👁 Preview</button>
+            </div>
         </div>`;
     // Load referral code async
     fetch(API+'/referral?token='+token).then(r=>r.ok?r.json():null).then(r=>{
         const el=document.getElementById('settingsRefCodeBlock');
         if(!el)return;
-        if(!r||!r.referral_code){el.innerHTML='<div style="color:var(--text-dim);font-size:13px;">No referral code yet</div>';return;}
+        if(!r||!r.referral_code){el.innerHTML='<div style="color:var(--text-dim);font-size:13px;">No referral code yet — save your profile to generate one</div>';return;}
         const code=r.referral_code;
         el.innerHTML=`
             <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--green);background:rgba(0,214,122,.08);border:1px solid rgba(0,214,122,.25);border-radius:8px;padding:8px 18px;">${code}</div>
-            <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${code}').then(()=>toast('Referral code copied!','success'))">Copy</button>
+            <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText('${code}').then(()=>toast('Code copied! 🎉','success'))">📋 Copy Code</button>
+            <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(window.location.origin+window.location.pathname+'?ref=${code}').then(()=>toast('Link copied!','success'))">🔗 Copy Link</button>
             <button class="btn btn-primary btn-sm" onclick="changeView('referral')">View Stats →</button>
             <div style="font-size:12px;color:var(--text-muted);flex:1;min-width:120px;">You both get <strong style="color:var(--green);">+$250</strong> on sign up</div>`;
     }).catch(()=>{});
@@ -3614,8 +3711,14 @@ function selectBannerColor(color, el){
 function handleAvatarUpload(e){
     const file = e.target.files[0];
     if(!file) return;
+    if(!file.type.startsWith('image/')){
+        toast('Please select an image file (JPG, PNG, GIF, WebP)', 'error');
+        e.target.value = '';
+        return;
+    }
     if(file.size > 400_000){
         toast('Image too large — keep it under 375KB', 'error');
+        e.target.value = '';
         return;
     }
     const reader = new FileReader();
@@ -3664,6 +3767,11 @@ async function saveSettings(){
     const bannerColor = selectedSwatch ? selectedSwatch.dataset.color : (user?.banner_color || '');
 
     const email = document.getElementById('settingsEmail')?.value.trim()||'';
+    if(email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+        toast('Enter a valid email address', 'error');
+        if(saveBtn){ saveBtn.disabled=false; saveBtn.innerHTML='Save Changes'; }
+        return;
+    }
     const payload = { bio, location, favorite_sport: sport, favorite_team: team, banner_color: bannerColor, email: email||null };
     if(window._pendingAvatar !== undefined) payload.avatar = window._pendingAvatar;
 
@@ -3720,18 +3828,20 @@ function buildChatMessage(m, showMeta){
     const initials = chatAvatarLetters(m.username);
     const canDelete = isMe || (user && user.is_admin);
 
-    return `<div class="chat-msg ${isMe?'mine':''}" id="cmsg-${m.id}">
-        ${!isMe ? `<div class="chat-msg-avatar">${initials}</div>` : ''}
-        <div style="display:flex;flex-direction:column;${isMe?'align-items:flex-end':''};">
-            ${showMeta ? `<div class="chat-meta ${isMe?'mine':''}">
-                <span class="chat-username ${isMe?'mine':''}" style="cursor:pointer;" onclick="viewProfile('${m.username}')">@${m.username}</span>
-                <span class="chat-ts">${m.ts||'now'}</span>
-                ${canDelete ? `<button class="chat-delete" onclick="deleteChat(${m.id})" title="Delete">✕</button>` : ''}
-            </div>` : ''}
-            <div class="chat-bubble ${isMe?'mine':'theirs'}">${linkifyChat(m.message)}</div>
-        </div>
-        ${isMe ? `<div class="chat-msg-avatar" style="background:rgba(0,214,122,.15);border-color:rgba(0,214,122,.3);color:var(--green);">${initials}</div>` : ''}
-    </div>`;
+     return `<div class="chat-msg ${isMe?'mine':''}" id="cmsg-${m.id}" data-user-id="${m.user_id}">
+         ${!isMe ? `<div class="chat-msg-avatar">${initials}</div>` : ''}
+         <div style="display:flex;flex-direction:column;${isMe?'align-items:flex-end':''};">
+             ${showMeta ? `<div class="chat-meta ${isMe?'mine':''}">
+                 <span class="chat-username ${isMe?'mine':''}" style="cursor:pointer;" onclick="viewProfile('${m.username}')">@${m.username}</span>
+                 <span class="chat-ts">${m.ts||'now'}</span>
+             </div>` : ''}
+             <div style="position:relative;display:inline-flex;align-items:flex-start;gap:4px;${isMe?'flex-direction:row-reverse;':''}">
+                 <div class="chat-bubble ${isMe?'mine':'theirs'}">${linkifyChat(m.message)}</div>
+                 ${canDelete ? `<button class="chat-delete" onclick="event.stopPropagation();deleteChat(${m.id})" title="Delete message" style="flex-shrink:0;margin-top:2px;">✕</button>` : ''}
+             </div>
+         </div>
+         ${isMe ? `<div class="chat-msg-avatar" style="background:rgba(0,214,122,.15);border-color:rgba(0,214,122,.3);color:var(--green);">${initials}</div>` : ''}
+     </div>`;
 }
 
 function escapeHtml(str){
@@ -3775,7 +3885,17 @@ function renderChatMessages(msgs, append=false){
     } else {
         // Append new messages only
         msgs.forEach((m,i) => {
-            const showMeta = i === 0 ? true : msgs[i].user_id !== msgs[i-1].user_id;
+            // Skip if already in DOM (prevents double-render after optimistic send)
+            if(m.id > 0 && document.getElementById('cmsg-'+m.id)) return;
+            // For first appended message, check last DOM message to avoid duplicate headers
+            let showMeta;
+            if(i === 0){
+                const lastMsg = box.lastElementChild;
+                const lastUserId = lastMsg ? parseInt(lastMsg.dataset.userId || '0') : 0;
+                showMeta = lastUserId !== m.user_id;
+            } else {
+                showMeta = msgs[i].user_id !== msgs[i-1].user_id;
+            }
             const div = document.createElement('div');
             div.innerHTML = buildChatMessage(m, showMeta);
             box.appendChild(div.firstElementChild);
@@ -3801,6 +3921,11 @@ async function pollChat(){
     } catch(e){ /* silent */ }
 }
 
+let _chatScrollBottom = true; // auto-scroll flag
+function chatScrollToBottom(){
+    const msgs = document.getElementById('chatMessages');
+    if(msgs) msgs.scrollTop = msgs.scrollHeight;
+}
 async function renderChat(){
     document.getElementById('content').innerHTML = `
         <div class="chat-shell">
@@ -3841,6 +3966,7 @@ async function renderChat(){
         </div>`;
 
     stopChat();
+    _chatLastId = 0; // Reset so full history loads on re-entry
 
     // Load initial messages
     try{
@@ -3889,6 +4015,7 @@ async function sendChat(){
     if(!inp) return;
     const text = inp.value.trim();
     if(!text) return;
+    if(text.length > 280){ toast('Message too long — max 280 characters', 'error'); return; }
 
     _chatSending = true;
     if(btn){ btn.disabled = true; btn.textContent = '...'; }
@@ -3924,11 +4051,13 @@ async function sendChat(){
         if(res.ok){
             const newMsg = await res.json();
             _chatLastId = Math.max(_chatLastId, newMsg.id);
-            // Remove optimistic, real message will come via next poll
+            // Replace optimistic bubble with real message in-place (no duplicate)
             const opt = document.getElementById('optimistic-msg');
-            if(opt) opt.remove();
-            // Immediately append real message
-            if(box){
+            if(opt){
+                opt.id = 'cmsg-'+newMsg.id;
+                opt.querySelector('.chat-bubble') && (opt.querySelector('.chat-delete') && (opt.querySelector('.chat-delete').setAttribute('onclick','event.stopPropagation();deleteChat('+newMsg.id+')')));
+            } else if(box){
+                // No optimistic msg found — append normally
                 const div = document.createElement('div');
                 div.innerHTML = buildChatMessage(newMsg, true);
                 box.appendChild(div.firstElementChild);
@@ -4003,12 +4132,19 @@ function buildFeedItem(ev, idx){
     const borderColor = {
         line_posted:    'rgba(74,158,255,.4)',
         bet_matched:    'rgba(139,92,246,.4)',
-        bet_won:        'rgba(0,214,122,.5)',
+        bet_won:        'rgba(0,214,122,.6)',
+        bet_lost:       'rgba(255,69,96,.4)',
         challenge_sent: 'rgba(255,140,66,.4)',
+        challenge_accepted: 'rgba(0,214,122,.4)',
         parlay_posted:  'rgba(245,166,35,.4)',
+        parlay_won:     'rgba(0,214,122,.6)',
+        streak:         'rgba(255,140,0,.6)',
+        milestone:      'rgba(245,166,35,.6)',
     }[ev.type] || 'var(--border)';
+    // Highlight big wins
+    const isHighlight = ['bet_won','parlay_won','streak','milestone','big_win'].includes(ev.type);
 
-    return `<div class="feed-item" style="animation-delay:${idx*0.04}s">
+    return `<div class="feed-item" style="animation-delay:${idx*0.04}s;${isHighlight?'border-color:'+(ev.type==='bet_won'||ev.type==='parlay_won'?'rgba(0,214,122,.3)':ev.type==='streak'?'rgba(255,140,0,.3)':'rgba(245,166,35,.3)')+';box-shadow:0 0 12px rgba(0,214,122,.05)':''}">
         <div class="feed-avatar" style="border-color:${borderColor};cursor:pointer;" onclick="viewProfile('${ev.actor}')">
             ${initials}
             <div class="feed-avatar-badge">${ev.emoji}</div>
@@ -4017,9 +4153,9 @@ function buildFeedItem(ev, idx){
             <div style="display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;">
                 <span class="feed-actor ${ev.followed?'followed':''}" style="cursor:pointer;" onclick="viewProfile('${ev.actor}')">@${ev.actor}</span>
                 ${followedTag}
-                <span class="feed-action">${ev.text}</span>
+                <span class="feed-action">${escapeHtml(ev.text||"")}</span>
             </div>
-            ${ev.detail ? `<div class="feed-detail">${sportEmoji ? sportEmoji+' ' : ''}${ev.detail}</div>` : ''}
+            ${ev.detail ? `<div class="feed-detail">${sportEmoji ? sportEmoji+' ' : ''}${escapeHtml(ev.detail)}</div>` : ''}
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:5px;">
                 <div class="feed-meta">
                     <span>${ev.meta}</span>
@@ -4096,15 +4232,19 @@ async function loadFeedEvents(){
         if(!events.length){
             ct.innerHTML = `<div class="empty-state" style="padding:60px 20px;">
                 <div class="empty-icon">${_feedTab==='following'?'⭐':'📡'}</div>
-                <div class="empty-title">${_feedTab==='following'?'Nobody you follow has posted yet':'No activity yet'}</div>
+                <div class="empty-title">${_feedTab==='following'?'No activity from people you follow':'Feed is empty right now'}</div>
                 <div class="empty-desc" style="margin-top:8px;">
                     ${_feedTab==='following'
-                        ? 'Follow some bookies to see their activity here'
-                        : 'Be the first — post a line and get the action started'}
+                        ? 'Follow active bookies to track their bets, wins, and lines in your personalized feed.'
+                        : 'Be the first to get things started — post a line or browse the marketplace.'}
                 </div>
+                <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;">
                 ${_feedTab==='following'
-                    ? `<button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('search')">Find Bookies</button>`
-                    : `<button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('create')">Post a Line</button>`}
+                    ? `<button class="btn btn-primary" onclick="changeView('search')">Find Bookies</button>
+                       <button class="btn btn-secondary" onclick="switchFeedTab('all')">View All Activity</button>`
+                    : `<button class="btn btn-primary" onclick="changeView('create')">⚡ Post a Line</button>
+                       <button class="btn btn-secondary" onclick="changeView('marketplace')">Browse Marketplace</button>`}
+                </div>
             </div>`;
             return;
         }
@@ -4177,7 +4317,7 @@ function renderParlayLegsBuilder(){
             <span style="font-size:16px;">${PARLAY_SPORT_EMOJI[l.sport]||'🎯'}</span>
             <div style="flex:1;min-width:0;">
                 <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game}</div>
-                <div style="font-size:11px;color:var(--text-muted);">${l.type.toUpperCase()} · ${l.side}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''} · <span style="color:${l.odds>0?'var(--green)':'var(--text-muted)'};">${fmtOdds(l.odds)}</span></div>
+                <div style="font-size:11px;color:var(--text-muted);">${(l.type||"").toUpperCase()} · ${l.side}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''} · <span style="color:${l.odds>0?'var(--green)':'var(--text-muted)'};">${fmtOdds(l.odds)}</span></div>
             </div>
             <button onclick="removeParlayLeg(${i})" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:2px 6px;">✕</button>
         </div>`).join('')
@@ -4277,9 +4417,15 @@ function selectParlayLeague(sp){
 
 async function postParlay(){
     if(_parlayLegs.length<2){toast('Add at least 2 legs','error');return;}
+    // Validate all legs have required fields
+    const badLeg = _parlayLegs.find(l => !l.game_id || !l.type || !l.side);
+    if(badLeg){toast('Each leg needs a game, type, and side selected','error');return;}
     const amount=parseFloat(document.getElementById('parlayAmount').value);
     if(isNaN(amount)||amount<=0){toast('Enter your max liability','error');return;}
     if(amount>user.balance){toast(`Insufficient funds — balance: $${Math.floor(user.balance)}`,'error');return;}
+    const _parlayBtn=document.querySelector('[onclick="postParlay()"]');
+    if(_parlayBtn&&_parlayBtn.disabled)return;
+    if(_parlayBtn){_parlayBtn.disabled=true;_parlayBtn.textContent='Posting...';}
     try{
         const res=await fetch(API+'/parlays?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({legs:_parlayLegs,amount})});
@@ -4314,6 +4460,7 @@ async function takeParlayAction(parlayId, available, combinedOdds){
         toast(`🎰 Parlay locked in! Risk $${stake.toFixed(2)} → Win $${toWin}`,'success');
         await loadUser();updateSidebarBalance();renderApp();
     }catch(e){toast('Connection error','error');}
+    finally{if(_parlayBtn){_parlayBtn.disabled=false;_parlayBtn.textContent='Post Parlay ⚡';}}
 }
 
 async function renderParlays(){
@@ -4442,7 +4589,7 @@ async function renderParlays(){
                                 <span style="font-size:13px;">${PARLAY_SPORT_EMOJI[l.sport]||'🎯'}</span>
                                 <div style="flex:1;min-width:0;">
                                     <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game}</div>
-                                    <div style="font-size:11px;color:var(--text-muted);">${l.type.toUpperCase()} · <strong>${l.side}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}</strong> · <span style="color:${l.odds>0?'var(--green)':'var(--text-muted)'};">${fmtOdds(l.odds)}</span></div>
+                                    <div style="font-size:11px;color:var(--text-muted);">${(l.type||"").toUpperCase()} · <strong>${l.side}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}</strong> · <span style="color:${l.odds>0?'var(--green)':'var(--text-muted)'};">${fmtOdds(l.odds)}</span></div>
                                 </div>
                             </div>`).join('')}
                         <div class="fill-bar-track" style="margin-top:10px;height:3px;"><div class="fill-bar-fill ${pct===100?'full':pct>0?'partial':''}" style="width:${pct}%"></div></div>
@@ -4473,6 +4620,15 @@ async function renderShop(){
         const ICONS=['🎯','🔥','💎','👑'];
         const COLORS=['var(--text-muted)','var(--orange)','var(--green)','var(--gold)'];
         let html=`<div class="page-header"><div class="page-title">💰 Coin Shop</div><div class="page-subtitle">Your balance: <strong style="color:var(--gold)">${(user?.balance||0).toLocaleString()} coins</strong></div></div>
+        <div class="card" style="border-color:rgba(0,214,122,.25);padding:14px 16px;margin-bottom:12px;background:rgba(0,214,122,.04);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div>
+                    <div style="font-weight:800;font-size:14px;color:var(--green);">🎁 Daily Free Coins</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Come back every day to claim your free coins bonus!</div>
+                </div>
+                <button class="btn btn-primary" onclick="claimDailyCoins(this)" style="white-space:nowrap;font-size:13px;">Claim Daily Coins 🎉</button>
+            </div>
+        </div>
         <div class="card" style="border-color:rgba(255,179,0,.2);padding:11px 16px;margin-bottom:16px;font-size:13px;color:var(--text-muted);">💡 Coins are play money for practice & bragging rights. Real money mode coming soon via Stripe.</div>
         <div class="card" style="margin-bottom:16px;background:rgba(245,166,35,.07);border-color:rgba(245,166,35,.2);">
             <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">
@@ -4502,6 +4658,24 @@ async function renderShop(){
         return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Shop unavailable</div><div class="empty-desc">${e.message||'Connection error'}</div><button class="btn btn-outline btn-sm" style="margin-top:16px;" onclick="changeView('shop')">Retry</button></div>`;
     }
 }
+async function claimDailyCoins(btn){
+    if(btn){btn.disabled=true;btn.textContent='Claiming...';}
+    try{
+        const res=await fetch(`${API}/shop/daily-coins?token=${token}`,{method:'POST'});
+        const d=await res.json();
+        if(res.ok){
+            toast(d.message||`🎉 You claimed ${d.coins||100} free coins!`,'success');
+            await loadUser();updateSidebarBalance();
+            if(btn){btn.textContent='Claimed ✓';btn.className='btn btn-secondary';}
+        } else {
+            toast(d.detail||'Already claimed today — come back tomorrow!','info');
+            if(btn){btn.disabled=false;btn.textContent='Come back tomorrow 🌅';}
+        }
+    }catch(e){
+        toast('Connection error','error');
+        if(btn){btn.disabled=false;btn.textContent='Claim Daily Coins 🎉';}
+    }
+}
 async function buyCoins(packageId){
     try{
         toast('Redirecting to checkout...','success');
@@ -4526,6 +4700,7 @@ async function renderAdmin(){
                 <button class="btn btn-secondary" onclick="adminUserSearch()">🔍 User Lookup</button>
                 <button class="btn btn-secondary" onclick="adminAddBalance()">💰 Add Balance</button>
                 <button class="btn btn-secondary" onclick="adminBanUser()">🚫 Ban User</button>
+                <button class="btn btn-secondary" onclick="adminUnbanUser()">✅ Unban User</button>
             </div>
             <div id="adminMsg" style="margin-top:10px;font-size:13px;color:var(--text-muted);"></div>
         </div>
@@ -4539,7 +4714,7 @@ async function renderAdmin(){
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
                         <div style="flex:1;min-width:0;">
                             <div style="font-weight:700;font-size:13px;">Bet #${b.id} — ${b.game}</div>
-                            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${b.type.toUpperCase()} · <span style="color:var(--orange);">📚 ${b.bookie}</span> (${b.bookie_side}) vs <span style="color:var(--blue);">🎯 ${b.bettor}</span> (${b.bettor_side})</div>
+                            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${(b.type||"").toUpperCase()} · <span style="color:var(--orange);">📚 ${b.bookie}</span> (${b.bookie_side}) vs <span style="color:var(--blue);">🎯 ${b.bettor}</span> (${b.bettor_side})</div>
                             <div style="display:flex;gap:12px;margin-top:4px;font-size:11px;color:var(--text-dim);">
                                 <span>Bookie: <strong style="color:var(--orange)">$${(b.bookie_amount||0).toFixed(2)}</strong></span>
                                 <span>Bettor: <strong style="color:var(--blue)">$${(b.bettor_amount||0).toFixed(2)}</strong></span>
@@ -4607,6 +4782,17 @@ async function adminMarkOnly(betId, winner){
         changeView('admin');
     }catch(e){toast('Error: '+e.message,'error');}
 }
+async function adminUnbanUser(){
+    const u=prompt('Enter username to unban:');if(!u)return;
+    const ok=await showConfirm('Unban @'+u+'?','This will restore their access to the platform.');
+    if(!ok)return;
+    try{
+        const res=await fetch(`${API}/admin/unban-user?username=${encodeURIComponent(u)}&token=${token}`,{method:'POST'});
+        const d=await res.json();
+        if(res.ok)toast(d.message||`@${u} has been unbanned`,'success');
+        else toast(d.detail||'Error','error');
+    }catch(e){toast('Error: '+e.message,'error');}
+}
 async function adminBanUser(){
     const u=prompt('Enter username to ban:');if(!u)return;
     const ok=await showConfirm('Ban @'+u+'?','This will prevent them from logging in. Are you sure?');
@@ -4632,7 +4818,7 @@ async function renderApp(){
     if(!user){await loadUser();}if(!user)return;
     refreshBadges(); // async, non-blocking — updates badge count for next render cycle
     const NAV=[
-        {id:'marketplace',icon:'📊',label:'Marketplace'},
+        {id:'marketplace',icon:'📊',label:'Market'},
         {id:'live',icon:'🔴',label:'Live'},
         {id:'create',icon:'⚡',label:'Set Lines'},
         {id:'bets',icon:'📋',label:'My Bets'},
@@ -4642,7 +4828,7 @@ async function renderApp(){
         {id:'futures',icon:'🔮',label:'Futures'},
         {id:'challenges',icon:'⚔️',label:'Challenges',badgeKey:'challengeCount'},
         {id:'friends',icon:'🤝',label:'Friends',badgeKey:'friendRequestCount'},
-        {id:'leaderboard',icon:'🏆',label:'Leaderboard'},
+        {id:'leaderboard',icon:'🏆',label:'Leaders'},
         {id:'following',icon:'⭐',label:'Following'},
         {id:'search',icon:'🔍',label:'Find Bookies'},
         {id:'referral',icon:'🎁',label:'Refer & Earn'},
@@ -4737,7 +4923,7 @@ async function renderApp(){
             <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="changeView('marketplace')">
                 <div class="topbar-logo">BV</div>
                 <div style="display:flex;flex-direction:column;line-height:1.2;">
-                    <span id="topbarViewName" style="font-size:12px;font-weight:800;color:var(--text);letter-spacing:.5px;">${{marketplace:'Market',live:'Live',create:'Set Lines',bets:'My Bets',feed:'Feed',chat:'Chat',props:'Props',futures:'Futures',challenges:'Challenges',friends:'Friends',following:'Following',search:'Find Bookies',leaderboard:'Leaders',referral:'Refer',settings:'Settings',profile:'Profile',parlays:'Parlays',shop:'Shop',analytics:'Analytics',admin:'Admin',groups:'Groups'}[view]||'BookieVerse'}</span>
+                    <span id="topbarViewName" style="font-size:12px;font-weight:800;color:var(--text);letter-spacing:.5px;">${{marketplace:'Marketplace',live:'Live',create:'Set Lines',bets:'My Action',feed:'Feed',chat:'Chat',props:'Props',futures:'Futures',challenges:'Challenges',friends:'Friends',following:'Following',search:'Find Bookies',leaderboard:'Leaderboard',referral:'Referral',settings:'Settings',profile:'Profile',parlays:'Parlays',shop:'Shop',analytics:'Analytics',admin:'Admin',groups:'Groups'}[view]||'BookieVerse'}</span>
                     <span id="topbarRecord" style="font-size:9px;color:var(--text-dim);" onclick="changeView('bets')" title="View My Action" style="cursor:pointer;">${user.wins}W — ${user.losses}L${user.pending_bets>0?' · '+'<span style="color:var(--gold);font-weight:800;">⏳'+user.pending_bets+' live</span>'  :''}</span>
                 </div>
             </div>
@@ -4773,7 +4959,7 @@ async function renderApp(){
                             <div class="bal-label">Balance</div>
                             <div style="font-size:9px;color:var(--text-dim);font-weight:700;">ALL-TIME</div>
                         </div>
-                        <div class="bal-amount" id="sidebarBalance">$${Math.floor(user.balance).toLocaleString()}</div>
+                        <div class="bal-amount" id="sidebarBalance" onclick="changeView('shop')" style="cursor:pointer;transition:opacity .15s;" title="Buy more coins" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">$${Math.floor(user.balance).toLocaleString()}</div>
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
                             <div class="bal-pl ${user.profit>=0?'pos':'neg'}" id="sidebarPL">${user.profit>=0?'+':'-'}$${Math.abs(user.profit||0).toLocaleString()} P/L</div>
                             ${user.pending_bets>0?`<div style="font-size:10px;color:var(--gold);font-weight:700;">⏳ ${user.pending_bets} live</div>`:''}
@@ -4894,6 +5080,9 @@ function updateChallengePreview() {
 }
 
 async function submitChallenge() {
+    const _submitBtn = document.querySelector('[onclick="submitChallenge()"]');
+    if(_submitBtn && _submitBtn.disabled) return;
+    if(_submitBtn){ _submitBtn.disabled = true; _submitBtn.textContent = 'Sending...'; }
     const gameId = document.getElementById('cGame').value;
     const type   = document.getElementById('cType').value;
     const side   = document.getElementById('cSide').value;
@@ -4907,6 +5096,7 @@ async function submitChallenge() {
     if (type !== 'moneyline' && isNaN(value)) { toast('Enter a line value for spread / total', 'error'); return; }
     if (isNaN(amount) || amount <= 0) { toast('Enter your stake amount', 'error'); return; }
     if (isNaN(odds) || odds === 0 || (-100 < odds && odds < 100)) { toast('Odds must be ≤ -100 or ≥ +100', 'error'); return; }
+    if (user && amount > user.balance) { toast(`Insufficient funds — you have $${Math.floor(user.balance)}, need $${amount.toFixed(2)}`, 'error'); return; }
 
     try {
         const res = await fetch(API + '/challenges?token=' + token, {
@@ -4918,10 +5108,13 @@ async function submitChallenge() {
             closeModal('challengeModal');
             await loadUser(); updateSidebarBalance();
         } else { const e = await res.json(); toast(e.detail || 'Error', 'error'); }
-    } catch(e) { toast('Connection error', 'error'); }
+    } catch(e) { toast('Connection error', 'error'); } finally { if(_submitBtn){ _submitBtn.disabled = false; _submitBtn.textContent = 'Send Challenge ⚔️'; } }
 }
 
 async function acceptChallenge(id) {
+    if(window._challengeLock && window._challengeLock[id]) return;
+    if(!window._challengeLock) window._challengeLock = {};
+    window._challengeLock[id] = true;
     try {
         const res = await fetch(API + '/challenges/accept?token=' + token, {
             method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -4933,6 +5126,9 @@ async function acceptChallenge(id) {
 }
 
 async function declineChallenge(id) {
+    if(window._challengeLock && window._challengeLock[id]) return;
+    if(!window._challengeLock) window._challengeLock = {};
+    window._challengeLock[id] = true;
     try {
         const res = await fetch(API + '/challenges/decline?token=' + token, {
             method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -4963,7 +5159,8 @@ async function renderChallenges() {
     const incoming = data.incoming || [];
     const outgoing = data.outgoing || [];
 
-    let html = `<div class="page-header"><div class="page-title">Challenges</div><div class="page-subtitle">Direct PvP — your inbox and sent challenges</div></div>`;
+    const _pendingInc = data.incoming.filter(c=>c.status==='pending'||!c.status).length;
+    let html = `<div class="page-header"><div class="page-title">⚔️ Challenges</div><div class="page-subtitle">Direct PvP · ${data.incoming.length} received${_pendingInc?` · <strong style="color:var(--orange);">${_pendingInc} pending</strong>`:''} · ${data.outgoing.length} sent</div></div>`;
 
     // Incoming
     if(incoming.length) {
@@ -4992,7 +5189,7 @@ async function renderChallenges() {
                         <div style="margin-top:8px;font-size:12px;color:var(--text-dim);">
                             Pot: <strong style="color:var(--gold)">$${(c.amount + c.bettor_stake).toFixed(2)}</strong>
                         </div>
-                        ${c.message ? `<div style="margin-top:8px;font-style:italic;color:var(--text-muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c.message}">"${c.message.slice(0,80)}${c.message.length>80?'…':''}"</div>` : ''}
+                        ${c.message ? `<div style="margin-top:8px;font-style:italic;color:var(--text-muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(c.message)}">"${escapeHtml(c.message).slice(0,80)}${c.message.length>80?'…':''}"</div>` : ''}
                     </div>
                     <div style="display:flex;flex-direction:column;gap:8px;">
                         <button class="btn btn-primary btn-sm" onclick="this.disabled=true;this.innerHTML='<span class=\"spinner\"></span>';acceptChallenge(${c.id})">Accept ✅</button>
@@ -5002,13 +5199,13 @@ async function renderChallenges() {
             </div>`;
         });
     } else {
-        html += `<div class="empty-state" style="padding:32px 20px;"><div class="empty-icon">📬</div><div class="empty-title">No incoming challenges</div><div class="empty-desc">When someone challenges you, it'll appear here</div></div>`;
+        html += `<div class="empty-state" style="padding:32px 20px;"><div class="empty-icon">📬</div><div class="empty-title">No challenges yet</div><div class="empty-desc">When someone sends you a head-to-head challenge, it'll appear here. Send one first!</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;"><button class="btn btn-primary" onclick="changeView('friends')">Challenge a Friend</button><button class="btn btn-secondary" onclick="changeView('search')">Find Bookies</button></div></div>`;
     }
 
     // Outgoing
     html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;margin:28px 0 12px;color:var(--text-muted);">Sent Challenges</div>`;
     if (!outgoing.length) {
-        html += `<div class="empty-state" style="padding:32px 20px;"><div class="empty-icon">⚔️</div><div class="empty-title">No sent challenges</div><div class="empty-desc">Go to Find Bookies or Friends and tap ⚔️ to challenge someone</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('friends')">Find Someone to Challenge</button></div>`;
+        html += `<div class="empty-state" style="padding:32px 20px;"><div class="empty-icon">⚔️</div><div class="empty-title">No sent challenges</div><div class="empty-desc">Send a head-to-head challenge to any bookie — pick a game, set the bet, and see who wins.</div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px;"><button class="btn btn-primary" onclick="changeView('friends')">Challenge a Friend</button><button class="btn btn-secondary" onclick="changeView('search')">Find Bookies</button></div></div>`;
     } else {
         outgoing.forEach(c => {
             const oddsStr = c.odds > 0 ? '+' + c.odds : c.odds;
@@ -5027,7 +5224,7 @@ async function renderChallenges() {
                             ${c.type !== 'moneyline' ? `<strong style="color:var(--text)"> ${c.value > 0 ? '+' : ''}${c.value}</strong>` : ''}
                             · <span style="color:${c.odds > 0 ? 'var(--green)' : 'var(--text-muted)'};">${oddsStr}</span>
                         </div>
-                        <div style="margin-top:6px;font-size:13px;">Your stake: <strong style="color:var(--orange)">$${c.amount}</strong>${c.message ? ` · "${c.message}"` : ''}</div>
+                        <div style="margin-top:6px;font-size:13px;">Your stake: <strong style="color:var(--orange)">$${c.amount}</strong>${c.message ? ` · "${escapeHtml(c.message || "")}"`  : ''}</div>
                     </div>
                     ${c.status === 'pending' ? `<button class="btn btn-danger btn-sm" onclick="cancelChallenge(${c.id})">Cancel</button>` : ''}
                 </div>
@@ -5037,6 +5234,30 @@ async function renderChallenges() {
     return html;
 }
 // ─── CHALLENGES END ────────────────────────────────────────────────────────────
+
+// ─── PAGE VISIBILITY — pause polling when tab is hidden ─────────────────────
+document.addEventListener('visibilitychange', () => {
+    if(document.hidden){
+        // Pause all background polls to save bandwidth
+        if(_notifPollInterval){ clearInterval(_notifPollInterval); _notifPollInterval = null; }
+        if(_liveScoreInterval){ clearInterval(_liveScoreInterval); _liveScoreInterval = null; }
+        if(_chatPollInterval){ clearInterval(_chatPollInterval); _chatPollInterval = null; }
+    } else {
+        // Tab became visible again — immediately refresh and restart polls
+        if(token && !_notifPollInterval){
+            fetchNotifications(true);
+            _notifPollInterval = setInterval(() => fetchNotifications(false), 20000);
+        }
+        if(_chatPollInterval === null && document.getElementById('chatMessages')){
+            pollChat();
+            _chatPollInterval = setInterval(pollChat, 3000);
+        }
+        // Restart live score polling if we're on the marketplace
+        if(view === 'marketplace' && !_liveScoreInterval){
+            startLiveScores();
+        }
+    }
+});
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
 let _notifPollInterval = null;
@@ -5079,9 +5300,42 @@ function updateNotifBadge(count) {
     });
 }
 
+function updateNotifSubhead(notifs){
+    const el = document.getElementById('notifSubhead');
+    if(!el||!notifs) return;
+    const unread = notifs.filter(n=>!n.is_read).length;
+    el.textContent = unread > 0 ? `${unread} unread` : 'All caught up ✓';
+    el.style.color = unread > 0 ? 'var(--orange)' : 'var(--text-dim)';
+}
+async function clearAllNotifs(){
+    const ok = await showConfirm('Clear all notifications?', 'This will permanently delete all your notifications.');
+    if(!ok) return;
+    try{
+        const res = await fetch(API+'/notifications/clear?token='+token, {method:'DELETE'});
+        if(res.ok){
+            _notifications = [];
+            renderNotifList();
+            updateNotifBadge(0);
+            toast('Notifications cleared','info');
+        } else {
+            // Fallback: mark all read if clear endpoint doesn't exist
+            await markAllNotifsRead();
+            _notifications = [];
+            renderNotifList();
+            updateNotifBadge(0);
+        }
+    } catch(e){
+        // Fallback: just clear from UI
+        _notifications = [];
+        renderNotifList();
+        toast('Cleared','info');
+    }
+}
+
 async function markAllNotifsRead(){
     try{
-        await fetch(API+'/notifications/read-all?token='+token,{method:'POST'});
+        const res = await fetch(API+'/notifications/read-all?token='+token,{method:'POST'});
+        if(!res.ok) return; // don't update local state if server rejected
         _notifications = (_notifications||[]).map(n=>({...n,is_read:true}));
         renderNotifList();
         const badge = document.getElementById('notifBadge');
@@ -5094,6 +5348,8 @@ async function markAllNotifsRead(){
 function renderNotifList() {
     const list = document.getElementById('notifList');
     if (!list) return;
+    // Update subhead with unread count
+    updateNotifSubhead(_notifications);
     if (!_notifications.length) {
         list.innerHTML = `<div class="notif-empty" style="text-align:center;padding:48px 20px;color:var(--text-muted);">
     <div style="font-size:40px;margin-bottom:12px;opacity:.5;">🔔</div>
@@ -5102,7 +5358,7 @@ function renderNotifList() {
 </div>`;
         return;
     }
-    const NOTIF_EMOJI={challenge_received:'⚔️',challenge_accepted:'🔥',challenge_declined:'😤',bet_matched:'🤝',bet_settled:'💰',friend_request:'🤝',friend_accepted:'🎉',bet_won:'🏆',bet_lost:'💸',line_taken:'📊',new_follower:'⭐'};
+    const NOTIF_EMOJI={challenge_received:'⚔️',challenge_accepted:'🔥',challenge_declined:'😤',bet_matched:'🤝',bet_settled:'💰',friend_request:'👥',friend_accepted:'🎉',bet_won:'🏆',bet_lost:'💸',line_taken:'📊',new_follower:'⭐',parlay_won:'🎰',parlay_lost:'🎰',milestone:'🎯',streak:'🔥'};
     // Group by time bucket
     const now=Date.now();
     let lastBucket='';
@@ -5124,27 +5380,32 @@ function renderNotifList() {
         } else if(['bet_won','bet_settled'].includes(n.type)){
             actionHtml=`<div style="margin-top:6px;"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:4px 10px;" onclick="event.stopPropagation();closeNotifDrawer();changeView('bets')">View Bet →</button></div>`;
         }
+        const unreadDot = !n.is_read ? '<div style="width:7px;height:7px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:5px;"></div>' : '<div style="width:7px;height:7px;flex-shrink:0;"></div>';
         return bucketHtml+`<div class="notif-item ${n.is_read ? '' : 'unread'}" onclick="clickNotif(${n.id}, '${n.type}', ${n.ref_id || 'null'})">
             <div style="display:flex;align-items:flex-start;gap:10px;">
                 <div style="font-size:20px;flex-shrink:0;line-height:1.3;">${emoji}</div>
+                `+unreadDot+`
                 <div style="flex:1;min-width:0;">
-                    <div class="notif-item-title">${n.title}</div>
-                    <div class="notif-item-body">${n.body}</div>
+                    <div class="notif-item-title">${escapeHtml(n.title||"")}</div>
+                    <div class="notif-item-body">${escapeHtml(n.body||"")}</div>
                     <div class="notif-item-time">${ago}</div>
                     ${actionHtml}
                 </div>
-                ${!n.is_read?'<div style="width:7px;height:7px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:5px;"></div>':''}
             </div>
         </div>`;
     }).join('');
 }
 
 function timeAgo(isoStr) {
-    const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '';
+    const diff = Math.floor((Date.now() - d) / 1000);
     if (diff < 60) return 'just now';
     if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
     if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-    return Math.floor(diff / 86400) + 'd ago';
+    if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+    return d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
 }
 
 async function clickNotif(id, type, refId) {
@@ -5178,13 +5439,7 @@ function openNotifDrawer() {
     renderNotifList();
     // Mark all read silently after a moment
     setTimeout(markAllNotifsRead, 2000); // auto-mark as read after viewing
-    // Swipe right to close on mobile
-    let startX = 0;
-    drawer.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, {once:false, passive:true});
-    drawer.addEventListener('touchend', e => {
-        const dx = e.changedTouches[0].clientX - startX;
-        if(dx > 80) closeNotifDrawer();
-    }, {once:false, passive:true});
+    // Swipe listener is attached once at init (see bottom of file), not here
 }
 
 function closeNotifDrawer() {
@@ -5205,6 +5460,16 @@ function changeView(v){
     if(v!=='chat')stopChat();
     view=v;
     localStorage.setItem('lastView',v);
+    // Push history state so back button works from any view (skip if already on same view)
+    try{
+        const _curState = history.state;
+        if(!_curState || _curState.view !== v){
+            const url = new URL(window.location);
+            url.searchParams.set('view', v);
+            url.searchParams.delete('u');
+            history.pushState({view:v},'',url.toString());
+        }
+    }catch(e){}
     renderApp();
     // Scroll to top after render
     requestAnimationFrame(()=>{
@@ -5336,6 +5601,18 @@ else{const lastView=localStorage.getItem('lastView');if(lastView&&['marketplace'
 if(!token){renderLogin();}else{(async()=>{await loadPropTypes();renderApp();startNotifPolling();})();}
 
 // ── Global Keyboard Shortcuts ───────────────────────────────────────────────
+// ── Notif drawer swipe-to-close (registered once) ────────────────────────────
+(function(){
+    let _swipeStartX = 0;
+    const drawer = document.getElementById('notifDrawer');
+    if(drawer){
+        drawer.addEventListener('touchstart', e => { _swipeStartX = e.touches[0].clientX; }, {passive:true});
+        drawer.addEventListener('touchend', e => {
+            if(e.changedTouches[0].clientX - _swipeStartX > 80) closeNotifDrawer();
+        }, {passive:true});
+    }
+})();
+
 document.addEventListener('keydown', e => {
     if (!token) return;
     const tag = document.activeElement?.tagName?.toLowerCase();
