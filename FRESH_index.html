@@ -39,6 +39,8 @@
             display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
         .main{flex:1;min-width:0;}
         .content-area{max-width:960px;margin:0 auto;padding:28px 24px;position:relative;}
+        #content{animation:fadeIn .15s ease both;}
+        #content>*{animation:fadeIn .2s ease both;}
         .sidebar-logo{padding:24px 20px 16px;border-bottom:1px solid var(--border);}
         .logo-text{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;
             background:linear-gradient(135deg,var(--green),#00a8ff);-webkit-background-clip:text;
@@ -53,12 +55,13 @@
         .bal-pl{font-size:13px;font-weight:600;margin-top:2px;}
         .bal-pl.pos{color:var(--green);}.bal-pl.neg{color:var(--red);}
         .sidebar-nav{padding:12px 0;flex:1;overflow-y:auto;}
-        .nav-section-label{font-size:8px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;padding:14px 20px 4px;border-top:1px solid rgba(255,255,255,.03);}        .sidebar-nav::-webkit-scrollbar{width:3px;}.sidebar-nav::-webkit-scrollbar-track{background:transparent;}.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+        .nav-section-label{font-size:8px;font-weight:800;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;padding:14px 20px 4px;border-top:1px solid rgba(255,255,255,.03);}        .sidebar-nav::-webkit-scrollbar{width:3px;}.sidebar-nav::-webkit-scrollbar-track{background:transparent;}.sidebar-nav::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:2px;}
+        .sidebar{scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
         .nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;font-size:14px;font-weight:500;
             color:var(--text-muted);cursor:pointer;transition:all .15s;border-left:3px solid transparent;user-select:none;outline:none;}
         .nav-item:focus-visible{outline:2px solid var(--green);outline-offset:-2px;border-radius:4px;}
         .nav-item:hover{color:var(--text);background:rgba(255,255,255,.03);}
-        .nav-item.active{color:var(--green);background:var(--green-glow);border-left-color:var(--green);}
+        .nav-item.active{color:var(--green);background:rgba(0,214,122,.12);border-left-color:var(--green);font-weight:600;}
         .nav-icon{width:18px;text-align:center;font-size:16px;}
         .sidebar-bottom{padding:16px 20px;border-top:1px solid var(--border);}
         .logout-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--border);
@@ -72,9 +75,9 @@
         /* ── Mobile bottom tab bar ────────────────────── */
         .mobile-nav{display:none;}
         .mob-bottom-bar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;
-            background:rgba(11,17,32,0.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+            background:rgba(11,17,32,0.98);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
             border-top:1px solid var(--border);padding:0;padding-bottom:env(safe-area-inset-bottom);
-            box-shadow:0 -4px 24px rgba(0,0,0,.4);}
+            box-shadow:0 -6px 32px rgba(0,0,0,.45);}
         .mob-bar-inner{display:flex;align-items:stretch;height:58px;}
         .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
             gap:3px;cursor:pointer;color:var(--text-dim);font-size:9px;font-weight:700;letter-spacing:.3px;
@@ -97,8 +100,9 @@
         .mob-more-overlay{position:fixed;inset:0;z-index:290;background:rgba(0,0,0,.5);
             opacity:0;pointer-events:none;transition:opacity .25s;}
         .mob-more-overlay.open{opacity:1;pointer-events:all;}
-        .mob-drawer-handle{width:36px;height:4px;background:var(--border-hi);border-radius:2px;
-            margin:0 auto 16px;}
+        .mob-drawer-handle{width:40px;height:4px;background:var(--border-hi);border-radius:2px;
+            margin:0 auto 16px;cursor:grab;}
+        .mob-drawer-handle:active{background:var(--text-muted);}
         .mob-drawer-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;}
         .mob-drawer-item{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;
             cursor:pointer;color:var(--text-muted);font-size:10px;font-weight:700;letter-spacing:.5px;
@@ -107,7 +111,7 @@
         .mob-drawer-item .di-icon{font-size:26px;}
         .page-header{margin-bottom:28px;}
         @media(max-width:768px){.page-header{margin-bottom:18px;}.page-title{font-size:28px!important;}}
-        .page-title{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;letter-spacing:.5px;}
+        .page-title{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;letter-spacing:.5px;line-height:1.05;}
         .page-subtitle{font-size:13px;color:var(--text-muted);margin-top:4px;line-height:1.4;}
         .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;
             margin-bottom:14px;transition:border-color .18s,box-shadow .18s,background .18s,transform .1s;animation:fadeIn .25s ease both;}
@@ -122,6 +126,10 @@
         .badge-spread{background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.3);}
         .badge-moneyline{background:rgba(74,158,255,.2);color:#93c5fd;border:1px solid rgba(74,158,255,.3);}
         .badge-total{background:rgba(245,166,35,.2);color:#fbbf24;border:1px solid rgba(245,166,35,.3);}
+        .badge-prop{background:rgba(0,214,122,.15);color:var(--green);border:1px solid rgba(0,214,122,.25);}
+        .badge-private{background:rgba(255,140,0,.1);color:var(--orange);border:1px solid rgba(255,140,0,.2);}
+        .badge-bookie{background:rgba(255,140,0,.12);color:var(--orange);border:1px solid rgba(255,140,0,.2);}
+        .badge-bettor{background:rgba(0,214,122,.1);color:var(--green);border:1px solid rgba(0,214,122,.2);}
         .badge-prop{background:rgba(236,72,153,.2);color:#f9a8d4;border:1px solid rgba(236,72,153,.3);}
         .badge-private{background:rgba(139,92,246,.2);color:#c4b5fd;border:1px solid rgba(139,92,246,.3);}
         .badge-nba{background:rgba(0,214,122,.15);color:var(--green);border:1px solid rgba(0,214,122,.3);}
@@ -147,13 +155,13 @@
         .btn-sm{padding:7px 14px;font-size:13px;}.btn-lg{padding:14px 28px;font-size:16px;}
         .btn-full{width:100%;}
         .btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
-        .btn:active:not(:disabled){transform:scale(.97)!important;transition:transform .08s!important;}
+        .btn:active:not(:disabled){transform:scale(.96)!important;transition:transform .06s!important;opacity:.9;}
         .btn:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
         .form-group{margin-bottom:16px;}
         label{display:block;font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
         input,select,textarea{width:100%;padding:12px 14px;background:var(--bg);color:var(--text);
             border:1px solid var(--border);border-radius:8px;font-family:'Barlow',sans-serif;font-size:15px;transition:border-color .15s;}
-        input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(0,214,122,.1);}
+        input:focus,select:focus,textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(0,214,122,.12);background:var(--surface);}
         input::placeholder,textarea::placeholder{color:var(--text-dim);}
         select option{background:var(--surface);}
         .form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -161,9 +169,9 @@
         .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
             backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;}
         .modal-overlay.open{display:flex;}
-        .modal-box{background:var(--surface);border:1px solid var(--border-hi);border-radius:16px;
+        .modal-box{background:var(--surface);border:1px solid var(--border-hi);border-radius:20px;
             padding:24px 28px;width:90%;max-width:480px;max-height:90dvh;overflow-y:auto;
-            box-shadow:0 20px 60px rgba(0,0,0,.5);animation:popIn .2s ease;}
+            box-shadow:0 24px 80px rgba(0,0,0,.6);animation:popIn .18s ease;}
         .modal-title{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;margin-bottom:20px;}
         .modal-footer{display:flex;gap:10px;margin-top:20px;}
         /* ─── NOTIFICATIONS ─── */
@@ -203,8 +211,8 @@
         .notif-overlay.open{display:block;}
         /* ─── TOAST ─── */
         .toast-container{position:fixed;bottom:calc(28px + env(safe-area-inset-bottom));right:16px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;max-width:calc(100vw - 32px);}
-        @media(max-width:768px){.toast-container{bottom:calc(72px + env(safe-area-inset-bottom));right:12px;left:12px;}
-        .toast{min-width:unset;max-width:100%;font-size:13px;}}
+        @media(max-width:768px){.toast-container{bottom:calc(74px + env(safe-area-inset-bottom));right:10px;left:10px;}
+        .toast{min-width:unset;max-width:100%;font-size:13px;padding:12px 16px;}}
         .toast{pointer-events:all;padding:14px 20px;border-radius:10px;border:1px solid;font-size:14px;font-weight:600;
             min-width:260px;max-width:380px;animation:toastIn .3s ease,toastOut .3s ease 2.7s forwards;cursor:pointer;}
         .toast.success{background:rgba(0,214,122,.15);border-color:rgba(0,214,122,.4);color:#6fffc7;}
@@ -226,7 +234,7 @@
         #content > .card:nth-child(3){animation-delay:.08s}
         #content > .card:nth-child(4){animation-delay:.12s}
         #content > .card:nth-child(5){animation-delay:.16s}
-        .line-card{display:flex;gap:20px;align-items:flex-start;}
+        .line-card{display:flex;gap:20px;align-items:flex-start;transition:all .15s;}
         .line-card-info{flex:1;min-width:0;}
         .line-card-amount{flex-shrink:0;text-align:right;}
         .line-game{font-size:18px;font-weight:700;margin:8px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -327,6 +335,8 @@
         .live-score-num.trailing{color:var(--text-dim);}
         .live-score-sep{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 8px;flex-shrink:0;}
         .live-dot{width:6px;height:6px;background:var(--red);border-radius:50%;animation:blink 1s infinite;}
+                @keyframes notifPop{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+        .notif-badge-anim{animation:notifPop .3s cubic-bezier(.34,1.56,.64,1);}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
         @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
@@ -337,7 +347,9 @@
         .live-status-badge.losing{background:rgba(255,69,96,.15);color:var(--red);}
         .live-status-badge.push{background:rgba(245,166,35,.15);color:var(--gold);}
         .live-status-badge.pending{background:rgba(107,144,184,.1);color:var(--text-muted);}
-        .live-pl{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;line-height:1;}
+                .live-pl{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;line-height:1;}
+        @keyframes plFlash{0%{transform:scale(1)}30%{transform:scale(1.15)}100%{transform:scale(1)}}
+        .pl-flash{animation:plFlash .4s cubic-bezier(.34,1.56,.64,1);}
         .live-pl.winning{color:var(--green);}
         .live-pl.losing{color:var(--red);}
         .live-pl.push{color:var(--gold);}
@@ -460,7 +472,7 @@
             .chat-msg-avatar{width:26px;height:26px;font-size:9px;}
         }
         /* ── Profile & Settings ──────────────────────── */
-        .profile-banner{height:110px;border-radius:16px 16px 0 0;position:relative;
+        .profile-banner{height:120px;border-radius:16px 16px 0 0;position:relative;
             background:linear-gradient(135deg,#0f2744,#1a3a5c);}
         .profile-avatar-wrap{position:absolute;bottom:-32px;left:20px;}
         .profile-avatar{width:68px;height:68px;border-radius:50%;border:3px solid var(--bg);
@@ -475,10 +487,10 @@
             font-weight:800;letter-spacing:.5px;}
         .profile-bio{font-size:13px;color:var(--text-muted);margin-top:4px;line-height:1.5;}
         .profile-meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--text-dim);}
-        .profile-stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+        .profile-stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;
             background:var(--border);border-top:1px solid var(--border);}
-        .profile-stat{background:var(--card);padding:14px 8px;text-align:center;}
-        .profile-stat-num{font-family:'Barlow Condensed',sans-serif;font-size:24px;
+        .profile-stat{background:var(--card);padding:12px 6px;text-align:center;border-right:1px solid var(--border);}
+        .profile-stat-num{font-family:'Barlow Condensed',sans-serif;font-size:22px;
             font-weight:800;line-height:1;}
         .profile-stat-num.green{color:var(--green);}
         .profile-stat-num.red{color:var(--red);}
@@ -486,9 +498,9 @@
         .profile-stat-label{font-size:9px;font-weight:800;letter-spacing:1px;
             color:var(--text-dim);text-transform:uppercase;margin-top:3px;}
         .profile-section{max-width:680px;margin-bottom:20px;}
-        .profile-section-title{font-size:11px;font-weight:800;letter-spacing:2px;
+        .profile-section-title{font-size:10px;font-weight:800;letter-spacing:2px;
             color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;}
-        .bet-result-pill{display:inline-block;padding:2px 8px;border-radius:4px;
+        .bet-result-pill{display:inline-block;padding:3px 8px;border-radius:4px;
             font-size:10px;font-weight:800;letter-spacing:.5px;}
         .bet-result-pill.won{background:rgba(0,214,122,.15);color:var(--green);}
         .bet-result-pill.lost{background:rgba(255,69,96,.15);color:var(--red);}
@@ -509,7 +521,7 @@
             transition:border-color .15s,transform .15s;flex-shrink:0;}
         .color-swatch.selected{border-color:white;transform:scale(1.15);}
         @media(max-width:768px){
-            .profile-stat-row{grid-template-columns:repeat(2,1fr);}
+            .profile-stat-row{grid-template-columns:repeat(3,1fr);}
             .profile-banner{height:90px;}
             .profile-avatar{width:58px;height:58px;font-size:22px;}
             .profile-stat-num{font-size:20px;}
@@ -674,17 +686,15 @@
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;" id="quickBetBtns"></div>
         <!-- Live calculator -->
         <div id="betCalc" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:none;">
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">
-                <div>
-                    <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text-dim);margin-bottom:3px;">YOU RISK</div>
-                    <div id="calcRisk" style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--orange);">—</div>
+            <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;text-align:center;align-items:center;">
+                <div style="background:rgba(255,140,0,.06);border-radius:8px;padding:10px;">
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:4px;text-transform:uppercase;">Risk</div>
+                    <div id="calcRisk" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--orange);line-height:1;">—</div>
                 </div>
-                <div style="display:flex;align-items:center;justify-content:center;">
-                    <span style="font-size:20px;color:var(--text-dim);">→</span>
-                </div>
-                <div>
-                    <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text-dim);margin-bottom:3px;">YOU WIN</div>
-                    <div id="calcWin" style="font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--green);">—</div>
+                <div style="font-size:18px;color:var(--text-dim);">→</div>
+                <div style="background:rgba(0,214,122,.06);border-radius:8px;padding:10px;">
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:4px;text-transform:uppercase;">Win</div>
+                    <div id="calcWin" style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--green);line-height:1;">—</div>
                 </div>
             </div>
             <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;color:var(--text-dim);">
@@ -859,10 +869,12 @@ function promptBetAmount(info, max, _unused){
         // Quick bet buttons: 25%, 50%, 75%, max
         const quickBtns=document.getElementById('quickBetBtns');
         if(quickBtns&&max>0){
-            const pcts=[{l:'25%',v:.25},{l:'50%',v:.5},{l:'75%',v:.75},{l:'Max',v:1}];
-            quickBtns.innerHTML=pcts.map(p=>{
-                const amt=Math.floor(max*p.v*100)/100;
-                return`<button type="button" onclick="setQuickBet(${amt})" style="flex:1;padding:6px 4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text-muted);font-size:12px;font-weight:700;cursor:pointer;min-width:48px;">${p.l}<br><span style="font-size:10px;color:var(--text-dim);">$${amt%1===0?amt:amt.toFixed(2)}</span></button>`;
+            // Flat $ amounts (up to max) plus Max
+            const flatAmts=[10,25,50,100].filter(v=>v<=max);
+            if(!flatAmts.includes(Math.floor(max))) flatAmts.push(Math.floor(max));
+            quickBtns.innerHTML=flatAmts.slice(0,5).map(amt=>{
+                const isMax=amt===Math.floor(max);
+                return`<button type="button" onclick="setQuickBet(${amt})" style="flex:1;padding:7px 4px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:${isMax?'var(--green)':'var(--text-muted)'};font-size:12px;font-weight:700;cursor:pointer;min-width:40px;transition:.15s;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">${isMax?'MAX':'$'+amt}</button>`;
             }).join('');
         }
 
@@ -949,19 +961,19 @@ function skeletonCards(n=3){
     return Array(n).fill(0).map(()=>`<div class="skeleton-card"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line" style="width:40%"></div></div>`).join('');
 }
 async function doLogin(){
+    const btn=document.getElementById('loginBtn');
+    if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Logging in...';}
     const u=document.getElementById('loginUsername').value.trim();
     const p=document.getElementById('loginPassword').value;
-    if(!u||!p){toast('Please enter your username/email and password','error');return;}
-    const btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='Logging in...';
+    if(!u||!p){toast('Please enter your username/email and password','error');if(btn){btn.disabled=false;btn.innerHTML='Login';}return;}
     try{
         const res=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({username:u,password:p})});
-        if(!res.ok){const e=await res.json();toast(e.detail||'Invalid credentials','error');return;}
+        if(!res.ok){const e=await res.json();toast(e.detail||'Invalid credentials','error');if(btn){btn.disabled=false;btn.innerHTML='Login';}return;}
         const data=await res.json();
         token=data.token;localStorage.setItem('token',token);user=data.user;
         await loadPropTypes();renderApp();startNotifPolling();
-    }catch(e){toast('Connection error','error');}
-    finally{btn.disabled=false;btn.textContent='Login';}
+    }catch(e){toast('Connection error','error');if(btn){btn.disabled=false;btn.innerHTML='Login';}}
 }
 
 async function doRegister(){
@@ -1070,9 +1082,26 @@ async function loadLines(){
             <div class="page-title">Marketplace</div>
             <div class="page-subtitle">${lines.length} open line${lines.length!==1?'s':''} · ${sports.length} sport${sports.length!==1?'s':''}</div>
         </div>
-        <div style="margin-bottom:12px;position:relative;">
-            <input id="marketplaceSearch" type="text" placeholder="🔍  Search teams, games..." oninput="filterMarketplace()"
-                style="width:100%;padding:10px 14px;font-size:14px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+            <div style="flex:1;position:relative;">
+                <input id="marketplaceSearch" type="text" placeholder="🔍  Search teams, games..." oninput="filterMarketplace()"
+                    style="width:100%;padding:10px 14px;font-size:14px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
+            </div>
+            <select id="marketplaceSort" onchange="filterMarketplace()" title="Sort lines"
+                style="padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">
+                <option value="default">📅 Newest</option>
+                <option value="amount">💰 Biggest</option>
+                <option value="pct">🔥 % Filled</option>
+                <option value="odds">📊 Best Odds</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;" id="marketplaceChips">
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('marketplaceSearch').value='';document.getElementById('marketplaceSort').value='default';filterMarketplace()">All</button>
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('marketplaceSort').value='amount';filterMarketplace()">💰 Biggest</button>
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('marketplaceSort').value='pct';filterMarketplace()">🔥 Filling Fast</button>
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('marketplaceSearch').value='NBA';filterMarketplace()">🏀 NBA</button>
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('marketplaceSearch').value='NFL';filterMarketplace()">🏈 NFL</button>
+            <button class="btn btn-sm btn-secondary" style="font-size:11px;" onclick="document.getElementById('marketplaceSearch').value='MLB';filterMarketplace()">⚾ MLB</button>
         </div>
         ${scoreTicker}`;
 
@@ -1080,7 +1109,7 @@ async function loadLines(){
         html+=`<div id="marketplaceLinesWrapper">`;
         for(const sp of sports){
             const sportLines=bySport[sp];
-            html+=`<div style="display:flex;align-items:center;gap:8px;margin:16px 0 8px;">
+            html+=`<div data-sp-header="${sp}" style="display:flex;align-items:center;gap:8px;margin:16px 0 8px;">
                 <span style="font-size:18px;">${SPORT_EMOJI[sp]||'🎯'}</span>
                 <span style="font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:1px;">${sp}</span>
                 <span style="font-size:11px;color:var(--text-dim);background:var(--bg-secondary,#0f1826);padding:2px 10px;border-radius:20px;border:1px solid var(--border);">${sportLines.length}</span>
@@ -1126,7 +1155,7 @@ async function loadLines(){
                     bettorPick=line.side==='home'?_away:_home;
                 }
 
-                html+=`<div class="card" style="padding:12px 16px;margin-bottom:8px;${isFull?'opacity:.7':''}${!isFull&&!isOwn?';border-color:rgba(255,255,255,.08)':''}${!isFull&&!isOwn&&!isGameStarted?';cursor:pointer':''}" onclick="${!isFull&&!isOwn&&!isGameStarted?'takeLine('+line.id+')':''}">
+                html+=`<div class="card" data-line-id="${line.id}" style="padding:12px 16px;margin-bottom:8px;${isFull?'opacity:.7':''}${!isFull&&!isOwn?';border-color:rgba(255,255,255,.08)':''}${!isFull&&!isOwn&&!isGameStarted?';cursor:pointer':''}" onclick="${!isFull&&!isOwn&&!isGameStarted?'takeLine('+line.id+')':''}">
                     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                         <div style="flex:1;min-width:0;">
                             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
@@ -1144,15 +1173,22 @@ async function loadLines(){
                             }
                             <div style="font-size:11px;color:var(--text-dim);"><span style="cursor:pointer;color:var(--text-muted);" onclick="event.stopPropagation();viewProfile('${line.bookie_name}')">@${line.bookie_name}</span> backs ${bookiePick} &middot; ${pct}% filled &middot; ${isFull?'Full':'$'+availBettor.toFixed(0)+' avail'}</div>
                         </div>
-                        <div style="text-align:right;flex-shrink:0;">
-                            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green);">+$${avail.toFixed(0)}</div>
-                            <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px;">risk $${availBettor.toFixed(0)}</div>
-                            <button class="btn ${isOwn||isGameStarted?'btn-secondary':'btn-primary'} btn-sm" onclick="event.stopPropagation();takeLine(${line.id})" ${(isFull||isOwn||isGameStarted)?'disabled':''} style="font-size:12px;padding:7px 14px;min-width:80px;">
-                                ${isFull?'Full ✓':isOwn?'Yours':isGameStarted?'🔒 Started':'Take Bet'}
+                        <div style="text-align:right;flex-shrink:0;min-width:90px;">
+                            <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:${isFull?'var(--text-dim)':'var(--green)'};line-height:1;">${isFull?'FULL':'+$'+avail.toFixed(0)}</div>
+                            <div style="font-size:10px;color:var(--text-dim);margin:3px 0 8px;">to win</div>
+                            <button class="btn ${isOwn||isGameStarted||isFull?'btn-secondary':'btn-primary'} btn-sm" onclick="event.stopPropagation();${(!isFull&&!isOwn&&!isGameStarted)?'takeLine('+line.id+')':''}" ${(isFull||isOwn||isGameStarted)?'disabled':''} style="font-size:12px;padding:8px 14px;min-width:80px;font-weight:800;">
+                                ${isFull?'Full 🔒':isOwn?'Your Line':isGameStarted?'🔴 Closed':'Bet →'}
                             </button>
+                            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();shareLineLink(${line.id},'${line.game.replace(/'/g,"\\'")}','${line.type}','${line.side}')" title="Share this line" style="font-size:14px;padding:8px 10px;min-width:36px;">🔗</button>
                         </div>
                     </div>
-                    <div class="fill-bar-track" style="margin-top:8px;height:3px;"><div class="fill-bar-fill ${barCls}" style="width:${pct}%"></div></div>
+                    <div style="margin-top:8px;">
+                        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim);margin-bottom:3px;letter-spacing:.5px;">
+                            <span>${bettorPick}</span>
+                            <span style="color:${isFull?'var(--text-dim)':'var(--text-muted)'};">${pct}% filled</span>
+                        </div>
+                        <div class="fill-bar-track" style="height:3px;"><div class="fill-bar-fill ${barCls}" style="width:${pct}%"></div></div>
+                    </div>
                 </div>`;
             }
         }
@@ -1166,6 +1202,27 @@ async function loadLines(){
         return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load marketplace</div><div class="empty-desc">${e.message||'Connection error'} — <button class="btn btn-outline btn-sm" onclick="changeView('marketplace')">Retry</button></div></div>`;
     }
 }
+function copyProfileLink(username){
+    const url = `${window.location.origin}${window.location.pathname}?u=${username}`;
+    if(navigator.share){
+        navigator.share({title:`@${username} on BookieVerse`, url}).catch(()=>{});
+    } else {
+        navigator.clipboard.writeText(url).then(()=>toast(`Profile link copied! 🔗`,'success')).catch(()=>prompt('Copy this link:',url));
+    }
+}
+
+function shareLineLink(lineId, game, type, side){
+    const url = `${window.location.origin}${window.location.pathname}?view=marketplace&line=${lineId}`;
+    const text = `🎯 ${game} — ${type.toUpperCase()} ${side} on BookieVerse`;
+    if(navigator.share){
+        navigator.share({title:'BookieVerse Line', text, url}).catch(()=>{});
+    } else {
+        navigator.clipboard.writeText(url).then(()=>toast('Link copied! Share it anywhere 🔗','success')).catch(()=>{
+            prompt('Copy this link:', url);
+        });
+    }
+}
+
 async function takeLine(lineId){
     const line=linesCache.find(l=>l.id===lineId);
     if(!line){toast('Line not found','error');return;}
@@ -1269,7 +1326,7 @@ async function renderCreateLine(){
             </select>`).join('');
 
         const html=`
-        <div class="page-header"><div class="page-title">⚡ Set a Line</div><div class="page-subtitle">You're the bookie — pick a game, set your terms</div></div>
+        <div class="page-header"><div class="page-title">⚡ Set a Line</div><div class="page-subtitle">You're the bookie — you set the line, bettors take the other side</div></div>
         <div class="card" style="max-width:680px;">
 
             <!-- Step 1: League -->
@@ -1488,10 +1545,6 @@ function onChallengeGameChange(){
     updateSideForGame('cGame','cSide',type);
 }
 
-function onPropGameChange(){
-    // Props always over/under so no home/away needed, but update label for clarity
-}
-
 function setOdds(val){
     const inp=document.getElementById('odds');
     if(inp){inp.value=val;calcOddsPreview();}
@@ -1501,38 +1554,39 @@ function toggleGroupSelect(){const gs=document.getElementById('groupId'),ip=docu
 function calcOddsPreview(){
     const odds=parseInt(document.getElementById('odds')?.value||'-110');
     const amount=parseFloat(document.getElementById('amount')?.value||'0');
-    const preview=document.getElementById('oddsPreview');
-    if(!preview)return;
-    if(isNaN(odds)||isNaN(amount)||amount<=0||isNaN(odds)||odds===0||(-100<odds&&odds<100)){
-        preview.innerHTML='Enter odds and liability to see the breakdown';
-        preview.style.borderColor='var(--border)';
-        return;
+    const el=document.getElementById('oddsPreview');
+    if(!el)return;
+    if(isNaN(odds)||odds===0||(-100<odds&&odds<100)){
+        el.innerHTML='<span style="color:var(--red);">Enter valid odds (≤ -100 or ≥ +100)</span>';return;
     }
-    let bettorRisk;
-    bettorRisk=+(amount*(100/Math.abs(odds))).toFixed(2);  // same formula for both +/- odds
-    const oddsStr=odds>0?'+'+odds:odds;
-    const oddsColor=odds>0?'var(--green)':'var(--orange)';
-    preview.style.borderColor=odds>0?'var(--green)':'var(--orange)';
-    preview.innerHTML=`
-        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center;">
-            <div style="text-align:center;">
-                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px;">Your max payout</div>
-                <div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:var(--red);">$${amount}</div>
-                <div style="font-size:11px;color:var(--text-dim);">if you lose at <strong style="color:${oddsColor}">${oddsStr}</strong></div>
-            </div>
-            <div style="font-size:24px;color:var(--text-dim);">⚔️</div>
-            <div style="text-align:center;">
-                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px;">Bettor must risk</div>
-                <div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:var(--green);">$${bettorRisk}</div>
-                <div style="font-size:11px;color:var(--text-dim);">to take this full line</div>
-            </div>
-            <div style="font-size:24px;color:var(--text-dim);">→</div>
-            <div style="text-align:center;">
-                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:4px;">If you win</div>
-                <div style="font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:var(--gold);">+$${bettorRisk}</div>
-                <div style="font-size:11px;color:var(--text-dim);">you pocket bettor's stake</div>
-            </div>
-        </div>`;
+    if(isNaN(amount)||amount<=0){
+        el.innerHTML='<span style="color:var(--text-dim);">Enter your liability to see breakdown</span>';return;
+    }
+    const bettorStake=odds>0?+(amount*(100/odds)).toFixed(2):+(amount*(100/Math.abs(odds))).toFixed(2);
+    const pot=amount+bettorStake;
+    const breakEvenPct=odds>0?Math.round(100/(1+odds/100)):Math.round(Math.abs(odds)/(Math.abs(odds)+100)*100);
+    const impliedPct=odds>0?Math.round(100/(1+odds/100)):Math.round(Math.abs(odds)/(Math.abs(odds)+100)*100);
+    const oddsStr=odds>0?'+'+odds:String(odds);
+    el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;">
+        <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--orange);">$${amount.toFixed(0)}</div>
+            <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);margin-top:2px;">YOUR LIABILITY</div>
+        </div>
+        <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--blue);">$${bettorStake.toFixed(0)}</div>
+            <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);margin-top:2px;">BETTOR STAKES</div>
+        </div>
+        <div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--gold);">$${pot.toFixed(0)}</div>
+            <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);margin-top:2px;">TOTAL POT</div>
+        </div>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap;">
+        <span>Odds: <strong style="color:${odds>0?'var(--green)':'var(--text)'};">${oddsStr}</strong></span>
+        <span>Break-even: <strong style="color:var(--text);">${breakEvenPct}% win rate needed</strong></span>
+        <span>If you win: <strong style="color:var(--green);">+$${bettorStake.toFixed(0)}</strong></span>
+        <span>If you lose: <strong style="color:var(--red);">-$${amount.toFixed(0)}</strong></span>
+    </div>`;
 }
 
 function checkLineBalance(){
@@ -1552,7 +1606,14 @@ function checkLineBalance(){
         const pct=Math.round((val/bal)*100);
         const col=pct>80?'var(--orange)':'var(--green)';
         inp.style.borderColor=col;
-        hint.innerHTML=`Available: <strong style="color:${col}">$${bal.toFixed(2)}</strong> · After posting: <strong>$${remaining.toFixed(2)}</strong>`;
+        // Compute bettor stake estimate
+        const oddsEl=document.getElementById('odds');
+        const odds=parseInt(oddsEl?.value)||(-110);
+        let bettorNeed;
+        if(odds>0) bettorNeed=val/(odds/100);
+        else bettorNeed=val*(100/Math.abs(odds));
+        const bettorStr=bettorNeed>0?` · Bettor needs <strong style="color:var(--blue)">$${bettorNeed.toFixed(2)}</strong> to fill`:'';
+        hint.innerHTML=`After posting: <strong>$${remaining.toFixed(2)}</strong>${bettorStr}`;
     }
     calcOddsPreview();
 }
@@ -1866,6 +1927,29 @@ async function renderMyBets(){
         if(!myLines.length){
             html+=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No open lines</div><div class="empty-desc">Post a line and become the bookie</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('create')">⚡ Set a Line</button></div>`;
         } else {
+            // Lines summary bar
+            const totalLiability=myLines.reduce((s,l)=>s+l.amount,0);
+            const totalMatched=myLines.reduce((s,l)=>s+(l.total_action||0),0);
+            const totalBettors=myLines.reduce((s,l)=>s+(l.current_bettors||0),0);
+            const pctFilled=totalLiability>0?Math.round(totalMatched/totalLiability*100):0;
+            html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--orange);">${myLines.length}</div>
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">Lines</div>
+                </div>
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--text);">$${totalLiability.toFixed(0)}</div>
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">Liability</div>
+                </div>
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--green);">$${totalMatched.toFixed(0)}</div>
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">Matched</div>
+                </div>
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--blue);">${totalBettors}</div>
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">Bettors</div>
+                </div>
+            </div>`;
             myLines.forEach(l=>{
                 const oddsStr=l.odds>0?'+'+l.odds:String(l.odds);
                 const oddsColor=l.odds>0?'var(--green)':'var(--text-muted)';
@@ -1874,7 +1958,7 @@ async function renderMyBets(){
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
                         <div style="flex:1;min-width:0;">
                             <div style="font-size:15px;font-weight:700;">${l.game}</div>
-                            <div style="color:var(--text-muted);font-size:13px;margin-top:3px;">${l.type.toUpperCase()} · ${l.side.toUpperCase()}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}</div>
+                            <div style="color:var(--text-muted);font-size:13px;margin-top:3px;">${l.type.toUpperCase()} · ${l.side.toUpperCase()}${l.type!=='moneyline'?' '+(l.value>0?'+':'')+l.value:''}${l.commence_time?(()=>{const diff=(new Date(l.commence_time)-Date.now())/3600000;return diff>0&&diff<24?` · <span style="color:var(--gold);font-weight:700;">⏰ In ${Math.round(diff)}h</span>`:diff<=0&&diff>-24?' · <span style="color:var(--red);font-weight:700;">🔴 In Progress</span>':'';})():''}</div>
                             <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;font-size:13px;">
                                 <span>Odds: <strong style="color:${oddsColor}">${oddsStr}</strong></span>
                                 <span>Matched: <strong>$${(l.total_action||0).toFixed(0)}</strong> / <span style="color:var(--text-dim)">$${l.amount.toFixed(0)} max liability</span></span>
@@ -1965,8 +2049,60 @@ async function renderMyBets(){
         if(!bets.length&&!props.length){
             html+=`<div class="empty-state"><div class="empty-icon">🎲</div><div class="empty-title">No bet history yet</div><div class="empty-desc">Head to the marketplace and take a line</div><button class="btn btn-primary" style="margin-top:16px;" onclick="changeView('marketplace')">Browse Lines</button></div>`;
         } else {
-            const all=[...bets.map(b=>({...b,_type:'line'})),...props.map(p=>({...p,_type:'prop'}))];
-            all.forEach(b=>{
+            const all=[...bets.map(b=>({...b,_type:'line'})),...props.map(p=>({...p,_type:'prop'}))]
+                .sort((a,b)=>(b.id||0)-(a.id||0)); // newest first
+            // Status filter chips
+            const statuses=['all','pending','won','lost'];
+            const statusLabels={all:'All',pending:'⏳ Pending',won:'✅ Won',lost:'❌ Lost'};
+            const _bf=window._betsFilter||'all';
+            html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+                ${statuses.map(s=>`<button class="btn btn-sm ${_bf===s?'btn-primary':'btn-secondary'}" style="font-size:11px;" onclick="window._betsFilter='${s}';switchMyBetsTab('bets')">${statusLabels[s]}</button>`).join('')}
+                <button class="btn btn-secondary btn-sm" style="font-size:11px;margin-left:auto;" onclick="exportBetsCSV()" title="Export to CSV">📥 Export</button>
+            </div>`;
+            // Summary stats bar
+            const won=all.filter(b=>b.status==='settled'&&(b.winner===(b.bookie_id===user.id?'bookie':'bettor'))).length;
+            const lost=all.filter(b=>b.status==='settled'&&(b.winner!==(b.bookie_id===user.id?'bookie':'bettor'))&&b.winner!=='push').length;
+            const pending=all.filter(b=>b.status==='pending').length;
+            const totalPL=all.reduce((sum,b)=>{
+                if(b.status!=='settled')return sum;
+                const isBk=b.bookie_id===user.id;
+                const w=b.winner===(isBk?'bookie':'bettor');
+                const push=b.winner==='push';
+                if(push)return sum;
+                const myStake=isBk?(b.bookie_amount||b.amount):(b.bettor_amount||b.amount);
+                const oppStake=isBk?(b.bettor_amount||b.amount):(b.bookie_amount||b.amount);
+                return sum+(w?oppStake:-myStake);
+            },0);
+            const totalWagered=all.filter(b=>b.status==='settled').reduce((s,b)=>{const isBk=b.bookie_id===user.id;return s+(isBk?(b.bookie_amount||b.amount):(b.bettor_amount||b.amount));},0);
+            const roi=totalWagered>0?((totalPL/totalWagered)*100):0;
+            html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;">
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--text);">${won}—${lost}</div>
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">W—L Record</div>
+                </div>
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--gold);">${pending}</div>
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">Pending</div>
+                </div>
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${totalPL>=0?'var(--green)':'var(--red)'};">${totalPL>=0?'+':''}$${Math.abs(totalPL).toFixed(0)}</div>
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">Net P/L</div>
+                </div>
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${roi>=0?'var(--green)':'var(--red)'};">${roi>=0?'+':''}${roi.toFixed(0)}%</div>
+                    <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;">ROI</div>
+                </div>
+            </div>`;
+            const betsFiltered = _bf==='all' ? all : all.filter(b=>{
+                if(_bf==='pending') return b.status==='pending';
+                if(_bf==='won') return b.status==='settled'&&b.winner===(b.bookie_id===user.id?'bookie':'bettor');
+                if(_bf==='lost') return b.status==='settled'&&b.winner!==(b.bookie_id===user.id?'bookie':'bettor')&&b.winner!=='push';
+                return true;
+            });
+            if(!betsFiltered.length){
+                html+=`<div style="text-align:center;padding:32px;color:var(--text-muted);font-size:14px;">No ${_bf} bets found</div>`;
+            }
+            betsFiltered.forEach(b=>{
                 const isBookie=b.bookie_id===user.id,isWon=b.winner===(isBookie?'bookie':'bettor'),isPush=b.winner==='push';
                 let sc='pending',sl='Pending ⏳';
                 if(b.status==='settled'){if(isPush){sc='pending';sl='Push 🤝';}else if(isWon){sc='won';sl='Won ✅';}else{sc='lost';sl='Lost ❌';}}
@@ -1983,14 +2119,24 @@ async function renderMyBets(){
                     else if(isWon){displayAmt='+$'+oppStake.toFixed(2);displayColor='var(--green)';}
                     else{displayAmt='-$'+myStake.toFixed(2);displayColor='var(--red)';}
                 }else{displayAmt='$'+myStake.toFixed(2);displayColor='var(--gold)';}
-                html+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
+                const betAge=b.created_at?timeAgo(b.created_at):'';
+                const cardBorderColor=sc==='won'?'rgba(0,214,122,.2)':sc==='lost'?'rgba(255,69,96,.15)':sc==='pending'&&b.status==='pending'?'rgba(245,166,35,.1)':'';
+                html+=`<div class="card" style="${cardBorderColor?'border-color:'+cardBorderColor+';':''}"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ml}</div>
-                        <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">${vs} · <span style="color:var(--text-dim)">${isBookie?'📚 Bookie':'🎯 Bettor'}</span> · <span style="color:${oddsColor};font-weight:700;">${oddsStr}</span></div>
-                        <div style="color:var(--text-dim);font-size:12px;margin-top:4px;">Risk <strong style="color:var(--text)">$${myStake.toFixed(2)}</strong> · Win <strong style="color:var(--green)">$${oppStake.toFixed(2)}</strong></div>
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+                            <span class="badge ${b._type==='line'?'badge-'+b.type:'badge-prop'}" style="font-size:9px;">${b._type==='line'?b.type.toUpperCase():'PROP'}</span>
+                            <span style="font-size:10px;color:var(--text-dim);">${isBookie?'📚 BOOKIE':'🎯 BETTOR'}</span>
+                        </div>
+                        <div style="font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ml}</div>
+                        <div style="color:var(--text-muted);font-size:12px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span style="cursor:pointer;" onclick="event.stopPropagation();viewProfile('${isBookie?(b.bettor_name||''):(b.bookie_name||'')}')">${vs}</span>
+                            · <span style="color:${oddsColor};font-weight:700;">${oddsStr}</span>
+                            ${betAge?`· <span style="color:var(--text-dim);">${betAge}</span>`:''}
+                        </div>
+                        <div style="color:var(--text-dim);font-size:12px;margin-top:4px;">Risk <strong style="color:var(--text)">$${myStake.toFixed(2)}</strong> → Win <strong style="color:var(--green)">$${oppStake.toFixed(2)}</strong></div>
                     </div>
-                    <div style="text-align:right;">
-                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;color:${displayColor}">${displayAmt}</div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;color:${displayColor};line-height:1;">${displayAmt}</div>
                         <div style="margin-top:6px;"><span class="bet-status ${sc}">${sl}</span></div>
                     </div>
                 </div></div>`;
@@ -2002,6 +2148,37 @@ async function renderMyBets(){
         console.error('renderMyBets error:',e);
         return`<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Couldn't load My Action</div><div class="empty-desc">${e.message||'Connection error'} — <button class="btn btn-outline btn-sm" onclick="changeView('bets')">Retry</button></div></div>`;
     }
+}
+
+function exportBetsCSV(){
+    // Simple CSV export of bet history
+    const fetch_and_export=async()=>{
+        try{
+            const res=await fetch(API+'/bets?token='+token);
+            if(!res.ok){toast('Could not load bets','error');return;}
+            const data=await res.json();
+            const all=[...(data.single_bets||[]),...(data.prop_bets||[])].sort((a,b)=>(b.id||0)-(a.id||0));
+            if(!all.length){toast('No bets to export','info');return;}
+            const headers=['ID','Game','Type','Side','Odds','My Stake','To Win','Status','Result','Created'];
+            const rows=all.map(b=>{
+                const isBookie=b.bookie_id===user.id;
+                const myStake=isBookie?(b.bookie_amount||b.amount):(b.bettor_amount||b.amount);
+                const oppStake=isBookie?(b.bettor_amount||b.amount):(b.bookie_amount||b.amount);
+                const won=b.winner===(isBookie?'bookie':'bettor');
+                const push=b.winner==='push';
+                const result=b.status!=='settled'?'Pending':push?'Push':won?'Won':'Lost';
+                return[b.id,`"${b.game||b.player_name||''}"`,b.type||b.prop_type,b.side||'',b.odds||-110,myStake.toFixed(2),oppStake.toFixed(2),b.status,result,b.created_at||''].join(',');
+            });
+            const csv=[headers.join(','),...rows].join('\n');
+            const blob=new Blob([csv],{type:'text/csv'});
+            const url=URL.createObjectURL(blob);
+            const a=document.createElement('a');
+            a.href=url;a.download=`bookieverse-bets-${new Date().toISOString().slice(0,10)}.csv`;a.click();
+            URL.revokeObjectURL(url);
+            toast('Bets exported to CSV 📥','success');
+        }catch(e){toast('Export failed','error');}
+    };
+    fetch_and_export();
 }
 
 function switchMyBetsTab(tab){_myBetsTab=tab;renderApp();}
@@ -2061,13 +2238,36 @@ async function renderLeaderboard(){
     try{const res=await fetch(API+'/leaderboard');if(res.ok)leaders=await res.json();}catch(e){}
     if(!Array.isArray(leaders))leaders=[];
     const medals=['🥇','🥈','🥉'];
-    let html=`<div class="page-header"><div class="page-title">Leaderboard</div><div class="page-subtitle">Top bookies by P&L</div></div>`;
+    let html=`<div class="page-header"><div class="page-title">Leaderboard</div><div class="page-subtitle">Top ${leaders.length} bookies by all-time P&L</div></div>`;
+    // Top 3 podium
+    if(leaders.length>=3){
+        const podiumOrder=[leaders[1],leaders[0],leaders[2]]; // 2nd, 1st, 3rd visual order
+        const heights=['80px','96px','68px'];
+        const podiumColors=['#c0c0c0','var(--gold)','#cd7f32'];
+        html+=`<div style="display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:24px;padding:16px 0;">
+            ${podiumOrder.map((l,pi)=>{
+                const origI=pi===0?1:pi===1?0:2;
+                const isMe=user&&l.id===user.id;
+                const total=l.wins+l.losses;
+                const wr=total>0?Math.round(l.wins/total*100):0;
+                return`<div onclick="viewProfile('${l.username}')" style="cursor:pointer;text-align:center;flex:1;max-width:130px;">
+                    <div style="font-size:24px;margin-bottom:4px;">${medals[origI]}</div>
+                    <div style="font-size:13px;font-weight:800;color:${isMe?'var(--green)':'var(--text)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@${l.username}</div>
+                    <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">${wr}% WR</div>
+                    <div style="background:${podiumColors[pi]};opacity:${pi===1?1:.8};border-radius:8px 8px 0 0;height:${heights[pi]};display:flex;align-items:center;justify-content:center;">
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:${pi===1?'22px':'18px'};font-weight:800;color:#000;">${(l.profit>=0?'+':'-')}$${Math.abs(l.profit).toLocaleString()}</div>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
     leaders.forEach((l,i)=>{
         const pos=l.profit>=0;
         const total=l.wins+l.losses;
         const wr=total>0?Math.round(l.wins/total*100):0;
         const isMe=user&&l.id===user.id;
-        html+=`<div class="card" style="padding:14px 18px;cursor:pointer;${isMe?'border-color:rgba(0,214,122,.3);':''}" onclick="viewProfile('${l.username}')">
+        const podiumStyle=i<3?`background:linear-gradient(135deg,${i===0?'rgba(245,166,35,.06)':i===1?'rgba(192,192,192,.04)':'rgba(205,127,50,.04)'},transparent);border-color:${i===0?'rgba(245,166,35,.2)':i===1?'rgba(192,192,192,.15)':'rgba(205,127,50,.12)'};`:'';
+        html+=`<div class="card" style="padding:14px 18px;cursor:pointer;${podiumStyle}${isMe?'border-color:rgba(0,214,122,.3);':''}" onclick="viewProfile('${l.username}')">
             <div class="lb-row">
                 <div class="lb-rank" style="color:${i===0?'var(--gold)':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text-dim)'};">${medals[i]||(i+1)}</div>
                 <div style="flex:1;min-width:0;">
@@ -2084,6 +2284,16 @@ async function renderLeaderboard(){
             </div>
         </div>`;
     });
+    // Show encouragement if user not in visible list
+    const userInList = leaders.some(l => user && l.id === user.id);
+    if(!userInList && leaders.length){
+        html += `<div style="text-align:center;padding:16px;font-size:13px;color:var(--text-muted);border-top:1px solid var(--border);margin-top:8px;">
+            You're not in the top ${leaders.length} yet — keep posting lines to climb! 💪
+        </div>`;
+    }
+    if(!leaders.length){
+        html += `<div class="empty-state"><div class="empty-icon">🏆</div><div class="empty-title">No rankings yet</div><div class="empty-desc">Be the first to settle a bet and appear here</div></div>`;
+    }
     return html;
 }
 async function renderGroups(){
@@ -2102,7 +2312,7 @@ async function renderGroups(){
                     <div style="flex:1;">
                         <div style="font-size:19px;font-weight:700;">${g.name}${g.is_creator?' <span style="color:var(--green);font-size:12px;font-weight:700;">OWNER</span>':''}</div>
                         ${g.description?`<div style="color:var(--text-muted);margin-top:4px;font-size:14px;">${g.description}</div>`:''}
-                        <div style="color:var(--text-dim);font-size:12px;margin-top:8px;">👥 ${g.member_count} member${g.member_count!==1?'s':''}</div>
+                        <div style="color:var(--text-dim);font-size:12px;margin-top:8px;">👥 ${g.member_count} member${g.member_count!==1?'s':''} ${g.invite_code?'· Code: <strong style="color:var(--text-muted);letter-spacing:1px;">'+g.invite_code+'</strong>':''}</div>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:6px;min-width:120px;">
                         ${g.is_creator
@@ -2174,10 +2384,18 @@ async function renderUserSearch(){
     let users=[];
     try{const res=await fetch(API+'/users/search?token='+token);if(res.ok)users=await res.json();}catch(e){}
     if(!Array.isArray(users))users=[];
-    let html=`<div class="page-header"><div class="page-title">Find Bookies</div><div class="page-subtitle">Follow bookies, send friend requests, or challenge them</div></div>
-    <div style="margin-bottom:16px;position:relative;">
-        <input id="searchFilter" type="text" placeholder="🔍  Search by username..." oninput="filterBookieSearch()"
-            style="width:100%;padding:12px 16px 12px 16px;font-size:15px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
+    let html=`<div class="page-header"><div class="page-title">Find Bookies</div><div class="page-subtitle">${users.length} bookies · follow, challenge, or add as friend</div></div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;position:relative;">
+            <input id="searchFilter" type="text" placeholder="🔍 Search by username..." oninput="filterBookieSearch()"
+                style="width:100%;padding:12px 16px;font-size:15px;border-radius:10px;background:var(--card);border:1px solid var(--border);">
+        </div>
+        <select id="searchSort" onchange="filterBookieSearch()" style="min-width:130px;padding:11px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;cursor:pointer;">
+            <option value="profit">By P/L</option>
+            <option value="winrate">By Win %</option>
+            <option value="bets">Most Bets</option>
+            <option value="username">A-Z</option>
+        </select>
     </div>
     <div id="searchResults">`;
     if(!users.length)return html+`<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No users found</div></div></div>`;
@@ -2224,40 +2442,77 @@ async function renderUserSearch(){
 
 function filterMarketplace(){
     const q=(document.getElementById('marketplaceSearch')?.value||'').toLowerCase().trim();
+    const sortBy=document.getElementById('marketplaceSort')?.value||'default';
     const wrapper=document.getElementById('marketplaceLinesWrapper');
     if(!wrapper||!window._cachedLines)return;
     const lines=window._cachedLines;
     const SPORT_EMOJI=window._cachedSportEmoji||{};
     const bySport=window._cachedBySport||{};
     const SPORT_ORDER=['NBA','NCAA Basketball','NFL','MLB','NHL','Premier League','La Liga','Champions League','MLS'];
-    if(!q){
-        // Restore all — find all card wrappers and show them
-        wrapper.querySelectorAll('.card,.sport-section-header').forEach(el=>el.style.display='');
-        wrapper.querySelectorAll('[data-sp-header]').forEach(el=>el.style.display='');
+
+    // Filter by search
+    let filtered=q
+        ? lines.filter(l=>(l.game||'').toLowerCase().includes(q)||(l.sport||'').toLowerCase().includes(q)||(l.bookie_name||'').toLowerCase().includes(q))
+        : lines;
+
+    // Sort
+    filtered=[...filtered];
+    if(sortBy==='amount') filtered.sort((a,b)=>b.amount-a.amount);
+    else if(sortBy==='pct') filtered.sort((a,b)=>{const pa=(a.total_action||0)/a.amount,pb=(b.total_action||0)/b.amount;return pb-pa;});
+    else if(sortBy==='odds') filtered.sort((a,b)=>Math.abs(b.odds||110)-Math.abs(a.odds||110));
+    else filtered.sort((a,b)=>(b.id||0)-(a.id||0)); // default: newest
+
+    // Update subtitle
+    const sub=document.querySelector('.page-subtitle');
+    if(sub) sub.textContent=q
+        ?`${filtered.length} line${filtered.length!==1?'s':''} matching "${q}"`
+        :`${lines.length} open line${lines.length!==1?'s':''} · ${Object.keys(bySport).length} sport${Object.keys(bySport).length!==1?'s':''}`;
+
+    if(!q&&sortBy==='default'){
+        // Default view: restore all
+        wrapper.querySelectorAll('.card,[data-line-id],.sport-section-header,[data-sp-header]').forEach(el=>el.style.display='');
         return;
     }
-    // Filter each card by data attributes
-    const sports=Object.keys(bySport).sort((a,b)=>{const ai=SPORT_ORDER.indexOf(a),bi=SPORT_ORDER.indexOf(b);return(ai===-1?99:ai)-(bi===-1?99:bi);});
-    let newHtml='';
-    let total=0;
-    for(const sp of sports){
-        const filtered=bySport[sp].filter(l=>(l.game||'').toLowerCase().includes(q)||(l.sport||'').toLowerCase().includes(q)||(l.bookie_name||'').toLowerCase().includes(q));
-        if(!filtered.length)continue;
-        total+=filtered.length;
+
+    // Hide/show cards by line id
+    const visibleIds=new Set(filtered.map(l=>l.id));
+    wrapper.querySelectorAll('[data-line-id]').forEach(el=>{
+        el.style.display=visibleIds.has(parseInt(el.dataset.lineId))?'':'none';
+    });
+    // Hide sport headers with no visible cards
+    wrapper.querySelectorAll('[data-sp-header]').forEach(hdr=>{
+        let next=hdr.nextElementSibling;
+        let hasVisible=false;
+        while(next&&!next.dataset?.spHeader){
+            if(next.dataset?.lineId&&next.style.display!=='none') hasVisible=true;
+            next=next.nextElementSibling;
+        }
+        hdr.style.display=hasVisible?'':'none';
+    });
+
+    if(!filtered.length){
+        wrapper.innerHTML=`<div class="empty-state" style="padding:40px 20px;"><div class="empty-icon">🔍</div><div class="empty-title">No lines match "${q}"</div><div class="empty-desc">Try a different search or check back later</div></div>`;
     }
-    const sub=document.querySelector('.page-subtitle');
-    if(sub) sub.textContent=q?`${total} line${total!==1?'s':''} matching "${q}"`:`${lines.length} open line${lines.length!==1?'s':''}`;
 }
 function filterBookieSearch(){
     const q=document.getElementById('searchFilter')?.value.toLowerCase().trim()||'';
+    const sortBy=document.getElementById('searchSort')?.value||'profit';
     const users=window._allSearchUsers||[];
-    const filtered=q?users.filter(u=>u.username.toLowerCase().includes(q)):users;
+    let filtered=q?users.filter(u=>u.username.toLowerCase().includes(q)):users;
+    // Sort
+    filtered=[...filtered].sort((a,b)=>{
+        if(sortBy==='profit') return (b.profit||0)-(a.profit||0);
+        if(sortBy==='winrate'){const wa=(a.wins+a.losses>0?a.wins/(a.wins+a.losses):0),wb=(b.wins+b.losses>0?b.wins/(b.wins+b.losses):0);return wb-wa;}
+        if(sortBy==='bets') return ((b.wins||0)+(b.losses||0))-((a.wins||0)+(a.losses||0));
+        if(sortBy==='username') return a.username.localeCompare(b.username);
+        return 0;
+    });
     // Re-render just the results list
     const container=document.getElementById('searchResults');
     if(!container)return;
     if(!filtered.length){container.innerHTML=`<div class='empty-state' style='padding:40px 20px;'><div class='empty-icon'>🔍</div><div class='empty-title'>No matches</div></div>`;return;}
     let html='';
-    filtered.slice(0,30).forEach(u=>{
+    filtered.slice(0,50).forEach(u=>{
         const wr=u.wins+u.losses>0?Math.round(u.wins/(u.wins+u.losses)*100):0;
         const plColor=u.profit>=0?'var(--green)':'var(--red)';
         let friendBtn='';
@@ -2266,9 +2521,20 @@ function filterBookieSearch(){
         else if(u.friend_status==='incoming'){friendBtn=`<button class="btn btn-primary btn-sm" onclick="acceptFriendFromSearch(${u.request_id},this,'${u.username}')">Accept 🤝</button>`;}
         else{friendBtn=`<button class="btn btn-outline btn-sm" onclick="sendFriendRequest('${u.username}',this)">+ Add Friend</button>`;}
         const avatarEl=u.avatar?`<img src="${u.avatar}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid ${u.is_following?'var(--green)':'var(--border)'};flex-shrink:0;">`:`<div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid ${u.is_following?'var(--green)':'var(--border)'};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;flex-shrink:0;font-weight:800;color:var(--green);">${u.username.slice(0,2).toUpperCase()}</div>`;
-        html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')"><div style="display:flex;align-items:center;gap:16px;">${avatarEl}<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;">@${u.username}${u.is_following?' <span style="font-size:10px;color:var(--green);font-weight:800;">FOLLOWING</span>':''}</div><div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% win rate</div><div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':'-'}$${Math.abs(u.profit)}</div><div style="display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation()">${friendBtn}<button class="btn ${u.is_following?'btn-secondary':'btn-outline'} btn-sm" id="fb-${u.username}" onclick="event.stopPropagation();${u.is_following?'unfollow':'follow'}User('${u.username}',this)">${u.is_following?'Following ✓':'+ Follow'}</button><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openChallengeModal('${u.username}')">⚔️</button></div></div></div></div>`;
+        html+=`<div class="card" style="cursor:pointer;" onclick="viewProfile('${u.username}')"><div style="display:flex;align-items:center;gap:16px;">${avatarEl}<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:15px;">@${u.username}${u.is_following?' <span style="font-size:10px;color:var(--green);font-weight:800;background:rgba(0,214,122,.1);padding:1px 5px;border-radius:4px;">FOLLOWING</span>':''}</div><div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L${(u.wins+u.losses)>0?' · '+wr+'%':''}</div><div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};line-height:1;">${u.profit>=0?'+':'-'}$${Math.abs(u.profit).toLocaleString()}</div><div style="font-size:10px;color:var(--text-dim);text-align:right;">${(u.wins+u.losses)} settled bets</div><div style="display:flex;gap:6px;flex-wrap:wrap;" onclick="event.stopPropagation()">${friendBtn}<button class="btn ${u.is_following?'btn-secondary':'btn-outline'} btn-sm" id="fb-${u.username}" onclick="event.stopPropagation();${u.is_following?'unfollow':'follow'}User('${u.username}',this)">${u.is_following?'Following ✓':'+ Follow'}</button><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openChallengeModal('${u.username}')">⚔️</button></div></div></div></div>`;
     });
     container.innerHTML=html;
+}
+
+async function acceptFriendInline(reqId, btn){
+    try{
+        const res=await fetch(API+'/friends/accept/'+reqId+'?token='+token,{method:'POST'});
+        if(res.ok){
+            btn.textContent='Friends ✓';btn.disabled=true;btn.className='btn btn-secondary btn-sm';
+            toast('Friend request accepted! 🤝','success');
+            fetchNotifications(true);
+        } else { const e=await res.json(); toast(e.detail||'Error','error'); }
+    }catch(e){ toast('Connection error','error'); }
 }
 
 async function sendFriendRequest(username, btn){
@@ -2334,11 +2600,14 @@ async function renderFriends(){
     if(outgoing.length){
         html+=`<div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;margin:20px 0 12px;color:var(--text-muted);">⏳ Pending (${outgoing.length})</div>`;
         outgoing.forEach(u=>{
-            html+=`<div class="card" style="opacity:.75;">
+            html+=`<div class="card" style="opacity:.8;border-color:rgba(107,144,184,.2);">
                 <div style="display:flex;align-items:center;gap:16px;">
-                    <div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0;">${u.username.charAt(0).toUpperCase()}</div>
-                    <div style="flex:1;"><div style="font-weight:700;">@${u.username}</div>
-                    <div style="color:var(--text-dim);font-size:13px;">Request sent — waiting for response</div></div>
+                    <div style="width:44px;height:44px;border-radius:50%;background:var(--bg);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--text-muted);flex-shrink:0;">${u.username.slice(0,2).toUpperCase()}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:700;cursor:pointer;" onclick="viewProfile('${u.username}')">@${u.username}</div>
+                        <div style="color:var(--text-dim);font-size:12px;margin-top:2px;">⏳ Request sent — waiting for response</div>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="cancelFriendReq(${u.request_id||0},'${u.username}',this)" style="font-size:11px;">Cancel</button>
                 </div>
             </div>`;
         });
@@ -2357,7 +2626,7 @@ async function renderFriends(){
                     <div style="color:var(--text-muted);font-size:13px;margin-top:2px;">${u.wins}W — ${u.losses}L · ${wr}% win rate</div>
                     <div class="wr-bar" style="width:100px;margin-top:6px;"><div class="wr-fill" style="width:${wr}%"></div></div></div>
                     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
-                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':''}$${u.profit}</div>
+                        <div style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:${plColor};">${u.profit>=0?'+':''}$${Math.abs(u.profit||0).toFixed(0)}</div>
                         <div style="display:flex;gap:6px;">
                             <button class="btn btn-primary btn-sm" onclick="openChallengeModal('${u.username}')">⚔️ Challenge</button>
                             <button class="btn btn-danger btn-sm" onclick="removeFriend('${u.username}',this)">Remove</button>
@@ -2372,6 +2641,13 @@ async function renderFriends(){
     return html;
 }
 
+async function cancelFriendReq(reqId, username, btn){
+    try{
+        const res=await fetch(API+'/friends/cancel/'+reqId+'?token='+token,{method:'DELETE'});
+        if(res.ok){toast('Request to @'+username+' cancelled','info');renderApp();}
+        else{const e=await res.json();toast(e.detail||'Error','error');}
+    }catch(e){toast('Connection error','error');}
+}
 async function acceptFriendReq(reqId, username, btns){
     try{
         const res=await fetch(API+'/friends/accept/'+reqId+'?token='+token,{method:'POST'});
@@ -2672,8 +2948,15 @@ function renderLiveCards(bets, scores){
                 const sc=scores[b.game_id];
                 return sum+calcLivePL(b,determineLiveBetStatus(b,sc)).val;
             },0);
-            plEl.textContent=(allPL>=0?'+':'')+`$${allPL.toFixed(2)}`;
-            plEl.className='live-pl '+(allPL>0?'winning':allPL<0?'losing':'push');
+            const newText=(allPL>=0?'+':'')+`$${allPL.toFixed(2)}`;
+            const newClass='live-pl '+(allPL>0?'winning':allPL<0?'losing':'push');
+            if(plEl.textContent!==newText){
+                plEl.textContent=newText;
+                plEl.className=newClass+' pl-flash';
+                setTimeout(()=>plEl.classList.remove('pl-flash'),800);
+            } else {
+                plEl.className=newClass;
+            }
         }
     }
 }
@@ -3043,7 +3326,7 @@ async function renderProfile(username){
                         <div style="font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${l.game}</div>
                         <div style="font-size:11px;color:var(--text-muted);">${l.type.toUpperCase()} · ${l.side} · <span style="color:${oddsColor};font-weight:700;">${odds}</span></div>
                     </div>
-                    <button class="btn btn-outline btn-sm" onclick="changeView('marketplace')" style="font-size:11px;white-space:nowrap;">View in Market →</button>
+                    <button class="btn btn-outline btn-sm" onclick="changeView('marketplace');setTimeout(()=>{const s=document.getElementById('marketplaceSearch');if(s){s.value='${p.username}';filterMarketplace();}},200)" style="font-size:11px;white-space:nowrap;">View in Market →</button>
                 </div>`;
             });
         } else {
@@ -3055,6 +3338,7 @@ async function renderProfile(username){
             ${p.is_following ? 'Following ✓' : '+ Follow'}</button>` : '';
         const challengeBtn = !isMe ? `<button class="btn btn-primary btn-sm" onclick="openChallengeModal('${p.username}')" style="font-size:12px;">⚔️ Challenge</button>` : '';
         const editBtn = isMe ? `<button class="btn btn-secondary btn-sm" onclick="changeView('settings')" style="font-size:12px;">✏️ Edit Profile</button>` : '';
+        const shareBtn = `<button class="btn btn-secondary btn-sm" onclick="copyProfileLink('${p.username}')" title="Copy profile link" style="font-size:14px;padding:6px 10px;">🔗</button>`;
 
         const backBtn = !isOwnProfile ? `<button class="btn btn-secondary btn-sm" style="margin-bottom:12px;" onclick="history.back()">← Back</button>` : '';
         return `<div>
@@ -3062,7 +3346,7 @@ async function renderProfile(username){
             <!-- Profile Card -->
             <div class="profile-card">
                 <!-- Banner -->
-                <div class="profile-banner" style="background:linear-gradient(135deg,${bannerColor},${bannerColor}cc);">
+                <div class="profile-banner" style="background:linear-gradient(135deg,${bannerColor},${bannerColor}aa);background-image:linear-gradient(135deg,${bannerColor},${bannerColor}aa),repeating-linear-gradient(45deg,rgba(255,255,255,.02) 0px,rgba(255,255,255,.02) 1px,transparent 1px,transparent 8px);">
                     <div class="profile-avatar-wrap">
                         <div class="profile-avatar">${avatarInner}</div>
                     </div>
@@ -3072,7 +3356,7 @@ async function renderProfile(username){
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
                         <div>
                             <div class="profile-username">@${p.username}${p.is_admin?' 👑':''}</div>
-                            ${p.bio ? `<div class="profile-bio">${p.bio}</div>` : ''}
+                            ${p.bio ? `<div class="profile-bio">${p.bio.replace(/https?:\/\/\S+/g,m=>'<a href="'+m+'" target="_blank" rel="noopener" style="color:var(--green);">'+m.replace(/^https?:\/\//,'')+"</a>")}</div>` : ''}
                             <div class="profile-meta">
                                 ${p.favorite_team ? `<span>🏅 ${p.favorite_team}</span>` : ''}
                                 ${p.location ? `<span>📍 ${p.location}</span>` : ''}
@@ -3081,9 +3365,13 @@ async function renderProfile(username){
                             <div style="display:flex;gap:12px;margin-top:8px;font-size:12px;color:var(--text-muted);">
                                 <span style="cursor:pointer;" onclick="changeView('following')"><strong style="color:var(--text);">${p.followers}</strong> Followers</span>
                                 <span style="cursor:pointer;" onclick="changeView('following')"><strong style="color:var(--text);">${p.following}</strong> Following</span>
+                                ${p.followers>0&&!isMe?`<span style="cursor:pointer;color:var(--green);font-size:11px;font-weight:700;" onclick="toggleFollow('${p.username}',this)" id="quickFollowBtn">${p.is_following?'✓ Following':'+ Follow'}</span>`:''}
                             </div>
                         </div>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;">${followBtn||''}${challengeBtn||''}${editBtn||''}</div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                            ${followBtn||''}${challengeBtn||''}${editBtn||''}${shareBtn||''}
+                            <button class="btn btn-secondary btn-sm" onclick="copyProfileLink('${p.username}')" title="Copy profile link" style="font-size:12px;padding:7px 10px;">🔗</button>
+                        </div>
                     </div>
                 </div>
                 <!-- Stats grid -->
@@ -3104,12 +3392,23 @@ async function renderProfile(username){
                         <div class="profile-stat-num" style="color:${profitColor};">${(p.profit||0)>=0?'+':''}$${Math.abs(p.profit||0).toFixed(0)}</div>
                         <div class="profile-stat-label">P/L</div>
                     </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-num" style="color:var(--text-muted);">${(p.wins||0)+(p.losses||0)}</div>
+                        <div class="profile-stat-label">Bets</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-num" style="color:var(--gold);">${p.open_lines&&p.open_lines.length?p.open_lines.length:0}</div>
+                        <div class="profile-stat-label">Open Lines</div>
+                    </div>
                 </div>
             </div>
 
             <!-- Recent Bets -->
             <div class="profile-section">
-                <div class="profile-section-title">📋 Recent Results</div>
+                <div class="profile-section-title" style="display:flex;align-items:center;justify-content:space-between;">
+                    <span>📋 Recent Results</span>
+                    <span style="color:var(--text-dim);font-size:10px;font-weight:500;text-transform:none;letter-spacing:0;">${p.recent_bets&&p.recent_bets.length?p.recent_bets.length+' bets':''}</span>
+                </div>
                 <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:0 16px;">
                     ${betsHtml}
                 </div>
@@ -3126,10 +3425,13 @@ async function renderProfile(username){
         </div>`;
     } catch(e){
         return `<div class="empty-state">
-            <div class="empty-icon">😕</div>
-            <div class="empty-title">Profile not found</div>
-            <div class="empty-desc">${e.message}</div>
-            <button class="btn btn-secondary" style="margin-top:16px;" onclick="history.back()">← Go Back</button>
+            <div class="empty-icon">🔍</div>
+            <div class="empty-title">Profile Not Found</div>
+            <div class="empty-desc">${e.message==='User not found'?'This bookie doesn\'t exist or may have been deleted.':e.message}</div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+                <button class="btn btn-secondary" onclick="history.back()">← Go Back</button>
+                <button class="btn btn-primary" onclick="changeView('search')">Find Bookies</button>
+            </div>
         </div>`;
     }
 }
@@ -3230,19 +3532,43 @@ async function renderSettings(){
                 </div>
             </div>
 
-            <!-- Referral Code -->
+            <!-- Referral Code (loaded async) -->
             <div class="settings-section" style="border-color:rgba(0,214,122,.2);">
                 <div class="settings-section-title">🎁 Your Referral Code</div>
-                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                    <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--green);background:rgba(0,214,122,.08);border:1px solid rgba(0,214,122,.25);border-radius:8px;padding:8px 18px;">${u.referral_code||'—'}</div>
-                    ${u.referral_code?`<button class="btn btn-secondary btn-sm" onclick="async()=>{
-    const code='${u.referral_code}';
-    if(navigator.share){
-        try{await navigator.share({title:'Join BookieVerse',text:'Use my referral code '+code+' to get \$250 free coins!',url:window.location.origin+'?ref='+code});}
-        catch(e){await navigator.clipboard.writeText(code);toast('Code copied!','success');}
-    }else{await navigator.clipboard.writeText(code);toast('Code copied!','success');}
-}()">Share Code 🎁</button>`:''}
-                    <div style="font-size:12px;color:var(--text-muted);flex:1;min-width:120px;">Share your code — you both get <strong style="color:var(--green);">+$250</strong> when they sign up</div>
+                <div id="settingsRefCodeBlock" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:46px;">
+                    <div class="spinner" style="width:16px;height:16px;"></div>
+                </div>
+            </div>
+
+            <!-- Change Password -->
+            <div class="settings-section">
+                <div class="settings-section-title">🔒 Change Password</div>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="settingsNewPw" placeholder="6+ characters" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="settingsConfirmPw" placeholder="Repeat new password" autocomplete="new-password">
+                    </div>
+                </div>
+                <button class="btn btn-secondary btn-sm" style="margin-top:4px;" onclick="changePassword()">Update Password</button>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">You'll be logged out after changing.</div>
+            </div>
+
+            <!-- Keyboard Shortcuts info -->
+            <div class="settings-section" style="background:transparent;border-style:dashed;padding:14px 18px;">
+                <div class="settings-section-title">⌨️ Keyboard Shortcuts</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;color:var(--text-muted);">
+                    <div><kbd style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;font-size:11px;font-family:monospace;">/</kbd> Search</div>
+                    <div><kbd style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;font-size:11px;font-family:monospace;">m</kbd> Marketplace</div>
+                    <div><kbd style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;font-size:11px;font-family:monospace;">c</kbd> Create Line</div>
+                    <div><kbd style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;font-size:11px;font-family:monospace;">b</kbd> My Bets</div>
+                    <div><kbd style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;font-size:11px;font-family:monospace;">f</kbd> Feed</div>
+                    <div><kbd style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;font-size:11px;font-family:monospace;">l</kbd> Live Tracker</div>
+                    <div><kbd style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;font-size:11px;font-family:monospace;">n</kbd> Notifications</div>
+                    <div><kbd style="background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;font-size:11px;font-family:monospace;">Esc</kbd> Close / Back</div>
                 </div>
             </div>
 
@@ -3328,6 +3654,8 @@ async function changePassword(){
     }catch(e){toast('Connection error','error');}
 }
 async function saveSettings(){
+    const saveBtn=document.querySelector('[onclick="saveSettings()"]');
+    if(saveBtn){saveBtn.disabled=true;saveBtn.innerHTML='<span class="spinner"></span> Saving...';}
     const bio = document.getElementById('settingsBio')?.value?.trim() || '';
     const location = document.getElementById('settingsLocation')?.value?.trim() || '';
     const sport = document.getElementById('settingsSport')?.value || '';
@@ -3353,11 +3681,13 @@ async function saveSettings(){
                 if(data.avatar !== undefined) user.avatar = data.avatar;
             }
             window._pendingAvatar = undefined;
-            toast('✅ Profile saved!', 'success');
+            toast('Profile saved!', 'success');
             updateSidebarBalance();
+            if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='Save Profile';}
         } else {
             const e = await res.json().catch(()=>({}));
             toast(e.detail || 'Could not save', 'error');
+            if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='Save Profile';}
         }
     } catch(e){ toast('Connection error', 'error'); }
 }
@@ -3369,6 +3699,13 @@ let _chatLastId = 0;
 let _chatRoom = 'global';
 let _chatSending = false;
 
+function updateChatCounter(el){
+    const len=el.value.length;
+    const ct=document.getElementById('chatCounter');
+    if(!ct)return;
+    ct.textContent=len>0?`${len}/280`:'';
+    ct.style.color=len>250?'var(--red)':len>200?'var(--gold)':'var(--text-dim)';
+}
 function stopChat(){
     if(_chatPollInterval){ clearInterval(_chatPollInterval); _chatPollInterval = null; }
 }
@@ -3391,7 +3728,7 @@ function buildChatMessage(m, showMeta){
                 <span class="chat-ts">${m.ts||'now'}</span>
                 ${canDelete ? `<button class="chat-delete" onclick="deleteChat(${m.id})" title="Delete">✕</button>` : ''}
             </div>` : ''}
-            <div class="chat-bubble ${isMe?'mine':'theirs'}">${escapeHtml(m.message)}</div>
+            <div class="chat-bubble ${isMe?'mine':'theirs'}">${linkifyChat(m.message)}</div>
         </div>
         ${isMe ? `<div class="chat-msg-avatar" style="background:rgba(0,214,122,.15);border-color:rgba(0,214,122,.3);color:var(--green);">${initials}</div>` : ''}
     </div>`;
@@ -3403,6 +3740,12 @@ function escapeHtml(str){
         .replace(/</g,'&lt;')
         .replace(/>/g,'&gt;')
         .replace(/"/g,'&quot;');
+}
+function linkifyChat(str){
+    // First escape HTML, then make URLs clickable
+    const escaped = escapeHtml(str);
+    return escaped.replace(/(https?:\/\/[^\s<>"]+)/g,
+        '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--green);text-decoration:underline;word-break:break-all;">$1</a>');
 }
 
 function shouldShowMeta(msgs, idx){
@@ -3486,11 +3829,14 @@ async function renderChat(){
             </div>
 
             <!-- Input -->
-            <div class="chat-input-row">
-                <textarea class="chat-input" id="chatInput" placeholder="Say something..." rows="1" maxlength="500"
-                    onkeydown="chatKeyDown(event)"
-                    oninput="chatAutoResize(this)"></textarea>
-                <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
+            <div class="chat-input-row" style="flex-direction:column;gap:4px;">
+                <div style="display:flex;gap:8px;align-items:flex-end;">
+                    <textarea class="chat-input" id="chatInput" placeholder="Say something..." maxlength="280" rows="1"
+                        onkeydown="chatKeyDown(event)"
+                        oninput="chatAutoResize(this);updateChatCounter(this)"></textarea>
+                    <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
+                </div>
+                <div style="text-align:right;padding-right:48px;"><span id="chatCounter" style="font-size:10px;color:var(--text-dim);"></span></div>
             </div>
         </div>`;
 
@@ -3663,7 +4009,7 @@ function buildFeedItem(ev, idx){
     }[ev.type] || 'var(--border)';
 
     return `<div class="feed-item" style="animation-delay:${idx*0.04}s">
-        <div class="feed-avatar" style="border-color:${borderColor};">
+        <div class="feed-avatar" style="border-color:${borderColor};cursor:pointer;" onclick="viewProfile('${ev.actor}')">
             ${initials}
             <div class="feed-avatar-badge">${ev.emoji}</div>
         </div>
@@ -3681,6 +4027,7 @@ function buildFeedItem(ev, idx){
                 ${ev.amount ? `<span class="feed-amount-pill ${amtClass}">$${(ev.amount||0) >= 1000
                     ? (ev.amount/1000).toFixed(1)+'K'
                     : (ev.amount||0).toFixed(0)}</span>` : ''}
+                ${!ev.followed && ev.actor !== user?.username ? `<button class="btn btn-outline btn-sm" style="font-size:10px;padding:3px 9px;margin-left:auto;" onclick="event.stopPropagation();followUserFeed('${ev.actor}',this)">+ Follow</button>` : ''}
             </div>
             <div class="feed-ts">${ev.ts}</div>
         </div>
@@ -3695,13 +4042,14 @@ async function renderFeed(){
                     <div class="page-title" style="font-size:clamp(22px,5vw,36px);line-height:1;">Activity Feed</div>
                     <div class="page-subtitle" style="margin-top:2px;">What's happening on BookieVerse</div>
                 </div>
-                <div style="display:flex;gap:6px;">
+                <div style="display:flex;gap:6px;align-items:center;">
                     <button onclick="switchFeedTab('all')" id="feedTabAll"
                         class="btn btn-sm ${_feedTab==='all'?'btn-primary':'btn-secondary'}"
                         style="font-size:11px;min-height:32px;">🌍 All</button>
                     <button onclick="switchFeedTab('following')" id="feedTabFollowing"
                         class="btn btn-sm ${_feedTab==='following'?'btn-primary':'btn-secondary'}"
                         style="font-size:11px;min-height:32px;">⭐ Following</button>
+                    <button onclick="loadFeedEvents()" class="btn btn-secondary btn-sm" style="min-height:32px;padding:0 10px;font-size:14px;" title="Refresh feed">↻</button>
                 </div>
             </div>
             <div id="feedList">${skeletonCards(5)}</div>
@@ -3717,6 +4065,18 @@ async function switchFeedTab(tab){
     document.getElementById('feedTabFollowing').className= `btn btn-sm ${tab==='following'?'btn-primary':'btn-secondary'}`;
     document.getElementById('feedList').innerHTML = skeletonCards(4);
     await loadFeedEvents();
+}
+
+async function followUserFeed(username, btn){
+    try{
+        const res=await fetch(API+'/follow/'+username+'?token='+token,{method:'POST'});
+        if(res.ok){
+            btn.textContent='Following ✓';btn.className='btn btn-secondary btn-sm';
+            btn.style.cssText='font-size:10px;padding:3px 9px;margin-left:auto;';
+            btn.disabled=true;
+            toast(`Now following @${username}`,'success');
+        } else {const e=await res.json();toast(e.detail||'Error','error');}
+    }catch(e){toast('Connection error','error');}
 }
 
 async function loadFeedEvents(){
@@ -4130,6 +4490,7 @@ async function renderShop(){
                     <div style="font-weight:800;font-size:18px;">${pkg.label}</div>
                     <div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:800;color:${COLORS[i]};margin:8px 0;">${pkg.coins.toLocaleString()}</div>
                     <div style="font-size:13px;color:var(--text-muted);">coins${pkg.bonus?` <span style="color:var(--green);font-weight:700;">${pkg.bonus}</span>`:''}</div>
+                    <div style="font-size:9px;color:var(--text-dim);margin-top:2px;">≈ $${(pkg.price/pkg.coins).toFixed(4)} per coin</div>
                     <div style="font-size:24px;font-weight:800;margin:12px 0;">$${dollars}</div>
                     <button class="btn btn-primary btn-full" onclick="buyCoins('${pkg.id}')">Buy Now</button>
                 </div>
@@ -4164,6 +4525,7 @@ async function renderAdmin(){
                 <button class="btn btn-secondary" onclick="changeView('analytics')">📊 Analytics</button>
                 <button class="btn btn-secondary" onclick="adminUserSearch()">🔍 User Lookup</button>
                 <button class="btn btn-secondary" onclick="adminAddBalance()">💰 Add Balance</button>
+                <button class="btn btn-secondary" onclick="adminBanUser()">🚫 Ban User</button>
             </div>
             <div id="adminMsg" style="margin-top:10px;font-size:13px;color:var(--text-muted);"></div>
         </div>
@@ -4173,16 +4535,22 @@ async function renderAdmin(){
             html+=`<div style="color:var(--text-dim);font-size:14px;">No pending bets.</div>`;
         } else {
             bets.forEach(b=>{
-                html+=`<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">
-                    <div style="font-weight:700;">Bet #${b.id} — ${b.game}</div>
-                    <div style="color:var(--text-muted);margin-top:2px;">${b.type.toUpperCase()} · Bookie: ${b.bookie} (${b.bookie_side}) · Bettor: ${b.bettor} (${b.bettor_side})</div>
-                    <div style="color:var(--text-dim);font-size:12px;">game_id: ${b.game_id} · bookie $${(b.bookie_amount||0).toFixed(2)} vs bettor $${(b.bettor_amount||0).toFixed(2)}</div>
-                    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-                        <button class="btn btn-sm" style="background:var(--green);color:#000;" onclick="adminSettle(${b.id},'bookie')">Bookie Wins</button>
-                        <button class="btn btn-sm" style="background:var(--orange);color:#000;" onclick="adminSettle(${b.id},'bettor')">Bettor Wins</button>
-                        <button class="btn btn-secondary btn-sm" onclick="adminSettle(${b.id},'push')">Push</button>
-                        <button class="btn btn-sm" style="background:var(--border);color:var(--text-dim);font-size:11px;" onclick="adminMarkOnly(${b.id},'bookie')" title="Mark settled without touching balances">Mark Bookie ✓</button>
-                        <button class="btn btn-sm" style="background:var(--border);color:var(--text-dim);font-size:11px;" onclick="adminMarkOnly(${b.id},'bettor')" title="Mark settled without touching balances">Mark Bettor ✓</button>
+                html+=`<div style="padding:12px 0;border-bottom:1px solid var(--border);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:700;font-size:13px;">Bet #${b.id} — ${b.game}</div>
+                            <div style="color:var(--text-muted);font-size:12px;margin-top:2px;">${b.type.toUpperCase()} · <span style="color:var(--orange);">📚 ${b.bookie}</span> (${b.bookie_side}) vs <span style="color:var(--blue);">🎯 ${b.bettor}</span> (${b.bettor_side})</div>
+                            <div style="display:flex;gap:12px;margin-top:4px;font-size:11px;color:var(--text-dim);">
+                                <span>Bookie: <strong style="color:var(--orange)">$${(b.bookie_amount||0).toFixed(2)}</strong></span>
+                                <span>Bettor: <strong style="color:var(--blue)">$${(b.bettor_amount||0).toFixed(2)}</strong></span>
+                                <span>Pot: <strong style="color:var(--gold)">$${((b.bookie_amount||0)+(b.bettor_amount||0)).toFixed(2)}</strong></span>
+                            </div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:4px;min-width:110px;">
+                            <button class="btn btn-sm" style="background:var(--orange);color:#000;font-size:11px;" onclick="adminSettle(${b.id},'bookie')">📚 Bookie Wins</button>
+                            <button class="btn btn-sm" style="background:var(--blue);color:#fff;font-size:11px;" onclick="adminSettle(${b.id},'bettor')">🎯 Bettor Wins</button>
+                            <button class="btn btn-secondary btn-sm" style="font-size:11px;" onclick="adminSettle(${b.id},'push')">🤝 Push</button>
+                        </div>
                     </div>
                 </div>`;
             });
@@ -4237,6 +4605,17 @@ async function adminMarkOnly(betId, winner){
         const d=await res.json();
         toast(d.message||d.detail,'success');
         changeView('admin');
+    }catch(e){toast('Error: '+e.message,'error');}
+}
+async function adminBanUser(){
+    const u=prompt('Enter username to ban:');if(!u)return;
+    const ok=await showConfirm('Ban @'+u+'?','This will prevent them from logging in. Are you sure?');
+    if(!ok)return;
+    try{
+        const res=await fetch(`${API}/admin/ban-user?username=${encodeURIComponent(u)}&token=${token}`,{method:'POST'});
+        const d=await res.json();
+        if(res.ok)toast(d.message||`@${u} has been banned`,'success');
+        else toast(d.detail||'Error','error');
     }catch(e){toast('Error: '+e.message,'error');}
 }
 async function adminSettle(betId, winner){
@@ -4358,8 +4737,8 @@ async function renderApp(){
             <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="changeView('marketplace')">
                 <div class="topbar-logo">BV</div>
                 <div style="display:flex;flex-direction:column;line-height:1.2;">
-                    <span style="font-size:12px;font-weight:800;color:var(--text);letter-spacing:.5px;">BookieVerse</span>
-                    <span id="topbarRecord" style="font-size:9px;color:var(--text-dim);">${user.wins}W — ${user.losses}L</span>
+                    <span id="topbarViewName" style="font-size:12px;font-weight:800;color:var(--text);letter-spacing:.5px;">${{marketplace:'Market',live:'Live',create:'Set Lines',bets:'My Bets',feed:'Feed',chat:'Chat',props:'Props',futures:'Futures',challenges:'Challenges',friends:'Friends',following:'Following',search:'Find Bookies',leaderboard:'Leaders',referral:'Refer',settings:'Settings',profile:'Profile',parlays:'Parlays',shop:'Shop',analytics:'Analytics',admin:'Admin',groups:'Groups'}[view]||'BookieVerse'}</span>
+                    <span id="topbarRecord" style="font-size:9px;color:var(--text-dim);" onclick="changeView('bets')" title="View My Action" style="cursor:pointer;">${user.wins}W — ${user.losses}L${user.pending_bets>0?' · '+'<span style="color:var(--gold);font-weight:800;">⏳'+user.pending_bets+' live</span>'  :''}</span>
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
@@ -4368,7 +4747,7 @@ async function renderApp(){
                 </div>
                 <div id="topbarBalance" class="topbar-bal" onclick="changeView('bets')" title="Tap to go to My Bets" style="cursor:pointer;">$${Math.floor(user.balance).toLocaleString()}</div>
                 <div onclick="changeView('settings')" style="cursor:pointer;width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:var(--green);overflow:hidden;" id="topbarAvatar">
-                    ${user.username.slice(0,2).toUpperCase()}
+                    ${user.avatar?`<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;" alt="you">`:user.username.slice(0,2).toUpperCase()}
                 </div>
             </div>
         </div>
@@ -4383,13 +4762,22 @@ async function renderApp(){
                         ${user.avatar?`<img src="${user.avatar}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;">`:`<div style="width:34px;height:34px;border-radius:50%;background:var(--card);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;color:var(--green);flex-shrink:0;">${user.username.slice(0,2).toUpperCase()}</div>`}
                         <div>
                             <div class="sidebar-username">@${user.username}${user.is_admin?' 👑':''}</div>
-                            <div class="sidebar-stats">${user.wins}W — ${user.losses}L</div>
+                            <div class="sidebar-stats" style="display:flex;flex-direction:column;gap:2px;">
+                                <span>${user.wins}W — ${user.losses}L${(user.wins+user.losses>0)?' · '+(Math.round(user.wins/(user.wins+user.losses)*100))+'%':''}</span>
+                                ${user.wins+user.losses>0?`<div style="height:2px;width:80px;background:var(--border);border-radius:2px;margin-top:2px;overflow:hidden;"><div style="height:100%;width:${Math.round(user.wins/(user.wins+user.losses)*100)}%;background:var(--green);border-radius:2px;"></div></div>`:''}
+                            </div>
                         </div>
                     </div>
                     <div class="sidebar-balance">
-                        <div class="bal-label">Balance</div>
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                            <div class="bal-label">Balance</div>
+                            <div style="font-size:9px;color:var(--text-dim);font-weight:700;">ALL-TIME</div>
+                        </div>
                         <div class="bal-amount" id="sidebarBalance">$${Math.floor(user.balance).toLocaleString()}</div>
-                        <div class="bal-pl ${user.profit>=0?'pos':'neg'}" id="sidebarPL">${user.profit>=0?'+':'-'}$${Math.abs(user.profit||0).toLocaleString()} P/L</div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+                            <div class="bal-pl ${user.profit>=0?'pos':'neg'}" id="sidebarPL">${user.profit>=0?'+':'-'}$${Math.abs(user.profit||0).toLocaleString()} P/L</div>
+                            ${user.pending_bets>0?`<div style="font-size:10px;color:var(--gold);font-weight:700;">⏳ ${user.pending_bets} live</div>`:''}
+                        </div>
                     </div>
                 </div>
                 <div class="sidebar-nav">${sidebarNav}</div>
@@ -4588,15 +4976,21 @@ async function renderChallenges() {
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;">
                     <div style="flex:1;">
                         <div style="font-size:17px;font-weight:700;">@${c.challenger_name} challenges you</div>
-                        <div style="font-size:13px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.game}</div>
-                        <div style="font-size:13px;color:var(--text-muted);margin-top:3px;">
-                            <span class="badge badge-${c.type==="spread"?"spread":c.type==="moneyline"?"moneyline":"total"}" style="font-size:10px;">${c.type.toUpperCase()}</span> Their side: <strong style="color:var(--text)">${c.side}</strong>
-                            ${c.type !== 'moneyline' ? `<strong style="color:var(--text)"> ${c.value > 0 ? '+' : ''}${c.value}</strong>` : ''}
-                            · <span style="color:${c.odds > 0 ? 'var(--green)' : 'var(--text-muted)'};">${oddsStr}</span>
+                        <div style="font-size:13px;color:var(--text-dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.game}</div>
+                        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                            <div style="background:rgba(255,107,0,.1);border:1px solid rgba(255,107,0,.25);border-radius:8px;padding:6px 10px;flex:1;min-width:120px;">
+                                <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--orange);text-transform:uppercase;">They Back</div>
+                                <div style="font-size:15px;font-weight:800;color:var(--text);margin-top:2px;">${c.side} ${c.type!=='moneyline'?(c.value>0?'+':'')+c.value:''} <span style="color:${c.odds>0?'var(--green)':'var(--text-muted)'};">${oddsStr}</span></div>
+                                <div style="font-size:11px;color:var(--text-dim);">Stake: $${c.amount}</div>
+                            </div>
+                            <div style="background:rgba(0,214,122,.08);border:1px solid rgba(0,214,122,.25);border-radius:8px;padding:6px 10px;flex:1;min-width:120px;">
+                                <div style="font-size:9px;font-weight:800;letter-spacing:1px;color:var(--green);text-transform:uppercase;">You Get</div>
+                                <div style="font-size:15px;font-weight:800;color:var(--text);margin-top:2px;">${c.bettor_side||'Opposing side'} · ${oddsStr}</div>
+                                <div style="font-size:11px;color:var(--text-dim);">Stake: $${c.bettor_stake}</div>
+                            </div>
                         </div>
-                        <div style="margin-top:8px;font-size:13px;">
-                            They risk <strong style="color:var(--orange)">$${c.amount}</strong> · You risk <strong style="color:var(--green)">$${c.bettor_stake}</strong>
-                            · Pot: <strong style="color:var(--gold)">$${(c.amount + c.bettor_stake).toFixed(2)}</strong>
+                        <div style="margin-top:8px;font-size:12px;color:var(--text-dim);">
+                            Pot: <strong style="color:var(--gold)">$${(c.amount + c.bettor_stake).toFixed(2)}</strong>
                         </div>
                         ${c.message ? `<div style="margin-top:8px;font-style:italic;color:var(--text-muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c.message}">"${c.message.slice(0,80)}${c.message.length>80?'…':''}"</div>` : ''}
                     </div>
@@ -4709,18 +5103,37 @@ function renderNotifList() {
         return;
     }
     const NOTIF_EMOJI={challenge_received:'⚔️',challenge_accepted:'🔥',challenge_declined:'😤',bet_matched:'🤝',bet_settled:'💰',friend_request:'🤝',friend_accepted:'🎉',bet_won:'🏆',bet_lost:'💸',line_taken:'📊',new_follower:'⭐'};
+    // Group by time bucket
+    const now=Date.now();
+    let lastBucket='';
     list.innerHTML = _notifications.map(n => {
         const ago = timeAgo(n.created_at);
         const emoji = NOTIF_EMOJI[n.type] || '🔔';
-        return `<div class="notif-item ${n.is_read ? '' : 'unread'}" onclick="clickNotif(${n.id}, '${n.type}', ${n.ref_id || 'null'})">
+        const diff=(Date.now()-new Date(n.created_at).getTime())/1000;
+        const bucket=diff<3600?'Just Now':diff<86400?'Today':diff<172800?'Yesterday':'Earlier';
+        const bucketHtml=bucket!==lastBucket?(lastBucket=bucket,`<div style="font-size:9px;font-weight:800;letter-spacing:2px;color:var(--text-dim);padding:10px 4px 4px;text-transform:uppercase;">${bucket}</div>`):'';
+        // Action buttons for actionable notifications
+        let actionHtml='';
+        if(n.type==='challenge_received'&&n.ref_id&&!n.is_read){
+            actionHtml=`<div style="display:flex;gap:6px;margin-top:8px;">
+                <button class="btn btn-primary btn-sm" style="font-size:11px;padding:5px 12px;" onclick="event.stopPropagation();acceptChallenge(${n.ref_id}).then(()=>fetchNotifications(true))">Accept ✅</button>
+                <button class="btn btn-danger btn-sm" style="font-size:11px;padding:5px 12px;" onclick="event.stopPropagation();declineChallenge(${n.ref_id}).then(()=>fetchNotifications(true))">Decline</button>
+            </div>`;
+        } else if(n.type==='friend_request'&&n.ref_id&&!n.is_read){
+            actionHtml=`<div style="margin-top:8px;"><button class="btn btn-primary btn-sm" style="font-size:11px;padding:5px 12px;" onclick="event.stopPropagation();acceptFriendInline(${n.ref_id},this)">Accept 🤝</button></div>`;
+        } else if(['bet_won','bet_settled'].includes(n.type)){
+            actionHtml=`<div style="margin-top:6px;"><button class="btn btn-secondary btn-sm" style="font-size:10px;padding:4px 10px;" onclick="event.stopPropagation();closeNotifDrawer();changeView('bets')">View Bet →</button></div>`;
+        }
+        return bucketHtml+`<div class="notif-item ${n.is_read ? '' : 'unread'}" onclick="clickNotif(${n.id}, '${n.type}', ${n.ref_id || 'null'})">
             <div style="display:flex;align-items:flex-start;gap:10px;">
-                <div style="font-size:22px;flex-shrink:0;line-height:1.2;">${emoji}</div>
+                <div style="font-size:20px;flex-shrink:0;line-height:1.3;">${emoji}</div>
                 <div style="flex:1;min-width:0;">
                     <div class="notif-item-title">${n.title}</div>
                     <div class="notif-item-body">${n.body}</div>
                     <div class="notif-item-time">${ago}</div>
+                    ${actionHtml}
                 </div>
-                ${!n.is_read?'<div style="width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:4px;"></div>':''}
+                ${!n.is_read?'<div style="width:7px;height:7px;border-radius:50%;background:var(--orange);flex-shrink:0;margin-top:5px;"></div>':''}
             </div>
         </div>`;
     }).join('');
@@ -4801,6 +5214,28 @@ function changeView(v){
     });
     if(v==='marketplace')startLiveScores();
 }
+function updatePwStrength(pw){
+    const bar=document.getElementById('pwStrength');
+    const fill=document.getElementById('pwStrengthFill');
+    const label=document.getElementById('pwStrengthLabel');
+    if(!bar||!fill||!label)return;
+    if(!pw){bar.style.display='none';label.textContent='';return;}
+    bar.style.display='block';
+    let score=0;
+    if(pw.length>=6)score++;
+    if(pw.length>=10)score++;
+    if(/[A-Z]/.test(pw))score++;
+    if(/[0-9]/.test(pw))score++;
+    if(/[^a-zA-Z0-9]/.test(pw))score++;
+    const levels=[{pct:'20%',color:'var(--red)',text:'Too short'},
+        {pct:'40%',color:'var(--red)',text:'Weak'},
+        {pct:'60%',color:'var(--gold)',text:'Fair'},
+        {pct:'80%',color:'var(--blue)',text:'Good'},
+        {pct:'100%',color:'var(--green)',text:'Strong 💪'}];
+    const l=levels[Math.min(score,4)];
+    fill.style.width=l.pct;fill.style.background=l.color;
+    label.style.color=l.color;label.textContent=l.text;
+}
 function showForgotPassword(){
     const email = prompt('Enter the email address you registered with:');
     if(!email) return;
@@ -4852,7 +5287,13 @@ function renderLogin(){
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input id="regPassword" type="password" placeholder="6+ characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doRegister()">
+                    <input id="regPassword" type="password" placeholder="6+ characters" autocomplete="new-password"
+                        onkeydown="if(event.key==='Enter')doRegister()"
+                        oninput="updatePwStrength(this.value)">
+                    <div id="pwStrength" style="margin-top:6px;height:3px;border-radius:2px;background:var(--border);overflow:hidden;display:none;">
+                        <div id="pwStrengthFill" style="height:100%;width:0%;border-radius:2px;transition:width .3s,background .3s;"></div>
+                    </div>
+                    <div id="pwStrengthLabel" style="font-size:10px;margin-top:3px;color:var(--text-dim);"></div>
                 </div>
                 <div class="form-group">
                     <label>Referral Code <span style="color:var(--text-dim);font-weight:400;">(optional)</span></label>
@@ -4885,7 +5326,81 @@ function switchLoginTab(isLogin){
     if(!isLogin) setTimeout(()=>document.getElementById('regUsername')?.focus(),100);
     else setTimeout(()=>document.getElementById('loginUsername')?.focus(),100);
 }
+// Handle URL params on load
+const _urlParams=new URLSearchParams(window.location.search);
+const _urlUser=_urlParams.get('u');
+const _urlView=_urlParams.get('view');
+if(_urlUser){_profileUsername=_urlUser;view='profile';}
+else if(_urlView&&['marketplace','leaderboard','search','feed','live'].includes(_urlView)){view=_urlView;}
+else{const lastView=localStorage.getItem('lastView');if(lastView&&['marketplace','live','create','bets','feed','chat','leaderboard'].includes(lastView))view=lastView;}
 if(!token){renderLogin();}else{(async()=>{await loadPropTypes();renderApp();startNotifPolling();})();}
+
+// ── Global Keyboard Shortcuts ───────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+    if (!token) return;
+    const tag = document.activeElement?.tagName?.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (document.querySelector('.modal.open, .modal-overlay.open, #betAmountModal.open')) return;
+    switch(e.key) {
+        case '/': e.preventDefault(); changeView('search'); break;
+        case 'm': changeView('marketplace'); break;
+        case 'c': changeView('create'); break;
+        case 'b': changeView('bets'); break;
+        case 'f': changeView('feed'); break;
+        case 'l': changeView('live'); break;
+        case 'n': e.preventDefault(); toggleNotifDrawer(); break;
+        case 'Escape': closeNotifDrawer(); closeAllModals(); break;
+    }
+});
+function closeAllModals() {
+    document.querySelectorAll('.modal-overlay.open,.modal.open,#betAmountModal.open').forEach(el => el.classList.remove('open'));
+    const res = window._confirmResolve; if(res) { window._confirmResolve=null; res(false); }
+    const bRes = window._betResolve; if(bRes) { window._betResolve=null; bRes(null); }
+}
+function toggleNotifDrawer() {
+    const drawer = document.getElementById('notifDrawer');
+    if(!drawer) return;
+    if(drawer.classList.contains('open')) closeNotifDrawer();
+    else openNotifDrawer();
+}
+
+// ── Pull-to-Refresh (mobile) ─────────────────────────────────────────────────
+(function initPullToRefresh(){
+    let startY=0, isDragging=false, indicator=null;
+    document.addEventListener('touchstart',e=>{
+        const ca=document.querySelector('.content-area');
+        if(!ca||ca.scrollTop>0)return;
+        startY=e.touches[0].clientY;
+        isDragging=true;
+    },{passive:true});
+    document.addEventListener('touchmove',e=>{
+        if(!isDragging)return;
+        const dy=e.touches[0].clientY-startY;
+        if(dy>10&&dy<80){
+            if(!indicator){
+                indicator=document.createElement('div');
+                indicator.id='ptr-indicator';
+                indicator.style.cssText='position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;color:var(--text-muted);z-index:9999;display:flex;align-items:center;gap:6px;transition:opacity .2s;';
+                indicator.innerHTML='↓ Pull to refresh';
+                document.body.appendChild(indicator);
+            }
+            if(dy>50) indicator.innerHTML='↑ Release to refresh';
+            else indicator.innerHTML='↓ Pull to refresh';
+        }
+    },{passive:true});
+    document.addEventListener('touchend',e=>{
+        if(!isDragging)return;
+        isDragging=false;
+        const dy=e.changedTouches[0].clientY-startY;
+        if(indicator){indicator.remove();indicator=null;}
+        if(dy>50){
+            // Refresh current view
+            renderApp();
+            toast('Refreshed','info',1500);
+        }
+        startY=0;
+    },{passive:true});
+})();
 </script>
 </body>
 </html>
