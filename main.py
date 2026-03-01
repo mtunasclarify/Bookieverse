@@ -20,6 +20,14 @@ from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from sqlalchemy import func
 import json
 
+# Web Push
+try:
+    from pywebpush import webpush, WebPushException
+    _WEBPUSH_AVAILABLE = True
+except ImportError:
+    _WEBPUSH_AVAILABLE = False
+    print("[push] pywebpush not installed — web push disabled. Run: pip install pywebpush")
+
 app = FastAPI(title="BookieVerse Complete")
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -31,6 +39,9 @@ if DATABASE_URL.startswith("postgres://"):
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 ODDS_API_KEY = os.getenv("ODDS_API_KEY", "")
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+VAPID_PUBLIC_KEY  = os.getenv("VAPID_PUBLIC_KEY", "")
+VAPID_CLAIMS_SUB  = os.getenv("VAPID_CLAIMS_SUB", "mailto:admin@bookieverse.com")
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 
@@ -258,6 +269,15 @@ class ParlayBet(Base):
     winner = Column(String, nullable=True)       # "bookie" or "bettor"
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+    id         = Column(Integer, primary_key=True)
+    user_id    = Column(Integer, index=True)
+    endpoint   = Column(Text, unique=True)
+    p256dh     = Column(Text)
+    auth       = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 Base.metadata.create_all(bind=engine)
 
 def run_migrations():
@@ -308,6 +328,15 @@ def run_migrations():
         # bets table — game_id and created_at for live tracking
         "ALTER TABLE bets ADD COLUMN IF NOT EXISTS game_id VARCHAR",
         "ALTER TABLE bets ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()",
+        # push subscriptions table
+        """CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER,
+            endpoint TEXT UNIQUE,
+            p256dh TEXT,
+            auth TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
     ]
     with engine.connect() as conn:
         for sql in migrations:
@@ -650,12 +679,51 @@ def refund_unmatched_line(db, line):
 
 # ─── NOTIFICATION HELPERS ─────────────────────────────────────────────────────
 
+def _send_web_push(sub: "PushSubscription", title: str, body: str, url: str) -> bool:
+    """Send a single web push. Returns True=ok, False=error, None=expired(remove)."""
+    if not _WEBPUSH_AVAILABLE or not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
+        return False
+    payload = json.dumps({"title": title, "body": body, "icon": "/icon-192.png",
+                          "badge": "/icon-192.png", "url": url, "tag": "bv-notif"})
+    try:
+        webpush(
+            subscription_info={"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh, "auth": sub.auth}},
+            data=payload,
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={"sub": VAPID_CLAIMS_SUB},
+        )
+        return True
+    except WebPushException as e:
+        status = e.response.status_code if e.response is not None else 0
+        if status in (404, 410):
+            return None   # expired — caller removes it
+        print(f"[push] WebPushException {status}: {e}")
+        return False
+    except Exception as e:
+        print(f"[push] send error: {e}")
+        return False
+
 def push_notification(db, user_id: int, type: str, title: str, body: str, ref_id: int = None):
-    """Create a notification for a user. Fire-and-forget — never raises."""
+    """Create an in-app notification AND fire web push to all registered devices. Fire-and-forget."""
     try:
         n = Notification(user_id=user_id, type=type, title=title, body=body, ref_id=ref_id)
         db.add(n)
         # No commit here — caller handles the commit
+
+        # Web push — best-effort
+        if _WEBPUSH_AVAILABLE and VAPID_PRIVATE_KEY:
+            view_map = {
+                "bet_matched": "bets", "bet_settled": "bets",
+                "challenge_received": "challenges", "challenge_accepted": "challenges",
+                "challenge_declined": "challenges",
+                "friend_request": "friends", "friend_accepted": "friends",
+                "group_invite": "friends", "coins_added": "settings",
+            }
+            url  = f"/app?view={view_map.get(type, 'bets')}"
+            subs = db.query(PushSubscription).filter(PushSubscription.user_id == user_id).all()
+            stale = [s.id for s in subs if _send_web_push(s, title, body, url) is None]
+            if stale:
+                db.query(PushSubscription).filter(PushSubscription.id.in_(stale)).delete(synchronize_session=False)
     except Exception as e:
         print(f"push_notification error: {e}")
 
@@ -3031,6 +3099,80 @@ def serve_app():
             with open(path, "r") as f:
                 return f.read()
     return HTMLResponse("<h1>index.html not found</h1>", status_code=500)
+
+
+# ─── WEB PUSH ROUTES ──────────────────────────────────────────────────────────
+
+class PushSubscribeRequest(BaseModel):
+    subscription: dict   # {endpoint, keys: {p256dh, auth}}
+
+class PushUnsubscribeRequest(BaseModel):
+    endpoint: str
+
+@app.get("/sw.js")
+def serve_sw():
+    """Serve the service worker from the same directory as main.py."""
+    base = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(base, "sw.js")
+    if not os.path.exists(path):
+        # Return a minimal no-op SW if file is missing so the app doesn't break
+        return HTMLResponse("self.addEventListener('push',()=>{});", media_type="application/javascript")
+    return FileResponse(path, media_type="application/javascript")
+
+@app.get("/api/push/vapid-key")
+def get_vapid_key():
+    """Return VAPID public key so the frontend can subscribe."""
+    if not VAPID_PUBLIC_KEY:
+        raise HTTPException(503, "Push notifications not configured — set VAPID_PUBLIC_KEY env var")
+    return {"public_key": VAPID_PUBLIC_KEY}
+
+@app.post("/api/push/subscribe")
+def push_subscribe(req: PushSubscribeRequest, token: str, db: Session = Depends(get_db)):
+    """Register or refresh a push subscription for the current user."""
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    sub  = req.subscription
+    ep   = sub.get("endpoint", "")
+    keys = sub.get("keys", {})
+    p256 = keys.get("p256dh", "")
+    auth = keys.get("auth", "")
+    if not ep or not p256 or not auth:
+        raise HTTPException(400, "Invalid subscription — missing endpoint or keys")
+    existing = db.query(PushSubscription).filter(PushSubscription.endpoint == ep).first()
+    if existing:
+        existing.user_id = user_id
+        existing.p256dh  = p256
+        existing.auth    = auth
+    else:
+        db.add(PushSubscription(user_id=user_id, endpoint=ep, p256dh=p256, auth=auth))
+    db.commit()
+    return {"message": "Subscribed"}
+
+@app.post("/api/push/unsubscribe")
+def push_unsubscribe(req: PushUnsubscribeRequest, token: str, db: Session = Depends(get_db)):
+    """Remove a push subscription when user disables push in settings."""
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    db.query(PushSubscription).filter(
+        PushSubscription.user_id == user_id,
+        PushSubscription.endpoint == req.endpoint
+    ).delete()
+    db.commit()
+    return {"message": "Unsubscribed"}
+
+@app.delete("/api/push/subscriptions")
+def push_clear_all(token: str, db: Session = Depends(get_db)):
+    """Remove all push subscriptions for the current user (e.g. on logout)."""
+    user_id = verify_token(token)
+    if not user_id:
+        raise HTTPException(401, "Invalid token")
+    db.query(PushSubscription).filter(PushSubscription.user_id == user_id).delete()
+    db.commit()
+    return {"message": "All subscriptions removed"}
+
+# ─── WEB PUSH ROUTES END ──────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
