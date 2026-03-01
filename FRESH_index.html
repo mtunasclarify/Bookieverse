@@ -214,6 +214,40 @@
         .notif-empty{text-align:center;padding:60px 20px;color:var(--text-muted);}
         .notif-overlay{position:fixed;inset:0;z-index:999;display:none;cursor:pointer;}
         .notif-overlay.open{display:block;}
+        /* ── Bet Slip ──────────────────────────────────── */
+        .bet-slip-panel{position:fixed;bottom:0;left:0;right:0;z-index:450;
+            background:var(--surface);border-top:2px solid var(--green);
+            border-radius:20px 20px 0 0;
+            transform:translateY(calc(100% - 56px));
+            transition:transform .3s cubic-bezier(.32,.72,0,1);
+            box-shadow:0 -8px 40px rgba(0,214,122,.12);}
+        .bet-slip-panel.open{transform:translateY(0);}
+        .bet-slip-panel.hidden{display:none;}
+        .bet-slip-handle{display:flex;align-items:center;justify-content:space-between;
+            padding:0 20px;height:56px;cursor:pointer;user-select:none;}
+        .bet-slip-tab{display:flex;align-items:center;gap:10px;}
+        .bet-slip-count{background:var(--green);color:#000;font-size:11px;font-weight:900;
+            min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;
+            justify-content:center;padding:0 6px;}
+        .bet-slip-body{max-height:65vh;overflow-y:auto;padding:0 16px 16px;}
+        .slip-item{background:var(--bg);border:1px solid var(--border);border-radius:10px;
+            padding:10px 12px;margin-bottom:8px;position:relative;}
+        .slip-item-remove{position:absolute;top:8px;right:8px;background:none;border:none;
+            color:var(--text-dim);cursor:pointer;font-size:16px;padding:2px 6px;
+            border-radius:4px;transition:color .15s;}
+        .slip-item-remove:hover{color:var(--red);}
+        .slip-amount-input{width:100%;padding:8px 10px;background:var(--card);border:1px solid var(--border);
+            border-radius:8px;color:var(--text);font-size:15px;font-weight:700;
+            font-family:'Barlow Condensed',sans-serif;margin-top:8px;text-align:center;}
+        .slip-amount-input:focus{border-color:var(--green);outline:none;}
+        .slip-payout{font-size:11px;color:var(--text-dim);text-align:right;margin-top:4px;}
+        @media(max-width:768px){
+            .bet-slip-panel{bottom:58px;bottom:calc(58px + env(safe-area-inset-bottom));}
+        }
+        /* ── Push Notification prompt ──────────────────── */
+        .push-prompt{background:rgba(0,214,122,.08);border:1px solid rgba(0,214,122,.25);
+            border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;
+            align-items:center;gap:12px;}
         /* ─── TOAST ─── */
         .toast-container{position:fixed;bottom:calc(28px + env(safe-area-inset-bottom));right:16px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;max-width:calc(100vw - 32px);}
         @media(max-width:768px){.toast-container{bottom:calc(74px + env(safe-area-inset-bottom));right:10px;left:10px;}
@@ -845,9 +879,273 @@
         </div>
     </div>
 </div>
+<!-- ── Bet Slip Panel ──────────────────────────────────────────────────── -->
+<div class="bet-slip-panel hidden" id="betSlipPanel">
+    <div class="bet-slip-handle" onclick="toggleBetSlip()">
+        <div class="bet-slip-tab">
+            <span style="font-size:20px;">🎟️</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:.5px;">BET SLIP</span>
+            <span class="bet-slip-count" id="betSlipCount">0</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:var(--green);" id="betSlipTotal"></span>
+            <span style="font-size:18px;color:var(--text-dim);transition:transform .3s;" id="betSlipChevron">▲</span>
+        </div>
+    </div>
+    <div class="bet-slip-body" id="betSlipBody"></div>
+</div>
+
 <script>
 const API=window.location.origin+'/api';
 let token=localStorage.getItem('token');
+
+// ── BET SLIP ──────────────────────────────────────────────────────────────────
+let _betSlip = []; // [{lineId, game, pick, odds, maxBettor, bookieName, amount}]
+let _betSlipOpen = false;
+
+function addToSlip(lineId) {
+    const line = linesCache.find(l => l.id === lineId);
+    if (!line) { toast('Line not found', 'error'); return; }
+    if (_betSlip.find(s => s.lineId === lineId)) {
+        toast('Already in your slip', 'info'); return;
+    }
+    const avail = line.amount - (line.total_action || 0);
+    const availBettor = line.available_for_bettor || avail;
+    if (availBettor <= 0.01) { toast('This line is fully matched', 'error'); return; }
+
+    const _gp = line.game.split(' @ ');
+    const _aw = _gp[0] || 'Away', _hm = _gp[1] || 'Home';
+    let pick;
+    if (line.type === 'total') pick = (line.side === 'over' ? 'Under' : 'Over') + ' ' + line.value;
+    else if (line.type === 'spread') {
+        const v = line.value;
+        pick = line.side === 'home' ? (_aw + ' ' + (v > 0 ? '-' : '+') + Math.abs(v)) : (_hm + ' ' + (v > 0 ? '-' : '+') + Math.abs(v));
+    } else { pick = line.side === 'home' ? _aw : _hm; }
+
+    const maxBettor = Math.min(availBettor, line.max_bet_per_user || availBettor, user ? user.balance : availBettor);
+    _betSlip.push({ lineId, game: line.game, pick, odds: line.odds || -110, maxBettor: +maxBettor.toFixed(2), bookieName: line.bookie_name, amount: '' });
+    renderBetSlip();
+    if (!_betSlipOpen) openBetSlip();
+    // Update button state in DOM
+    const btn = document.querySelector(`[data-slip-btn="${lineId}"]`);
+    if (btn) { btn.textContent = '✓ In Slip'; btn.classList.add('btn-secondary'); btn.classList.remove('btn-primary'); }
+    toast(`Added to slip · ${_betSlip.length} bet${_betSlip.length !== 1 ? 's' : ''}`, 'success', 1500);
+}
+
+function removeFromSlip(lineId) {
+    _betSlip = _betSlip.filter(s => s.lineId !== lineId);
+    renderBetSlip();
+    const btn = document.querySelector(`[data-slip-btn="${lineId}"]`);
+    if (btn) { btn.textContent = 'Add +'; btn.classList.add('btn-primary'); btn.classList.remove('btn-secondary'); }
+    if (_betSlip.length === 0) closeBetSlip();
+}
+
+function renderBetSlip() {
+    const panel = document.getElementById('betSlipPanel');
+    const countEl = document.getElementById('betSlipCount');
+    const totalEl = document.getElementById('betSlipTotal');
+    const body = document.getElementById('betSlipBody');
+    if (!panel) return;
+
+    if (_betSlip.length === 0) { panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+    countEl.textContent = _betSlip.length;
+
+    // Calculate total liability
+    let totalLiability = 0;
+    _betSlip.forEach(s => { const a = parseFloat(s.amount); if (!isNaN(a) && a > 0) totalLiability += a; });
+    totalEl.textContent = totalLiability > 0 ? `$${totalLiability.toFixed(0)} total` : '';
+
+    body.innerHTML = _betSlip.map((s, i) => {
+        const odds = s.odds;
+        const oddsStr = odds > 0 ? '+' + odds : String(odds);
+        const oddsColor = odds > 0 ? 'var(--green)' : 'var(--text-muted)';
+        const amt = parseFloat(s.amount);
+        let toWin = '';
+        if (!isNaN(amt) && amt > 0) {
+            const win = odds > 0 ? amt * (odds / 100) : amt * (100 / Math.abs(odds));
+            toWin = `Win <strong style="color:var(--green)">+$${win.toFixed(2)}</strong>`;
+        }
+        return `<div class="slip-item">
+            <button class="slip-item-remove" onclick="removeFromSlip(${s.lineId})">✕</button>
+            <div style="font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:24px;">${s.game}</div>
+            <div style="font-size:15px;font-weight:800;margin-top:2px;">${s.pick} <span style="font-family:'Barlow Condensed',sans-serif;font-size:18px;color:${oddsColor};">${oddsStr}</span></div>
+            <div style="font-size:10px;color:var(--text-dim);margin-top:1px;">📚 @${s.bookieName}</div>
+            <input class="slip-amount-input" type="number" placeholder="Stake (max $${s.maxBettor})"
+                value="${s.amount}" min="1" max="${s.maxBettor}" step="1"
+                oninput="_betSlip[${i}].amount=this.value;renderBetSlip();">
+            <div class="slip-payout">${toWin || `<span style="color:var(--text-dim)">Enter stake · max $${s.maxBettor}</span>`}</div>
+        </div>`;
+    }).join('') + `
+    <div style="padding-top:4px;">
+        <button class="btn btn-primary btn-full btn-lg" onclick="placeAllSlipBets()" style="font-weight:900;letter-spacing:.5px;">
+            Place ${_betSlip.length} Bet${_betSlip.length !== 1 ? 's' : ''} ⚡
+        </button>
+        <button class="btn btn-secondary btn-full" style="margin-top:8px;font-size:13px;" onclick="clearBetSlip()">Clear Slip</button>
+    </div>`;
+}
+
+function openBetSlip() {
+    _betSlipOpen = true;
+    document.getElementById('betSlipPanel')?.classList.add('open');
+    const ch = document.getElementById('betSlipChevron');
+    if (ch) ch.style.transform = 'rotate(180deg)';
+}
+function closeBetSlip() {
+    _betSlipOpen = false;
+    document.getElementById('betSlipPanel')?.classList.remove('open');
+    const ch = document.getElementById('betSlipChevron');
+    if (ch) ch.style.transform = '';
+}
+function toggleBetSlip() { _betSlipOpen ? closeBetSlip() : openBetSlip(); }
+function clearBetSlip() {
+    _betSlip = [];
+    renderBetSlip();
+    closeBetSlip();
+    // Reset all slip buttons
+    document.querySelectorAll('[data-slip-btn]').forEach(btn => {
+        btn.textContent = 'Add +'; btn.classList.add('btn-primary'); btn.classList.remove('btn-secondary');
+    });
+}
+
+async function placeAllSlipBets() {
+    if (!_betSlip.length) return;
+    // Validate all have amounts
+    const invalid = _betSlip.find(s => !s.amount || isNaN(parseFloat(s.amount)) || parseFloat(s.amount) <= 0);
+    if (invalid) { toast('Enter a stake for every bet', 'error'); return; }
+    const overMax = _betSlip.find(s => parseFloat(s.amount) > s.maxBettor);
+    if (overMax) { toast(`Stake for "${overMax.pick}" exceeds max $${overMax.maxBettor}`, 'error'); return; }
+
+    const totalNeeded = _betSlip.reduce((s, b) => s + parseFloat(b.amount), 0);
+    if (user && totalNeeded > user.balance) {
+        toast(`Total stakes $${totalNeeded.toFixed(2)} exceeds balance $${Math.floor(user.balance)}`, 'error');
+        return;
+    }
+    const placeBtn = document.querySelector('#betSlipBody .btn-primary');
+    if (placeBtn) { placeBtn.disabled = true; placeBtn.textContent = 'Placing bets...'; }
+
+    let placed = 0, failed = 0;
+    for (const slip of [..._betSlip]) {
+        try {
+            const res = await fetch(API + '/lines/take?token=' + token, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ line_id: slip.lineId, amount: parseFloat(slip.amount) })
+            });
+            if (res.ok) { placed++; }
+            else { const e = await res.json().catch(() => ({})); failed++; toast(`${slip.pick}: ${e.detail || 'Failed'}`, 'error', 4000); }
+        } catch (e) { failed++; toast(`${slip.pick}: Connection error`, 'error', 3000); }
+    }
+    if (placed > 0) {
+        toast(`✅ ${placed} bet${placed !== 1 ? 's' : ''} placed!${failed ? ` · ${failed} failed` : ''}`, 'success', 4000);
+        clearBetSlip();
+        await loadUser(); updateSidebarBalance();
+        renderApp();
+    } else {
+        if (placeBtn) { placeBtn.disabled = false; placeBtn.textContent = `Place ${_betSlip.length} Bets ⚡`; }
+    }
+}
+
+// ── PUSH NOTIFICATIONS ────────────────────────────────────────────────────────
+// Replace with your VAPID public key from the backend
+const VAPID_PUBLIC_KEY = localStorage.getItem('vapidPublicKey') || '';
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function getPushVapidKey() {
+    try {
+        const res = await fetch(API + '/push/vapid-key');
+        if (res.ok) { const d = await res.json(); return d.public_key || ''; }
+    } catch (e) {}
+    return '';
+}
+
+async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        toast('Push notifications not supported in this browser', 'error'); return false;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Notification permission denied', 'error'); return false; }
+    try {
+        let vapidKey = VAPID_PUBLIC_KEY;
+        if (!vapidKey) vapidKey = await getPushVapidKey();
+        if (!vapidKey) { toast('Push not configured — contact admin', 'error'); return false; }
+
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+            sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidKey)
+            });
+        }
+        const res = await fetch(API + '/push/subscribe?token=' + token, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: sub.toJSON() })
+        });
+        if (res.ok) {
+            localStorage.setItem('pushEnabled', '1');
+            toast('🔔 Push notifications enabled!', 'success');
+            return true;
+        } else { toast('Could not register subscription with server', 'error'); return false; }
+    } catch (e) { console.error('[Push]', e); toast('Could not enable push: ' + e.message, 'error'); return false; }
+}
+
+async function unsubscribeFromPush() {
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+            await fetch(API + '/push/unsubscribe?token=' + token, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: sub.endpoint })
+            });
+            await sub.unsubscribe();
+        }
+        localStorage.removeItem('pushEnabled');
+        toast('Push notifications disabled', 'info');
+        return true;
+    } catch (e) { toast('Could not disable push: ' + e.message, 'error'); return false; }
+}
+
+async function togglePushNotifications(btn) {
+    btn.disabled = true;
+    const enabled = localStorage.getItem('pushEnabled') === '1' && Notification.permission === 'granted';
+    if (enabled) {
+        await unsubscribeFromPush();
+    } else {
+        await subscribeToPush();
+    }
+    btn.disabled = false;
+    updatePushBtn(btn);
+}
+
+function updatePushBtn(btn) {
+    if (!btn) return;
+    const enabled = localStorage.getItem('pushEnabled') === '1' && Notification.permission === 'granted';
+    btn.textContent = enabled ? '🔔 Push On — Tap to Disable' : '🔕 Enable Push Notifications';
+    btn.className = enabled ? 'btn btn-secondary' : 'btn btn-primary';
+}
+
+// Auto-resubscribe on login if previously enabled
+async function maybeResubscribePush() {
+    if (localStorage.getItem('pushEnabled') === '1' && token && 'serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready.catch(() => null);
+        if (!reg) return;
+        const sub = await reg.pushManager.getSubscription().catch(() => null);
+        if (sub) {
+            // Re-register with server silently (token may have changed)
+            fetch(API + '/push/subscribe?token=' + token, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscription: sub.toJSON() })
+            }).catch(() => {});
+        }
+    }
+}
 
 // Support ?view= URL param (used by PWA shortcuts)
 (()=>{const p=new URLSearchParams(location.search).get('view');if(p)localStorage.setItem('lastView',p);})();
@@ -1155,6 +1453,7 @@ async function loadUser(){
         const res=await fetch(API+'/user?token='+token);
         if(!res.ok){localStorage.removeItem('token');token=null;user=null;renderLogin();return;}
         user=await res.json();
+        maybeResubscribePush();
     }catch(e){localStorage.removeItem('token');token=null;user=null;renderLogin();}
 }
 async function loadPropTypes(){try{const res=await fetch(API+'/prop-types');if(res.ok)propTypes=await res.json();}catch(e){propTypes={};console.warn('Could not load prop types',e);}}
@@ -1351,10 +1650,15 @@ async function loadLines(){
                         <div style="text-align:right;flex-shrink:0;min-width:90px;">
                             <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:${isFull?'var(--text-dim)':'var(--green)'};line-height:1;">${isFull?'FULL':'+$'+avail.toFixed(0)}</div>
                             <div style="font-size:10px;color:var(--text-dim);margin:3px 0 8px;">to win</div>
-                            <button class="btn ${isOwn||isGameStarted||isFull?'btn-secondary':'btn-primary'} btn-sm" onclick="event.stopPropagation();${(!isFull&&!isOwn&&!isGameStarted)?'takeLine('+line.id+')':''}" ${(isFull||isOwn||isGameStarted)?'disabled':''} style="font-size:12px;padding:8px 14px;min-width:80px;font-weight:800;">
-                                ${isFull?'Full 🔒':isOwn?'Your Line':isGameStarted?'🔴 Closed':'Bet →'}
-                            </button>
-                            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();shareLineLink(${line.id},'${line.game.replace(/'/g,"\\'")}','${line.type}','${line.side}')" title="Share this line" style="font-size:14px;padding:8px 10px;min-width:36px;">🔗</button>
+                            ${!isFull&&!isOwn&&!isGameStarted ? `
+                            <div style="display:flex;flex-direction:column;gap:4px;">
+                                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();takeLine(${line.id})" style="font-size:12px;padding:8px 14px;font-weight:800;">Bet Now</button>
+                                <button class="btn btn-secondary btn-sm" data-slip-btn="${line.id}" onclick="event.stopPropagation();addToSlip(${line.id})" style="font-size:11px;padding:5px 10px;">${_betSlip.some(s=>s.lineId===line.id)?'✓ In Slip':'+ Slip'}</button>
+                            </div>` : `
+                            <button class="btn btn-secondary btn-sm" disabled style="font-size:12px;padding:8px 14px;min-width:80px;font-weight:800;">
+                                ${isFull?'Full 🔒':isOwn?'Your Line':'🔴 Closed'}
+                            </button>`}
+                            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();shareLineLink(${line.id},'${line.game.replace(/'/g,"\\'")}','${line.type}','${line.side}')" title="Share this line" style="font-size:14px;padding:8px 10px;min-width:36px;margin-top:4px;">🔗</button>
                         </div>
                     </div>
                     <div style="margin-top:8px;">
@@ -1437,7 +1741,7 @@ async function takeLine(lineId){
     );
     if(!amount)return;
 
-    const toWin=(odds>0?(amount*(100/odds)):(amount*(Math.abs(odds)/100))).toFixed(2);
+    const toWin=(odds>0?(amount*(odds/100)):(amount*(100/Math.abs(odds)))).toFixed(2);
 
     try{
         const res=await fetch(API+'/lines/take?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_id:lineId,amount:parseFloat(amount)})});
@@ -1918,7 +2222,7 @@ async function renderProps(){
             const oddsStr=odds>0?'+'+odds:String(odds);
             const oddsColor=odds>0?'var(--green)':'var(--text-muted)';
             let bettorRisk;
-            bettorRisk=(p.amount*(100/Math.abs(odds))).toFixed(0);
+            bettorRisk=(odds>0?(p.amount*(odds/100)):(p.amount*(100/Math.abs(odds)))).toFixed(0);
             html+=`<div class="card" style="padding:14px 18px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
         <div style="flex:1;min-width:0;">
@@ -2011,12 +2315,16 @@ async function takeProp(propId){
     const oppSide=prop.side==='over'?'under':'over';
     // Bettor stake mirrors the bookie stake at these odds
     let bettorRisk;
-    bettorRisk=(prop.amount*(100/Math.abs(odds))).toFixed(2);
+    bettorRisk=(odds>0?(prop.amount*(odds/100)):(prop.amount*(100/Math.abs(odds)))).toFixed(2);
     const ok=await showConfirm(
         `Take this prop?`,
         `${prop.player_name} — ${prop.prop_type} ${oppSide.toUpperCase()} ${prop.line}\nOdds: ${oddsStr}\nYou risk $${bettorRisk} to win $${prop.amount}`
     );
     if(!ok)return;
+    if(!user || user.balance < parseFloat(bettorRisk)){
+        toast(`Insufficient funds — need $${bettorRisk}, you have $${Math.floor(user?.balance||0)}`,'error');
+        return;
+    }
     try{
         const res=await fetch(API+'/props/take?token='+token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prop_id:propId})});
         if(res.ok){
@@ -2085,6 +2393,7 @@ async function submitFutureBet(){
             await loadUser();updateSidebarBalance();
         } else {const e=await res.json();toast(e.detail||'Error','error');}
     }catch(e){toast('Connection error','error');}
+    finally{if(_futureBtn){_futureBtn.disabled=false;_futureBtn.textContent='Post Future Bet';}}
 }
 let _myBetsTab = 'lines'; // 'lines' | 'bets' | 'parlays'
 
@@ -2207,10 +2516,12 @@ async function renderMyBets(){
                 if(isBookie){
                     const taken=p.total_action||0;
                     const isClosed=p.status==='settled'||p.status==='closed';
-                    statusLabel=p.status==='open'?`Open · $${taken.toFixed(0)} taken`:isClosed?'Closed ✓':'Closed';
-                    statusClass=isClosed?'pending':'pending'; // bookie never wins/loses directly; keep neutral
-                    displayAmt=`$${(p.amount||0).toFixed(0)}`;
-                    displayColor='var(--gold)';
+                    const bookieWon=p.winner==='bookie'; // bookie wins if any leg fails
+                    const bookieLost=p.winner==='bettor'; // bookie loses if all legs hit
+                    statusLabel=p.status==='open'?`Open · $${taken.toFixed(0)} taken`:isClosed?(bookieWon?'Won ✅':bookieLost?'Lost ❌':'Closed ✓'):'Closed';
+                    statusClass=isClosed?(bookieWon?'won':bookieLost?'lost':'pending'):'pending';
+                    displayAmt=isClosed&&bookieWon?`+$${taken.toFixed(0)}`:isClosed&&bookieLost?`-$${(p.amount||0).toFixed(0)}`:`$${(p.amount||0).toFixed(0)}`;
+                    displayColor=isClosed&&bookieWon?'var(--green)':isClosed&&bookieLost?'var(--red)':'var(--gold)';
                 } else {
                     const won=p.winner==='bettor',lost=p.winner==='bookie';
                     statusLabel=p.status==='pending'?'Pending ⏳':won?'Won ✅':'Lost ❌';
@@ -2408,6 +2719,7 @@ async function addStake(lineId){
     if(!inp)return;
     const amt=parseFloat(inp.value);
     if(isNaN(amt)||amt<=0){toast('Enter a valid dollar amount (e.g. 50)','error');return;}
+    if(user && amt>user.balance){toast(`Insufficient funds — you have $${Math.floor(user.balance)}, need $${amt.toFixed(2)}`,'error');return;}
     try{
         const res=await fetch(API+'/lines/'+lineId+'?token='+token,{
             method:'PATCH',headers:{'Content-Type':'application/json'},
@@ -2697,16 +3009,30 @@ function filterMarketplace(){
     wrapper.querySelectorAll('[data-line-id]').forEach(el=>{
         el.style.display=visibleIds.has(parseInt(el.dataset.lineId))?'':'none';
     });
-    // Hide sport headers with no visible cards
-    wrapper.querySelectorAll('[data-sp-header]').forEach(hdr=>{
-        let next=hdr.nextElementSibling;
-        let hasVisible=false;
-        while(next&&!next.dataset?.spHeader){
-            if(next.dataset?.lineId&&next.style.display!=='none') hasVisible=true;
-            next=next.nextElementSibling;
-        }
-        hdr.style.display=hasVisible?'':'none';
-    });
+
+    // If a non-default sort is active without a search query, physically reorder cards in DOM
+    if(!q && sortBy!=='default'){
+        // Re-order data-line-id elements according to sorted filtered array
+        // Collect all visible card nodes in new order
+        const cardNodes = filtered
+            .map(l=>wrapper.querySelector(`[data-line-id="${l.id}"]`))
+            .filter(Boolean);
+        // Detach sport headers (hide all, we'll show a flat sorted list)
+        wrapper.querySelectorAll('[data-sp-header]').forEach(hdr=>hdr.style.display='none');
+        // Re-append cards in sorted order (moves them in DOM)
+        cardNodes.forEach(node=>wrapper.appendChild(node));
+    } else {
+        // Hide sport headers with no visible cards
+        wrapper.querySelectorAll('[data-sp-header]').forEach(hdr=>{
+            let next=hdr.nextElementSibling;
+            let hasVisible=false;
+            while(next&&!next.dataset?.spHeader){
+                if(next.dataset?.lineId&&next.style.display!=='none') hasVisible=true;
+                next=next.nextElementSibling;
+            }
+            hdr.style.display=hasVisible?'':'none';
+        });
+    }
 
     if(!filtered.length){
         wrapper.innerHTML=`<div class="empty-state" style="padding:40px 20px;"><div class="empty-icon">🔍</div><div class="empty-title">No lines match "${q}"</div><div class="empty-desc">Try a different search or check back later</div></div>`;
@@ -3802,6 +4128,27 @@ async function renderSettings(){
                 </div>
             </div>
 
+            <!-- Push Notifications -->
+            <div class="settings-section" style="border-color:rgba(0,214,122,.2);">
+                <div class="settings-section-title">🔔 Push Notifications</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Get notified instantly when your bets are matched, won, or challenged — even when the app is closed.</div>
+                ${('Notification' in window && 'serviceWorker' in navigator) ? `
+                <button id="pushToggleBtn" class="btn btn-primary" onclick="togglePushNotifications(this)" style="font-size:13px;">
+                    🔕 Enable Push Notifications
+                </button>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Covers: bet matched, bet won/lost, challenge received, friend request</div>
+                <script>
+                    (function(){
+                        var b=document.getElementById('pushToggleBtn');
+                        if(b){
+                            var on=localStorage.getItem('pushEnabled')==='1'&&typeof Notification!=='undefined'&&Notification.permission==='granted';
+                            b.textContent=on?'🔔 Push On — Tap to Disable':'🔕 Enable Push Notifications';
+                            b.className=on?'btn btn-secondary':'btn btn-primary';
+                        }
+                    })();
+                <\/script>` : `<div style="font-size:13px;color:var(--text-dim);background:var(--bg);border:1px solid var(--border);padding:10px 14px;border-radius:8px;">Push notifications require a modern browser with service worker support. Try Chrome or Edge on Android, or install the PWA.</div>`}
+            </div>
+
             <!-- Change Password -->
             <div class="settings-section">
                 <div class="settings-section-title">🔒 Change Password</div>
@@ -3940,6 +4287,11 @@ async function saveSettings(){
         return;
     }
     const payload = { bio, location, favorite_sport: sport, favorite_team: team, banner_color: bannerColor, email: email||null };
+    // Collect notification preference toggles
+    ['notif_bet_matched','notif_challenge','notif_friend_request','notif_new_follower','notif_game_start'].forEach(key=>{
+        const cb=document.getElementById(key);
+        if(cb) payload[key]=cb.checked;
+    });
     if(window._pendingAvatar !== undefined) payload.avatar = window._pendingAvatar;
 
     try{
@@ -3958,15 +4310,15 @@ async function saveSettings(){
             window._pendingAvatar = undefined;
             toast('Profile saved!', 'success');
             updateSidebarBalance();
-            if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='Save Profile';}
+            if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='💾 Save Profile';}
         } else {
             const e = await res.json().catch(()=>({}));
             toast(e.detail || 'Could not save', 'error');
-            if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='Save Profile';}
+            if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='💾 Save Profile';}
         }
     } catch(e){
         toast('Connection error', 'error');
-        if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='Save Profile';}
+        if(saveBtn){saveBtn.disabled=false;saveBtn.innerHTML='💾 Save Profile';}
     }
 }
 
@@ -4617,6 +4969,7 @@ async function postParlay(){
         toast(`Parlay posted! Bettor stakes $${d.bettor_stake}. Combined odds: ${fmtOdds(d.combined_odds)}`,'success');
         await loadUser();updateSidebarBalance();changeView('parlays');
     }catch(e){toast('Connection error','error');}
+    finally{if(_parlayBtn&&_parlayBtn.textContent==='Posting...'){_parlayBtn.disabled=false;_parlayBtn.textContent='Post Parlay ⚡';}}
 }
 
 async function takeParlayAction(parlayId, available, combinedOdds){
@@ -4636,13 +4989,12 @@ async function takeParlayAction(parlayId, available, combinedOdds){
         `Risk $${stake.toFixed(2)} → Win $${toWin} if all legs hit. Combined odds: ${fmtOdds(combinedOdds)}`);
     if(!ok)return;
     try{
-        const res=await fetch(`${API}/parlays/take?parlay_id=${parlayId}&amount=${toWin}&token=${token}`,{method:'POST'});
+        const res=await fetch(`${API}/parlays/take?parlay_id=${parlayId}&amount=${stake}&token=${token}`,{method:'POST'});
         const data=await res.json();
         if(!res.ok){toast(data.detail||'Error','error');return;}
         toast(`🎰 Parlay locked in! Risk $${stake.toFixed(2)} → Win $${toWin}`,'success');
         await loadUser();updateSidebarBalance();renderApp();
     }catch(e){toast('Connection error','error');}
-    finally{if(_parlayBtn){_parlayBtn.disabled=false;_parlayBtn.textContent='Post Parlay ⚡';}}
 }
 
 async function renderParlays(){
@@ -4992,8 +5344,8 @@ async function adminSettle(betId, winner){
     try{
         const res=await fetch(`${API}/admin/settle-bet?bet_id=${betId}&winner=${winner}&token=${token}`,{method:'POST'});
         const d=await res.json();
-        toast(d.message||d.detail,'success');
-        changeView('admin');
+        toast(d.message||d.detail, res.ok?'success':'error');
+        if(res.ok) changeView('admin');
     }catch(e){toast('Error: '+e.message,'error');}
 }
 async function renderApp(){
@@ -5220,7 +5572,7 @@ async function refreshBadges() {
             fetch(API + '/friends?token=' + token).then(r => r.json())
         ]);
         window._badges = {
-            challengeCount: (challengeData.incoming || []).length,
+            challengeCount: (challengeData.incoming || []).filter(c=>c.status==='pending'||!c.status).length,
             friendRequestCount: (friendData.incoming || []).length
         };
     } catch(e) { window._badges = {}; }
@@ -5230,9 +5582,9 @@ async function openChallengeModal(username) {
     _challengeTargetUsername = username;
     document.getElementById('challengeTarget').innerHTML =
         `Challenging <strong style="color:var(--text)">@${username}</strong>`;
-    if(!gamesCache.length){
-        const games = await fetch(API + '/games').then(r => r.json());
-        gamesCache = games;
+    if(!gamesCache.length || _challengeTargetUsername !== username){
+        const games = await fetch(API + '/games').then(r => r.json()).catch(()=>[]);
+        if(Array.isArray(games) && games.length) gamesCache = games;
     }
     const sel = document.getElementById('cGame');
     sel.innerHTML = '<option value="">Choose a game...</option>' + gamesCache.map(g => {
@@ -5256,7 +5608,7 @@ function updateChallengePreview() {
     const preview = document.getElementById('cOddsPreview');
     if (!preview) return;
     if (isNaN(odds) || isNaN(amount) || amount <= 0) { preview.innerHTML = 'Enter odds and amount to preview'; return; }
-    const oppStake = +(amount * (100 / Math.abs(odds))).toFixed(2);
+    const oppStake = odds>0 ? +(amount*(odds/100)).toFixed(2) : +(amount*(100/Math.abs(odds))).toFixed(2);
     const oddsStr = odds > 0 ? '+' + odds : odds;
     preview.innerHTML = `You risk <strong style="color:var(--orange)">$${amount}</strong> at <strong>${oddsStr}</strong> · @${_challengeTargetUsername} risks <strong style="color:var(--green)">$${oppStake}</strong> · Winner takes <strong style="color:var(--gold)">$${(amount + oppStake).toFixed(2)}</strong>`;
 }
@@ -5264,7 +5616,6 @@ function updateChallengePreview() {
 async function submitChallenge() {
     const _submitBtn = document.querySelector('[onclick="submitChallenge()"]');
     if(_submitBtn && _submitBtn.disabled) return;
-    if(_submitBtn){ _submitBtn.disabled = true; _submitBtn.textContent = 'Sending...'; }
     const gameId = document.getElementById('cGame').value;
     const type   = document.getElementById('cType').value;
     const side   = document.getElementById('cSide').value;
@@ -5279,6 +5630,8 @@ async function submitChallenge() {
     if (isNaN(amount) || amount <= 0) { toast('Enter your stake amount', 'error'); return; }
     if (isNaN(odds) || odds === 0 || (-100 < odds && odds < 100)) { toast('Odds must be ≤ -100 or ≥ +100', 'error'); return; }
     if (user && amount > user.balance) { toast(`Insufficient funds — you have $${Math.floor(user.balance)}, need $${amount.toFixed(2)}`, 'error'); return; }
+
+    if(_submitBtn){ _submitBtn.disabled = true; _submitBtn.textContent = 'Sending...'; }
 
     try {
         const res = await fetch(API + '/challenges?token=' + token, {
@@ -5305,6 +5658,7 @@ async function acceptChallenge(id) {
         if (res.ok) { toast('Challenge accepted! Bet is live 🔥', 'success'); await loadUser(); updateSidebarBalance(); renderApp(); }
         else { const e = await res.json(); toast(e.detail || 'Error', 'error'); }
     } catch(e) { toast('Connection error', 'error'); }
+    finally { if(window._challengeLock) window._challengeLock[id] = false; }
 }
 
 async function declineChallenge(id) {
@@ -5319,6 +5673,7 @@ async function declineChallenge(id) {
         if (res.ok) { toast('Challenge declined', 'info'); renderApp(); }
         else { const e = await res.json(); toast(e.detail || 'Error', 'error'); }
     } catch(e) { toast('Connection error', 'error'); }
+    finally { if(window._challengeLock) window._challengeLock[id] = false; }
 }
 
 async function cancelChallenge(id) {
@@ -5607,7 +5962,7 @@ async function clickNotif(id, type, refId) {
     } else if (['friend_request','friend_accepted'].includes(type)) {
         changeView('friends');
     } else if (type === 'new_follower') {
-        changeView('following');
+        changeView('friends');
     }
 }
 
@@ -5863,6 +6218,21 @@ function toggleNotifDrawer() {
         startY=0;
     },{passive:true});
 })();
+
+// ── SW Push Navigation listener ───────────────────────────────────────────────
+if('serviceWorker' in navigator){
+    navigator.serviceWorker.addEventListener('message', e => {
+        if(e.data && e.data.type === 'PUSH_NAV'){
+            const url = e.data.url || '';
+            // Map URL paths/params to views
+            if(url.includes('view=bets'))       changeView('bets');
+            else if(url.includes('view=challenges')) changeView('challenges');
+            else if(url.includes('view=friends'))    changeView('friends');
+            else if(url.includes('view=marketplace'))changeView('marketplace');
+            else changeView('bets'); // default to my bets for most push events
+        }
+    });
+}
 </script>
 </body>
 </html>
