@@ -19,6 +19,28 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, D
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from sqlalchemy import func
 import json
+import logging
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s – %(message)s"
+)
+logger = logging.getLogger("bookieverse")
+audit_logger = logging.getLogger("bookieverse.audit")
+
+
+def log_balance_change(user_id: int, username: str, delta: float, reason: str):
+    """Emit a structured audit log entry for every balance change."""
+    direction = "CREDIT" if delta >= 0 else "DEBIT"
+    audit_logger.info(
+        "BALANCE_CHANGE user_id=%s username=%s direction=%s amount=%.2f reason=%s",
+        user_id, username, direction, abs(delta), reason,
+    )
+
 
 # Web Push
 try:
@@ -30,9 +52,25 @@ except ImportError:
 
 app = FastAPI(title="BookieVerse Complete")
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+# ── Rate limiter ───────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-SECRET_KEY = os.getenv("SECRET_KEY", "bookieverse-secret")
+# ── CORS ───────────────────────────────────────────────────────────────────────
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()] or ["https://bookieverse.onrender.com"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable must be set")
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bookieverse.db")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -643,6 +681,8 @@ def settle_bet(db, bet, winner):
     if winner == "push":
         bookie.balance += b_amt
         bettor.balance += t_amt
+        log_balance_change(bookie.id, bookie.username, b_amt, f"bet_push game={bet.game}")
+        log_balance_change(bettor.id, bettor.username, t_amt, f"bet_push game={bet.game}")
         push_notification(db, bookie.id, "bet_settled", "🤝 Push — stake returned",
             f"{bet.game} · ${b_amt:.2f} returned to you", bet.id)
         push_notification(db, bettor.id, "bet_settled", "🤝 Push — stake returned",
@@ -653,6 +693,8 @@ def settle_bet(db, bet, winner):
         bookie.wins += 1
         bettor.profit -= t_amt
         bettor.losses += 1
+        log_balance_change(bookie.id, bookie.username, total_pot, f"bet_won game={bet.game}")
+        log_balance_change(bettor.id, bettor.username, -t_amt, f"bet_lost game={bet.game}")
         push_notification(db, bookie.id, "bet_settled", f"🏆 You won! +${t_amt:.2f}",
             f"{bet.game} · {bet.type.upper()} · @{bet.bettor_name} paid you", bet.id)
         push_notification(db, bettor.id, "bet_settled", f"💸 You lost -${t_amt:.2f}",
@@ -663,6 +705,8 @@ def settle_bet(db, bet, winner):
         bettor.wins += 1
         bookie.profit -= b_amt
         bookie.losses += 1
+        log_balance_change(bettor.id, bettor.username, total_pot, f"bet_won game={bet.game}")
+        log_balance_change(bookie.id, bookie.username, -b_amt, f"bet_lost game={bet.game}")
         push_notification(db, bettor.id, "bet_settled", f"🏆 You won! +${b_amt:.2f}",
             f"{bet.game} · {bet.type.upper()} · @{bet.bookie_name} paid you", bet.id)
         push_notification(db, bookie.id, "bet_settled", f"💸 You lost -${b_amt:.2f}",
@@ -675,7 +719,8 @@ def refund_unmatched_line(db, line):
         bookie = db.query(User).filter(User.id == line.bookie_id).first()
         if bookie:
             bookie.balance += unmatched
-            print(f"Refunded ${unmatched:.2f} unmatched funds to bookie {bookie.username}")
+            log_balance_change(bookie.id, bookie.username, unmatched, f"unmatched_refund line_id={line.id}")
+            logger.info("Refunded $%.2f unmatched funds to bookie %s", unmatched, bookie.username)
 
 # ─── NOTIFICATION HELPERS ─────────────────────────────────────────────────────
 
@@ -795,6 +840,7 @@ def expire_pregame_lines():
                 bookie = db.query(User).filter(User.id == prop.bookie_id).first()
                 if bookie:
                     bookie.balance += prop.amount
+                    log_balance_change(bookie.id, bookie.username, prop.amount, f"prop_expired prop_id={prop.id}")
                 prop.status = "expired"
                 push_notification(
                     db, prop.bookie_id, "bet_settled",
@@ -946,7 +992,8 @@ def generate_referral_code(username: str) -> str:
     return f"BV-{base}{suffix}"
 
 @app.post("/api/auth/register")
-def register(user: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     try:
         print(f"=== REGISTER ATTEMPT: {user.username} ===")
 
@@ -987,6 +1034,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
             if referrer and referrer.username != user.username:
                 referral_bonus = 250  # both get $250 bonus
                 referrer.balance += referral_bonus
+                log_balance_change(referrer.id, referrer.username, referral_bonus, f"referral_bonus referred={user.username}")
                 referrer.referral_count = (referrer.referral_count or 0) + 1
                 referred_by_code = user.referral_code.upper().strip()
                 # Notify referrer
@@ -1030,7 +1078,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(500, f"Registration error: {str(e)}")
 
 @app.post("/api/auth/login")
-def login(user: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     # Accept username OR email for login
     identifier = user.username.strip().lower()
     u = db.query(User).filter(User.username == user.username.strip()).first()
@@ -1659,6 +1708,7 @@ def create_line(line: LineCreate, token: str, db: Session = Depends(get_db)):
                    max_total_action=line.max_total_action,
                    is_private=line.is_private, group_id=line.group_id)
     user.balance -= line.amount
+    log_balance_change(user.id, user.username, -line.amount, f"line_created game={game_label}")
     user.lines_created += 1
     db.add(new_line)
     db.commit()
@@ -1873,6 +1923,7 @@ def take_line(take: TakeLine, token: str, db: Session = Depends(get_db)):
         line.status = "matched"
 
     user.balance -= bettor_stake
+    log_balance_change(user.id, user.username, -bettor_stake, f"bet_placed line_id={line.id}")
 
     db.add(bet)
     db.flush()
@@ -2071,6 +2122,7 @@ def create_challenge(challenge: ChallengeCreate, token: str, db: Session = Depen
         message=challenge.message
     )
     challenger.balance -= challenge.amount
+    log_balance_change(challenger.id, challenger.username, -challenge.amount, f"challenge_sent to={challenge.challenged_name}")
     db.add(new_challenge)
     db.flush()
     push_notification(db, challenged.id, "challenge_received",
@@ -2205,6 +2257,7 @@ def decline_challenge(action: ChallengeAction, token: str, db: Session = Depends
     challenger = db.query(User).filter(User.id == challenge.challenger_id).first()
     if challenger:
         challenger.balance += challenge.amount
+        log_balance_change(challenger.id, challenger.username, challenge.amount, f"challenge_declined challenge_id={challenge.id}")
     challenge.status = "declined"
     push_notification(db, challenge.challenger_id, "challenge_declined",
         f"❌ @{challenge.challenged_name} declined your challenge",
@@ -2228,6 +2281,7 @@ def cancel_challenge(action: ChallengeAction, token: str, db: Session = Depends(
     challenger = db.query(User).filter(User.id == user_id).first()
     if challenger:
         challenger.balance += challenge.amount
+        log_balance_change(challenger.id, challenger.username, challenge.amount, f"challenge_cancelled challenge_id={challenge.id}")
     challenge.status = "cancelled"
     db.commit()
     return {"message": "Challenge cancelled. Stake refunded."}
@@ -3050,12 +3104,13 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    if not webhook_secret:
+        logger.error("STRIPE_WEBHOOK_SECRET not set — webhook rejected")
+        raise HTTPException(400, "Webhook not configured")
     try:
-        if webhook_secret:
-            event = stripe.Webhook.construct_event(payload, sig, webhook_secret)
-        else:
-            event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
+        event = stripe.Webhook.construct_event(payload, sig, webhook_secret)
     except Exception as e:
+        logger.warning("Stripe webhook signature verification failed: %s", e)
         raise HTTPException(400, str(e))
 
     if event["type"] == "checkout.session.completed":
@@ -3067,6 +3122,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
             user = db.query(User).filter(User.id == user_id).first()
             if user:
                 user.balance += coins
+                log_balance_change(user_id, user.username, coins, f"stripe_purchase session={session.get('id', 'unknown')}")
                 db.commit()
                 push_notification(db, user_id, "coins_added", f"💰 {coins:,} coins added!",
                     f"Your purchase was successful. Balance: {user.balance:,.0f} coins", None)
